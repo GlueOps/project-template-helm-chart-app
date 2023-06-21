@@ -1,4 +1,4 @@
-name: app-helm-chart
+name: glueops-app
 apiVersion: v2
 description: A Helm chart template for applications
-version: 0.1.0-alpha2
+version: 0.1.0-alpha3
