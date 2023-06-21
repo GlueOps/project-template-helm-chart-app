@@ -1,4 +1,4 @@
-# glueops-app
+# app
 
 ![Version: 0.1.0-alpha3](https://img.shields.io/badge/Version-0.1.0--alpha3-informational?style=flat-square)
 
