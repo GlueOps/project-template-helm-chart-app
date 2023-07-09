@@ -11,7 +11,7 @@ service:
   enabled: true
   headlessService: true
 
-PersistentVolumeClaim:
+persistentVolumeClaim:
   enabled: true
   mountPVC: true
   mountPath: "/var/lib/mysql"
