@@ -37,7 +37,7 @@ deployment:
   - name: bar
     emptyDir: {}
 
-PersistentVolumeClaim:
+persistentVolumeClaim:
   enabled: true
   labels:
     key: "value"
