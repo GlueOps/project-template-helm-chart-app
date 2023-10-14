@@ -1021,3 +1021,29 @@ customResources:
   #     namespace: default
   #   data:
   #     myKey: myValue
+
+
+
+##########################################################
+# Web Application Firewall (WAF)
+##########################################################
+# -- WAF configuration
+webApplicationFirewall:
+  # -- Whether to create a WAF
+  enabled: false
+  # -- Entries for the WAFs. Each WAF can have multiple TLD's but will share the same certificate. Create multiple as you need.
+  entries:
+  #   - name: examplewafone
+  #     hosts:
+  #       - hostname: "example.com"
+  #       - hostname: "*.example.com" 
+  #     webAclName: "block-bad-networks-and-rate-limit" # Specify the Web ACL to use. 
+  # # -- Specify a certificate if you want to import it from the secret store.
+  #     customCertificateSecretStorePath: "" ## "secret/path-to-secret-in-secret-store"
+  #   - name: examplewaftwo
+  #     hosts:
+  #       - hostname: "exampletwo.com"
+  #       - hostname: "*.exampletwo.com" 
+  #     web_acl_name: "block-bad-networks-and-rate-limit" # Specify the Web ACL to use. 
+  # # -- Specify a certificate if you want to import it from the secret store.
+  #     customCertificateSecretStorePath: "" ## "secret/path-to-secret-in-secret-store"

@@ -1,0 +1,8 @@
+webApplicationFirewall:
+  enabled: true
+  entries:
+    - name: examplewafone
+      hosts:
+        - hostname: "example.com"
+        - hostname: "*.example.com" 
+      webAclName: "block-bad-networks-and-rate-limit"
