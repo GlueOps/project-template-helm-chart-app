@@ -1,0 +1,51 @@
+suite: WebApplicationFirewall
+templates:
+  - templates/webapplicationfirewall.yaml 
+tests:
+  - it: should be disabled by default
+    set:
+      webApplicationFirewall.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: should be enabled when webApplicationFirewall.enabled is true
+    set:
+      webApplicationFirewall:
+        enabled: true
+        entries:
+          - name: testentry
+            hosts:
+              - hostname: example.com
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: WebApplicationFirewall
+      - matchRegex:
+          path: metadata.name
+          pattern: '-testentry$'
+      - equal:
+          path: spec.domains[0]
+          value: "example.com"
+  - it: should set web_acl_name when specified
+    set:
+      webApplicationFirewall:
+        enabled: true
+        entries:
+          - name: testentry
+            webAclName: "test-acl-name"
+    asserts:
+      - equal:
+          path: spec.web_acl_name
+          value: "test-acl-name"
+  - it: should set custom_certificate_secret_store_path when specified
+    set:
+      webApplicationFirewall:
+        enabled: true
+        entries:
+          - name: testentry
+            customCertificateSecretStorePath: "secret/path-in-secret-store"
+    asserts:
+      - equal:
+          path: spec.custom_certificate_secret_store_path
+          value: "/secret/path-in-secret-store"
