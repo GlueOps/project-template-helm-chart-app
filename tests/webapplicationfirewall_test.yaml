@@ -1,6 +1,6 @@
 suite: WebApplicationFirewall
 templates:
-  - templates/webapplicationfirewall.yaml 
+  - templates/waf.yaml 
 tests:
   - it: should be disabled by default
     set:
@@ -8,97 +8,60 @@ tests:
     asserts:
       - hasDocuments:
           count: 0
-  # - it: should be enabled when webApplicationFirewall.enabled is true
-  #   set:
-  #     webApplicationFirewall:
-  #       enabled: true
-  #       entries:
-  #         - name: testentry
-  #           hosts:
-  #             - hostname: example.com
-  #   asserts:
-  #     - hasDocuments:
-  #         count: 1
-  #     - isKind:
-  #         of: WebApplicationFirewall
-  #     - matchRegex:
-  #         path: metadata.name
-  #         pattern: '-testentry$'
-  #     - equal:
-  #         path: spec.domains[0]
-  #         value: "example.com"
-  # - it: should set web_acl_name when specified
-  #   set:
-  #     webApplicationFirewall:
-  #       enabled: true
-  #       entries:
-  #         - name: testentry
-  #           webAclName: "test-acl-name"
-  #   asserts:
-  #     - equal:
-  #         path: spec.web_acl_name
-  #         value: "test-acl-name"
-  # - it: should set custom_certificate_secret_store_path when specified
-  #   set:
-  #     webApplicationFirewall:
-  #       enabled: true
-  #       entries:
-  #         - name: testentry
-  #           customCertificateSecretStorePath: "secret/path-in-secret-store"
-  #   asserts:
-  #     - equal:
-  #         path: spec.custom_certificate_secret_store_path
-  #         value: "/secret/path-in-secret-store"
-  # - it: should support multiple hostnames for a single WAF entry
-  #   set:
-  #     webApplicationFirewall:
-  #       enabled: true
-  #       entries:
-  #         - name: testentrymultihost
-  #           hosts:
-  #             - hostname: example1.com
-  #             - hostname: example2.com
-  #   asserts:
-  #     - equal:
-  #         path: spec.domains[0]
-  #         value: "example1.com"
-  #     - equal:
-  #         path: spec.domains[1]
-  #         value: "example2.com"
-  # - it: should support multiple WAF entries with distinct names and settings
-  #   set:
-  #     webApplicationFirewall:
-  #       enabled: true
-  #       entries:
-  #         - name: entry1
-  #           hosts:
-  #             - hostname: example-entry1.com
-  #           webAclName: "acl-entry1"
-  #         - name: entry2
-  #           hosts:
-  #             - hostname: example-entry2.com
-  #           customCertificateSecretStorePath: "secret/path-in-secret-store-entry2"
-  #   asserts:
-  #     - hasDocuments:
-  #         count: 2
-  #     - matchRegex:
-  #         path: metadata.name
-  #         pattern: '-entry1$'
-  #     - equal:
-  #         path: spec.domains[0]
-  #         value: "example-entry1.com"
-  #     - equal:
-  #         path: spec.web_acl_name
-  #         value: "acl-entry1"
-  #     - matchRegex:
-  #         documentIndex: 1
-  #         path: metadata.name
-  #         pattern: '-entry2$'
-  #     - equal:
-  #         documentIndex: 1
-  #         path: spec.domains[0]
-  #         value: "example-entry2.com"
-  #     - equal:
-  #         documentIndex: 1
-  #         path: spec.custom_certificate_secret_store_path
-  #         value: "secret/path-in-secret-store-entry2"
+  - it: should be enabled when webApplicationFirewall.enabled is true
+    set:
+      webApplicationFirewall:
+        enabled: true
+        entries:
+          - name: testentry
+            hosts:
+              - hostname: example.com
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: WebApplicationFirewall
+      - matchRegex:
+          path: metadata.name
+          pattern: '-testentry$'
+      - equal:
+          path: spec.domains[0]
+          value: "example.com"
+  - it: should set web_acl_name when specified
+    set:
+      webApplicationFirewall:
+        enabled: true
+        entries:
+          - name: testentry
+            webAclName: "test-acl-name"
+    asserts:
+      - equal:
+          path: spec.web_acl_name
+          value: "test-acl-name"
+  - it: should set custom_certificate_secret_store_path when specified
+    set:
+      webApplicationFirewall:
+        enabled: true
+        entries:
+          - name: testentry
+            customCertificateSecretStorePath: "secret/path-in-secret-store"
+    asserts:
+      - equal:
+          path: spec.custom_certificate_secret_store_path
+          value: "secret/path-in-secret-store"
+  - it: should support multiple hostnames for a single WAF entry
+    set:
+      webApplicationFirewall:
+        enabled: true
+        entries:
+          - name: testentrymultihost
+            hosts:
+              - hostname: example1.com
+              - hostname: example2.com
+    asserts:
+      - equal:
+          path: spec.domains[0]
+          value: "example1.com"
+      - equal:
+          path: spec.domains[1]
+          value: "example2.com"
