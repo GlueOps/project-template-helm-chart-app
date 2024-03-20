@@ -8,7 +8,7 @@ jobs:
     steps:
       # GitHub Action reference: https://github.com/jupyterhub/action-k3s-helm
       - name: Kubernetes
-        uses: jupyterhub/action-k3s-helm@v3
+        uses: jupyterhub/action-k3s-helm@1f80ca24ce444bc89bf5e829cd8d46a101d7a6a0 # v3
         with:
           # See available:
           # - k3s release channels at https://github.com/k3s-io/k3s/blob/HEAD/channel.yaml
@@ -20,10 +20,10 @@ jobs:
           traefik-enabled: false
 
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2
 
       - name: Set up chart-testing
-        uses: helm/chart-testing-action@v2.4.0
+        uses: helm/chart-testing-action@e8788873172cb653a90ca2e819d79d65a66d4e76 # v2.4.0
 
       - name: Linting
         run: make lint
