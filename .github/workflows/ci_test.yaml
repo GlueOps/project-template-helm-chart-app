@@ -8,7 +8,7 @@ jobs:
     steps:
       # GitHub Action reference: https://github.com/jupyterhub/action-k3s-helm
       - name: Kubernetes
-        uses: jupyterhub/action-k3s-helm@c640de5453dd867d19380de7e6ad2b9b73624664 # v4
+        uses: jupyterhub/action-k3s-helm@6389a7f2a11343ea6b469628c6e7b3afa961db24 # v4
         with:
           # See available:
           # - k3s release channels at https://github.com/k3s-io/k3s/blob/HEAD/channel.yaml
