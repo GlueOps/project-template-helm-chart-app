@@ -37,7 +37,7 @@ spec:
   rules:
   {{- if .hosts }}
   {{- range .hosts }}
-  - host: {{.hostname}}
+  - host: {{.hostname | quote}}
     http:
       paths:
       {{- if .paths }}
