@@ -14,7 +14,7 @@ image:
   # -- Docker image repository
   repository: nginx
   # -- Docker image tag
-  tag: 1.9.15@sha256:932f7b8909321f20eedc0cf7d3970421b1d80b20f531936f3bc55575ccbe89ed
+  tag: 1.27.5@sha256:6784fb0834aa7dbbe12e3d7471e69c290df3e6ba810dc38b34ae33d3c1c05f7d
   # -- Command to run in the Docker container
   command:
   # - /bin/bash
