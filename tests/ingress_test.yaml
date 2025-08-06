@@ -135,3 +135,95 @@ tests:
       - equal:
           path: .spec.rules[0].http.paths[0].path
           value: "/"
+
+  - it: should support dynamic hostnames with template syntax
+    set:
+      appName: my-dynamic-app
+      ingress:
+        enabled: true
+        entries:
+          - name: public
+            hosts:
+            - hostname: "{{ include \"app.name\" . }}.example.com"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Ingress
+      - equal:
+          path: .spec.rules[0].host
+          value: "my-dynamic-app.example.com"
+
+  - it: should support static hostnames for backward compatibility
+    set:
+      appName: my-static-app
+      ingress:
+        enabled: true
+        entries:
+          - name: public
+            hosts:
+            - hostname: "static.example.com"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Ingress
+      - equal:
+          path: .spec.rules[0].host
+          value: "static.example.com"
+
+  - it: should support dynamic hostnames with TLS
+    set:
+      appName: my-tls-app
+      ingress:
+        enabled: true
+        entries:
+          - name: public
+            hosts:
+            - hostname: "{{ include \"app.name\" . }}.secure.example.com"
+        tls:
+          - hosts:
+            - "{{ include \"app.name\" . }}.secure.example.com"
+            secretName: "{{ include \"app.name\" . }}-tls-secret"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Ingress
+      - equal:
+          path: .spec.rules[0].host
+          value: "my-tls-app.secure.example.com"
+      - equal:
+          path: .spec.tls[0].hosts[0]
+          value: "my-tls-app.secure.example.com"
+      - equal:
+          path: .spec.tls[0].secretName
+          value: "my-tls-app-tls-secret"
+
+  - it: should support Values.appName reference in templates
+    set:
+      appName: values-app-name
+      ingress:
+        enabled: true
+        entries:
+          - name: public
+            hosts:
+            - hostname: "{{ .Values.appName }}.values.example.com"
+        tls:
+          - hosts:
+            - "{{ .Values.appName }}.values.example.com"
+            secretName: "{{ .Values.appName }}-cert"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Ingress
+      - equal:
+          path: .spec.rules[0].host
+          value: "values-app-name.values.example.com"
+      - equal:
+          path: .spec.tls[0].hosts[0]
+          value: "values-app-name.values.example.com"
+      - equal:
+          path: .spec.tls[0].secretName
+          value: "values-app-name-cert"
