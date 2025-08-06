@@ -68,7 +68,6 @@ jobs:
           helm install external-secrets external-secrets/external-secrets --version 0.16.2 --wait
           helm install keda kedacore/keda --version 2.17.2 --wait
           helm install prometheus prometheus-community/prometheus-operator-crds --wait
-          kubectl apply -f https://raw.githubusercontent.com/GlueOps/metacontroller-operator-waf/main/manifests/crd.yaml
           helm list
 
       - name: Checks

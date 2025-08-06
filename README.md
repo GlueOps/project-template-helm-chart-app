@@ -129,6 +129,3 @@ A Helm chart template for applications
 | statefulSet.volumeClaimTemplates | string | `nil` | Volume claim templates for the StatefulSet |
 | statefulSet.volumeMounts | string | `nil` | Volume mounts for the container |
 | statefulSet.volumes | string | `nil` | Volumes for the pod |
-| waf | object | `{"enabled":false,"entries":null}` | WAF configuration |
-| waf.enabled | bool | `false` | Whether to create a WAF |
-| waf.entries | string | `nil` | Entries for the WAFs. Each WAF can have multiple TLD's but will share the same certificate. Create multiple as you need. |
