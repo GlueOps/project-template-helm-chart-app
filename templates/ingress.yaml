@@ -37,7 +37,7 @@ spec:
   rules:
   {{- if .hosts }}
   {{- range .hosts }}
-  - host: {{.hostname | quote}}
+  - host: {{ tpl (.hostname | toString) $ | quote}}
     http:
       paths:
       {{- if .paths }}
