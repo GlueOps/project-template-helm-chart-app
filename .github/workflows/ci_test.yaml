@@ -14,8 +14,8 @@ jobs:
           # - k3s release channels at https://github.com/k3s-io/k3s/blob/HEAD/channel.yaml
           # - k3s versions at https://github.com/k3s-io/k3s/tags
           # - helm versions at https://github.com/helm/helm/tags
-          k3s-version: v1.27.5+k3s1
-          helm-version: v3.11.2
+          k3s-version: v1.31.10+k3s1
+          helm-version: v3.16.2
           metrics-enabled: false
           traefik-enabled: false
 
@@ -65,8 +65,8 @@ jobs:
           helm repo add kedacore https://kedacore.github.io/charts
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm repo update
-          helm install external-secrets external-secrets/external-secrets --version 0.9.5 --wait
-          helm install keda kedacore/keda --version 2.11.2 --wait
+          helm install external-secrets external-secrets/external-secrets --version 0.16.2 --wait
+          helm install keda kedacore/keda --version 2.17.2 --wait
           helm install prometheus prometheus-community/prometheus-operator-crds --wait
           kubectl apply -f https://raw.githubusercontent.com/GlueOps/metacontroller-operator-waf/main/manifests/crd.yaml
           helm list
