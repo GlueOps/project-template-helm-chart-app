@@ -563,3 +563,44 @@ tests:
               secretKeyRef:
                 name: example-app-name1
                 key: secretKey
+
+  - it: sets enableServiceLinks to false when configured
+    set:
+      deployment:
+        enabled: true
+        enableServiceLinks: false
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Deployment
+      - equal:
+          path: spec.template.spec.enableServiceLinks
+          value: false
+
+  - it: sets enableServiceLinks to true when explicitly configured
+    set:
+      deployment:
+        enabled: true
+        enableServiceLinks: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Deployment
+      - equal:
+          path: spec.template.spec.enableServiceLinks
+          value: true
+
+  - it: does not set enableServiceLinks when not configured (defaults to true)
+    set:
+      deployment:
+        enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Deployment
+      - equal:
+          path: spec.template.spec.enableServiceLinks
+          value: true

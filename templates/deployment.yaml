@@ -45,7 +45,7 @@ spec:
     {{- end }}
 
   {{- $context :=  merge (dict "resourceType" "deployment" "Chart" $.Chart "Root" $) .Values.deployment }}
-  template: 
+  template:
   {{- include "chart.podTemplate" $context | nindent 4 }}
 
 {{- end }}

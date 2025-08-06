@@ -31,12 +31,17 @@ metadata:
     {{- end }}
     {{- end }}
 spec:
+  {{- if hasKey . "enableServiceLinks" }}
+  enableServiceLinks: {{ .enableServiceLinks }}
+  {{- else }}
+  enableServiceLinks: true
+  {{- end }}
   terminationGracePeriodSeconds: {{ .terminationGracePeriodSeconds | default "60" }}
   {{- if .hostNetwork }}
-  hostNetwork: {{ .hostNetwork | default false }} 
+  hostNetwork: {{ .hostNetwork | default false }}
   {{- end }}
   {{- if .hostAliases }}
-  hostAliases:      
+  hostAliases:
   {{- toYaml .hostAliases | nindent 4 }}
   {{- end }}
   {{- if and (hasKey . "serviceAccount") .serviceAccount.enabled }}

@@ -31,7 +31,7 @@ spec:
   {{- end }}
 
   {{- $context :=  merge .Values.statefulSet (dict "resourceType" "statefulSet" "Chart" $.Chart "Root" $) }}
-  template: 
+  template:
   {{- include "chart.podTemplate" $context | nindent 4 }}
   # volumeClaimTemplates
   {{- if .Values.statefulSet.volumeClaimTemplates }}
@@ -40,7 +40,7 @@ spec:
   - metadata:
       name: {{$key}}
     spec:
-      accessModes: 
+      accessModes:
         - {{$value.accessModes}}
       {{- if hasKey $value "storageClassName" }}
       storageClassName: {{$value.storageClassName}}

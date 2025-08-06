@@ -72,6 +72,11 @@ deployment:
   # -- Whether to share the process namespace between all containers in a pod
   # shareProcessNamespace: false
 
+  # -- Whether to enable automatic injection of service environment variables
+  # Set to false to prevent pods from seeing environment variables of other services in the namespace
+  # Default is true for backward compatibility
+  # enableServiceLinks: false
+
   # -- Match labels for the StatefulSet
   matchLabels:
 
@@ -122,7 +127,7 @@ deployment:
   #   configMapKey: host
 
   # -- Map of environment variables
-  envMap: 
+  envMap:
     # envMapKey:
     #   value: envMapValue
     # foo:
@@ -146,7 +151,7 @@ deployment:
     # name:
 
   # -- Node selector for scheduling the pods
-  nodeSelector: 
+  nodeSelector:
     ### example: schedule pods on on-demand nodes only
     # node-role.kubernetes.io/on-demand: "true"
 
@@ -329,6 +334,11 @@ statefulSet:
   # -- Whether to share the process namespace between all containers in a pod
   # shareProcessNamespace: false
 
+  # -- Whether to enable automatic injection of service environment variables
+  # Set to false to prevent pods from seeing environment variables of other services in the namespace
+  # Default is true for backward compatibility
+  # enableServiceLinks: false
+
   # -- Match labels for the StatefulSet
   matchLabels:
 
@@ -379,7 +389,7 @@ statefulSet:
   #   configMapKey: host
 
   # -- Map of environment variables
-  envMap: 
+  envMap:
     # envMapKey:
     #   value: envMapValue
     # foo:
@@ -403,7 +413,7 @@ statefulSet:
     # name:
 
   # -- Node selector for scheduling the pods
-  nodeSelector: 
+  nodeSelector:
     ### example: schedule pods on on-demand nodes only
     # node-role.kubernetes.io/on-demand: "true"
 
@@ -541,7 +551,7 @@ statefulSet:
 
   # -- Volume claim templates for the StatefulSet
   volumeClaimTemplates:
-    # www: 
+    # www:
     #   accessModes: "ReadWriteOnce"
     #   storageClassName: "my-storage-class"
     #   requestsStorage: 1Gi
@@ -573,6 +583,8 @@ cronJob:
     #   startingDeadlineSeconds: 60
     #   serviceAccount:
     #     enabled: false
+    #   # Set to false to prevent pods from seeing environment variables of other services in the namespace
+    #   # enableServiceLinks: false
     #   # schedule: "* * * 8 *"
     #   envMap: {}
     #     # foo:
@@ -599,7 +611,7 @@ cronJob:
     #     # nodeAffinity:
     #     #   requiredDuringSchedulingIgnoredDuringExecution:
     #     #     nodeSelectorTerms:
-    #     #     - matchExpressions: 
+    #     #     - matchExpressions:
     #     #       - key: k8s-node-role/job-worker
     #     #         operator: In
     #     #         values:
@@ -636,6 +648,8 @@ job:
     #   # backoffLimit: 2
     #   serviceAccount:
     #     enabled: false
+    #   # Set to false to prevent pods from seeing environment variables of other services in the namespace
+    #   # enableServiceLinks: false
     #   envMap: {}
     #     # foo:
     #     #   value: bar
@@ -734,10 +748,10 @@ secret:
   # -- Whether to create a Secret
   enabled: false
   # -- Labels for the Secret
-  lables: 
+  labels:
     # key: value
   # -- Annotations for the Secret
-  annotations: 
+  annotations:
     # key: value
   # -- Data for the Secret
   secrets:
@@ -759,10 +773,10 @@ configMap:
   # -- Whether to create a ConfigMap
   enabled: false
   # -- Labels for the ConfigMap
-  labels: 
+  labels:
   # key: value
   # -- Annotations for the ConfigMap
-  annotations: 
+  annotations:
   # key: value
   # -- Data for the ConfigMap
   configs:
@@ -792,21 +806,21 @@ externalSecret:
   enabled: false
   # -- Global SecretStore for all ExternalSecrets
   secretStore:
-    #kind: SecretStore # Defaults to ClusterSecretStore if not specified 
+    #kind: SecretStore # Defaults to ClusterSecretStore if not specified
     name: vault-backend
   # -- RefreshInterval is the amount of time before the values reading again from the SecretStore provider
   refreshInterval: "2s"
   # -- Data for the External Secret
-  secrets:   
+  secrets:
     # mongodb:
     #   data:
     #     mongo-password:
     #       envName: MONGO_PASSWORD
-    #       remoteRef: 
+    #       remoteRef:
     #         key: monodb
-    #         property: password 
-    #   secretStore:                       
-    #     name: secret-store-name-2    # specify if value is other than default secretstore  
+    #         property: password
+    #   secretStore:
+    #     name: secret-store-name-2    # specify if value is other than default secretstore
     #   labels:
     #     labels.example.com/name: secret
     # postgres:
@@ -919,7 +933,7 @@ keda:
         #   metadata:
         #     type: Utilization
         #     value: "80"
-        # memory: 
+        # memory:
         #   type: memory
         #   metadata:
         #     type: Utilization
@@ -1021,29 +1035,3 @@ customResources:
   #     namespace: default
   #   data:
   #     myKey: myValue
-
-
-
-##########################################################
-# Web Application Firewall (WAF)
-##########################################################
-# -- WAF configuration
-waf:
-  # -- Whether to create a WAF
-  enabled: false
-  # -- Entries for the WAFs. Each WAF can have multiple TLD's but will share the same certificate. Create multiple as you need.
-  entries:
-  #   - name: examplewafone
-  #     hosts:
-  #       - hostname: "example.com"
-  #       - hostname: "*.example.com" 
-  #     webAclName: "block-bad-networks-and-rate-limit" # Specify the Web ACL to use. 
-  # # -- Specify a certificate if you want to import it from the secret store.
-  #     customCertificateSecretStorePath: "" ## "secret/path-to-secret-in-secret-store"
-  #   - name: examplewaftwo
-  #     hosts:
-  #       - hostname: "exampletwo.com"
-  #       - hostname: "*.exampletwo.com" 
-  #     webAclName: "block-bad-networks-and-rate-limit" # Specify the Web ACL to use. 
-  # # -- Specify a certificate if you want to import it from the secret store.
-  #     customCertificateSecretStorePath: "" ## "secret/path-to-secret-in-secret-store"

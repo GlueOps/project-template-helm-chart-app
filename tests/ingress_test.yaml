@@ -135,3 +135,254 @@ tests:
       - equal:
           path: .spec.rules[0].http.paths[0].path
           value: "/"
+
+  - it: should support dynamic hostnames with template syntax
+    set:
+      appName: my-dynamic-app
+      ingress:
+        enabled: true
+        entries:
+          - name: public
+            hosts:
+            - hostname: "{{ include \"app.name\" . }}.example.com"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Ingress
+      - equal:
+          path: .spec.rules[0].host
+          value: "my-dynamic-app.example.com"
+
+  - it: should support static hostnames for backward compatibility
+    set:
+      appName: my-static-app
+      ingress:
+        enabled: true
+        entries:
+          - name: public
+            hosts:
+            - hostname: "static.example.com"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Ingress
+      - equal:
+          path: .spec.rules[0].host
+          value: "static.example.com"
+
+  - it: should support dynamic hostnames with TLS
+    set:
+      appName: my-tls-app
+      ingress:
+        enabled: true
+        entries:
+          - name: public
+            hosts:
+            - hostname: "{{ include \"app.name\" . }}.secure.example.com"
+        tls:
+          - hosts:
+            - "{{ include \"app.name\" . }}.secure.example.com"
+            secretName: "{{ include \"app.name\" . }}-tls-secret"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Ingress
+      - equal:
+          path: .spec.rules[0].host
+          value: "my-tls-app.secure.example.com"
+      - equal:
+          path: .spec.tls[0].hosts[0]
+          value: "my-tls-app.secure.example.com"
+      - equal:
+          path: .spec.tls[0].secretName
+          value: "my-tls-app-tls-secret"
+
+  - it: should support Values.appName reference in templates
+    set:
+      appName: values-app-name
+      ingress:
+        enabled: true
+        entries:
+          - name: public
+            hosts:
+            - hostname: "{{ .Values.appName }}.values.example.com"
+        tls:
+          - hosts:
+            - "{{ .Values.appName }}.values.example.com"
+            secretName: "{{ .Values.appName }}-cert"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Ingress
+      - equal:
+          path: .spec.rules[0].host
+          value: "values-app-name.values.example.com"
+      - equal:
+          path: .spec.tls[0].hosts[0]
+          value: "values-app-name.values.example.com"
+      - equal:
+          path: .spec.tls[0].secretName
+          value: "values-app-name-cert"
+
+  - it: should support wildcard hostnames
+    set:
+      appName: wildcard-app
+      ingress:
+        enabled: true
+        entries:
+          - name: wildcard
+            hosts:
+            - hostname: "*.example.com"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Ingress
+      - equal:
+          path: .spec.rules[0].host
+          value: "*.example.com"
+
+  - it: should support dynamic wildcard hostnames with template syntax
+    set:
+      appName: my-wildcard-app
+      appEnv: staging
+      ingress:
+        enabled: true
+        entries:
+          - name: wildcard
+            hosts:
+            - hostname: "*.{{ .Values.appEnv }}.example.com"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Ingress
+      - equal:
+          path: .spec.rules[0].host
+          value: "*.staging.example.com"
+
+  - it: should support wildcard hostnames with TLS
+    set:
+      appName: wildcard-tls-app
+      ingress:
+        enabled: true
+        entries:
+          - name: wildcard-tls
+            hosts:
+            - hostname: "*.secure.example.com"
+        tls:
+          - hosts:
+            - "*.secure.example.com"
+            secretName: "wildcard-tls-secret"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Ingress
+      - equal:
+          path: .spec.rules[0].host
+          value: "*.secure.example.com"
+      - equal:
+          path: .spec.tls[0].hosts[0]
+          value: "*.secure.example.com"
+      - equal:
+          path: .spec.tls[0].secretName
+          value: "wildcard-tls-secret"
+
+  - it: should support multiple wildcard patterns
+    set:
+      appName: multi-wildcard-app
+      ingress:
+        enabled: true
+        entries:
+          - name: multi-wildcard
+            hosts:
+            - hostname: "*.api.example.com"
+              paths:
+                - path: /v1
+                  serviceName: api-v1
+            - hostname: "*.web.example.com"
+              paths:
+                - path: /
+                  serviceName: web-frontend
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Ingress
+      - equal:
+          path: .spec.rules[0].host
+          value: "*.api.example.com"
+      - equal:
+          path: .spec.rules[0].http.paths[0].backend.service.name
+          value: "api-v1"
+      - equal:
+          path: .spec.rules[1].host
+          value: "*.web.example.com"
+      - equal:
+          path: .spec.rules[1].http.paths[0].backend.service.name
+          value: "web-frontend"
+
+  - it: should support dynamic wildcard with app name template
+    set:
+      appName: tenant-service
+      ingress:
+        enabled: true
+        entries:
+          - name: tenant-wildcard
+            hosts:
+            - hostname: "*.{{ include \"app.name\" . }}.multi-tenant.example.com"
+        tls:
+          - hosts:
+            - "*.{{ include \"app.name\" . }}.multi-tenant.example.com"
+            secretName: "{{ include \"app.name\" . }}-wildcard-cert"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Ingress
+      - equal:
+          path: .spec.rules[0].host
+          value: "*.tenant-service.multi-tenant.example.com"
+      - equal:
+          path: .spec.tls[0].hosts[0]
+          value: "*.tenant-service.multi-tenant.example.com"
+      - equal:
+          path: .spec.tls[0].secretName
+          value: "tenant-service-wildcard-cert"
+
+  - it: should support mixed wildcard and specific hostnames
+    set:
+      appName: mixed-app
+      ingress:
+        enabled: true
+        entries:
+          - name: mixed
+            hosts:
+            - hostname: "api.example.com"
+              paths:
+                - path: /api
+            - hostname: "*.dev.example.com"
+              paths:
+                - path: /
+            - hostname: "admin.example.com"
+              paths:
+                - path: /admin
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Ingress
+      - equal:
+          path: .spec.rules[0].host
+          value: "api.example.com"
+      - equal:
+          path: .spec.rules[1].host
+          value: "*.dev.example.com"
+      - equal:
+          path: .spec.rules[2].host
+          value: "admin.example.com"
