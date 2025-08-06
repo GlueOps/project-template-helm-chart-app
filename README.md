@@ -84,10 +84,10 @@ A Helm chart template for applications
 | podDisruptionBudget | object | `{"enabled":false,"minAvailable":1}` | Pod Disruption Budget configuration |
 | podDisruptionBudget.enabled | bool | `false` | Whether to create a Pod Disruption Budget |
 | podDisruptionBudget.minAvailable | int | `1` | Minimum number of pods that must be available |
-| secret | object | `{"annotations":null,"enabled":false,"lables":null,"secrets":null}` | Secret configuration |
+| secret | object | `{"annotations":null,"enabled":false,"labels":null,"secrets":null}` | Secret configuration |
 | secret.annotations | string | `nil` | Annotations for the Secret |
 | secret.enabled | bool | `false` | Whether to create a Secret |
-| secret.lables | string | `nil` | Labels for the Secret |
+| secret.labels | string | `nil` | Labels for the Secret |
 | secret.secrets | string | `nil` | Data for the Secret |
 | service | object | `{"annotations":null,"enabled":false,"labels":null,"ports":null,"type":"ClusterIP"}` | Service configuration |
 | service.annotations | string | `nil` | Annotations for the Service |

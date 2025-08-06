@@ -36,10 +36,10 @@ spec:
   storageClassName: "{{ .Values.persistentVolumeClaim.storageClass }}"
   {{- end }}
   {{- end }}
-  {{- if .Values.persistentVolumeClaim.volumeMode }}  
+  {{- if .Values.persistentVolumeClaim.volumeMode }}
   volumeMode: "{{ .Values.persistentVolumeClaim.volumeMode }}"
   {{- end }}
-  {{- if .Values.persistentVolumeClaim.volumeName }}  
+  {{- if .Values.persistentVolumeClaim.volumeName }}
   volumeName: "{{ .Values.persistentVolumeClaim.volumeName }}"
   {{- end }}
 {{- end }}

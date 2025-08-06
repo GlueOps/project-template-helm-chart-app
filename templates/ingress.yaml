@@ -47,7 +47,7 @@ spec:
         backend:
           service:
             name: {{ .serviceName | default (include "app.name" $)}}
-            port: 
+            port:
               {{- if .servicePortName }}
               name: {{.servicePortName | default "http" }}
               {{- else }}
@@ -60,7 +60,7 @@ spec:
         backend:
           service:
             name: {{ include "app.name" $}}
-            port: 
+            port:
               number: {{ int ( $.Values.service.port | default (include "app.port" $)) }}
       {{- end }}
   {{- end }}

@@ -1,0 +1,138 @@
+# Example configuration to prevent pods from seeing environment variables
+# of other services in the same namespace
+
+appName: "my-secure-app"
+appVersion: "1.0.0"
+appEnv: "prod"
+
+image:
+  registry: docker.io
+  repository: nginx
+  tag: "1.28.0"
+  port: 8080
+
+# Deployment configuration with enableServiceLinks disabled
+deployment:
+  enabled: true
+  replicas: 1
+
+  # This setting prevents Kubernetes from automatically injecting
+  # environment variables for all services in the namespace
+  # (default is true for backward compatibility)
+  enableServiceLinks: false
+
+  # Resource requirements (required for lint checks)
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Readiness probe (required for kube-score validation)
+  readinessProbe:
+    httpGet:
+      path: /
+      port: 8080
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 1
+    failureThreshold: 3
+
+  # Liveness probe (required for polaris validation)
+  # Using TCP socket probe to differentiate from readiness probe
+  livenessProbe:
+    tcpSocket:
+      port: 8080
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  # Example environment variables that your app actually needs
+  envVariables:
+    - name: MY_APP_CONFIG
+      value: "production"
+    - name: LOG_LEVEL
+      value: "info"
+
+# Service configuration
+service:
+  enabled: true
+  type: ClusterIP
+  port: 80
+
+# PodDisruptionBudget (required for polaris validation)
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Optional: StatefulSet example (choose either deployment or statefulSet)
+statefulSet:
+  enabled: false
+  # If using StatefulSet instead, also disable service links
+  # (default is true for backward compatibility)
+  enableServiceLinks: false
+  # Resource requirements (required for lint checks)
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  # Readiness probe (required for kube-score validation)
+  readinessProbe:
+    httpGet:
+      path: /
+      port: 8080
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 1
+    failureThreshold: 3
+  # Liveness probe (required for polaris validation)
+  # Using TCP socket probe to differentiate from readiness probe
+  livenessProbe:
+    tcpSocket:
+      port: 8080
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+# Optional: Job example
+job:
+  enabled: false
+  jobs:
+    db-migration:
+      # Also disable service links for jobs
+      enableServiceLinks: false
+      # Resource requirements (required for lint checks)
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+      envMap:
+        DATABASE_URL:
+          value: "postgresql://user:pass@db:5432/mydb"
+
+# Optional: CronJob example
+cronJob:
+  enabled: false
+  jobs:
+    cleanup:
+      schedule: "0 2 * * *"
+      # Also disable service links for cron jobs
+      enableServiceLinks: false
+      # Resource requirements (required for lint checks)
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi

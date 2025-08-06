@@ -63,3 +63,32 @@ tests:
       - equal:
           path: metadata.labels.lbl
           value: test
+
+  - it: sets enableServiceLinks to false when configured
+    set:
+      deployment.enabled: false
+      statefulSet:
+        enabled: true
+        enableServiceLinks: false
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: StatefulSet
+      - equal:
+          path: spec.template.spec.enableServiceLinks
+          value: false
+
+  - it: defaults enableServiceLinks to true when not configured
+    set:
+      deployment.enabled: false
+      statefulSet:
+        enabled: true
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: StatefulSet
+      - equal:
+          path: spec.template.spec.enableServiceLinks
+          value: true
