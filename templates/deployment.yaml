@@ -14,7 +14,7 @@ metadata:
 spec:
   {{- if .Values.deployment.runtimeClassName }}
   runtimeClassName: {{ .Values.deployment.runtimeClassName }}
-  {{- else }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "chart.appLabels" . | indent 6 }}
