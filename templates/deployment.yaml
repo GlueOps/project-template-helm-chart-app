@@ -12,9 +12,6 @@ metadata:
     {{- include "chart.commonAnnotations" . | indent 4 }}
     {{- include "chart.deploymentAnnotations" . | indent 4 }}
 spec:
-  {{- if .Values.deployment.runtimeClassName }}
-  runtimeClassName: {{ .Values.deployment.runtimeClassName }}
-  {{- end }}
   selector:
     matchLabels:
       {{- include "chart.appLabels" . | indent 6 }}
