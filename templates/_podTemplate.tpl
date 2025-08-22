@@ -36,6 +36,9 @@ spec:
   {{- else }}
   enableServiceLinks: true
   {{- end }}
+  {{- if hasKey . "runtimeClassName" }}
+  runtimeClassName: {{ .runtimeClassName }}
+  {{- end }}
   terminationGracePeriodSeconds: {{ .terminationGracePeriodSeconds | default "60" }}
   {{- if .hostNetwork }}
   hostNetwork: {{ .hostNetwork | default false }}
