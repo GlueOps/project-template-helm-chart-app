@@ -12,7 +12,7 @@ cronJob:
       concurrencyPolicy: Forbid
       successfulJobsHistoryLimit: 10
       failedJobsHistoryLimit: 3
-      image: amazon/aws-cli:2.11.20
+      image: amazon/aws-cli:2.28.16
       command:
         - /bin/sh
       args:
