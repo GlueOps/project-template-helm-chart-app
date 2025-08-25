@@ -4,7 +4,7 @@ appVersion: "6.3.6"
 image:
   registry: ghcr.io
   repository: stefanprodan/podinfo
-  tag: 6.3.6
+  tag: 6.9.1
   port: 9898
 
 podDisruptionBudget:
