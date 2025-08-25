@@ -3,7 +3,7 @@ appName: antionostacos-prod
 image:
   registry: docker.io
   repository: antoniostacos/wordpress
-  tag: v0.0.1
+  tag: v0.4.0
   port: 80
 
 service:
