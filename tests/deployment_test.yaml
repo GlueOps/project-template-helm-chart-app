@@ -251,7 +251,7 @@ tests:
       deployment.enabled: true
       deployment.initContainers:
         - name: init-mydb
-          image: busybox:1.28
+          image: busybox:1.37
           command: ['sh', '-c', "until nslookup mydb.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for mydb; sleep 2; done"]
     asserts:
       - hasDocuments:
@@ -468,7 +468,7 @@ tests:
       deployment.enabled: true
       deployment.initContainers:
         - name: init-mydb
-          image: busybox:1.28
+          image: busybox:1.37
           command: ['sh', '-c', "until nslookup mydb.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for mydb; sleep 2; done"]
     asserts:
       - hasDocuments:
@@ -481,7 +481,7 @@ tests:
           path: spec.template.spec.initContainers
           content:
             name: init-mydb
-            image: busybox:1.28
+            image: busybox:1.37
             command: ['sh', '-c', "until nslookup mydb.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for mydb; sleep 2; done"]
 
   - it: should create ExternalSecret variable with envFrom

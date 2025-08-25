@@ -42,7 +42,7 @@ cronJob:
             secretKeyRef:
               name: mycronjob-password
               key: mysql_password
-      image: busybox:1.28
+      image: busybox:1.37
       command:
       - /bin/sh
       - -c
