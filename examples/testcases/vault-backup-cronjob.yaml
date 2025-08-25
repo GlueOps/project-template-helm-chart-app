@@ -41,7 +41,7 @@ cronJob:
           emptyDir: {}
       initContainers:
         - name: vault-backup
-          image: vault:1.13.2
+          image: vault:1.13.3
           command: ["/bin/sh", "-c"]
           args:
             - |
