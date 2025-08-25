@@ -90,7 +90,7 @@ statefulSet:
 
   initContainers:
   - name: init-mydb
-    image: alpine:1.28
+    image: alpine:3.22
     command: ['sh', '-c', "until nslookup mydb.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for mydb; sleep 2; done"]
     resources:
       requests:
