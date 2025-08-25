@@ -3,7 +3,7 @@ image:
 podDisruptionBudget:
   enabled: true
 deployment:
-  image: nginx:1.14.0
+  image: nginx:1.29.1
   enabled: true
   maxUnavailable: 25%
   resources:

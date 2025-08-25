@@ -35,7 +35,7 @@ tests:
       appName: unittest
       image:
         repository: nginx
-        tag: 1.1.2
+        tag: 1.29.1
         port: 9999
       deployment:
         enabled: true
