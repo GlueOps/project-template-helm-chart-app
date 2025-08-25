@@ -8,7 +8,7 @@ appEnv: "prod"
 image:
   registry: docker.io
   repository: nginx
-  tag: "1.28.0"
+  tag: "1.29.1"
   port: 8080
 
 # Deployment configuration with enableServiceLinks disabled

@@ -23,7 +23,7 @@ cronJob:
             secretKeyRef:
               name: secret-name
               key: secretKey
-      image: docker.io/nginx:v1.2.3
+      image: docker.io/nginx:1.29.1
       imagePullPolicy: IfNotPresent
       command: ["/bin/bash"]
       args: ["-c","sleep 5000"]
