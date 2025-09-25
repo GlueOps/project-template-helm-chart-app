@@ -1,6 +1,6 @@
 # app
 
-![Version: 0.8.0-rc4](https://img.shields.io/badge/Version-0.8.0--rc4-informational?style=flat-square)
+![Version: 0.8.1](https://img.shields.io/badge/Version-0.8.1-informational?style=flat-square)
 
 A Helm chart template for applications
 
