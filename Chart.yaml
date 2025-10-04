@@ -7,34 +7,34 @@ version: 0.6.0-vapor
 
 dependencies:
   - name: app
-    version: 0.4.0
+    version: 0.8.1
     repository: https://helm.gpkg.io/project-template
     alias: component-1
   - name: app
-    version: 0.4.0
+    version: 0.8.1
     repository: https://helm.gpkg.io/project-template
     alias: component-2
   - name: app
-    version: 0.4.0
+    version: 0.8.1
     repository: https://helm.gpkg.io/project-template
     alias: component-3
   - name: app
-    version: 0.4.0
+    version: 0.8.1
     repository: https://helm.gpkg.io/project-template
     alias: component-4
   - name: app
-    version: 0.4.0
+    version: 0.8.1
     repository: https://helm.gpkg.io/project-template
     alias: component-5
   - name: app
-    version: 0.4.0
+    version: 0.8.1
     repository: https://helm.gpkg.io/project-template
     alias: component-6
   - name: app
-    version: 0.4.0
+    version: 0.8.1
     repository: https://helm.gpkg.io/project-template
     alias: component-7
   - name: app
-    version: 0.4.0
+    version: 0.8.1
     repository: https://helm.gpkg.io/project-template
     alias: component-8
