@@ -215,7 +215,7 @@ deployment:
   volumeMounts:
   - name: foo
     mountPath: "/etc/foo"
-    readOnly: true
+    # readOnly: true # value does not apply to secrets
 
   # list of volumes in original k8s format.
   volumes:
