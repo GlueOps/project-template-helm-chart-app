@@ -57,13 +57,13 @@ A Helm chart template for applications
 | externalSecret.refreshInterval | string | `"2s"` | RefreshInterval is the amount of time before the values reading again from the SecretStore provider |
 | externalSecret.secretStore | object | `{"name":"vault-backend"}` | Global SecretStore for all ExternalSecrets |
 | externalSecret.secrets | string | `nil` | Data for the External Secret |
-| image | object | `{"args":null,"command":null,"port":8080,"registry":"docker.io","repository":"nginx","tag":"1.29.1@sha256:d5f28ef21aabddd098f3dbc21fe5b7a7d7a184720bc07da0b6c9b9820e97f25e"}` | Docker image configuration |
+| image | object | `{"args":null,"command":null,"port":8080,"registry":"docker.io","repository":"nginx","tag":"1.29.1@sha256:8adbdcb969e2676478ee2c7ad333956f0c8e0e4c5a7463f4611d7a2e7a7ff5dc"}` | Docker image configuration |
 | image.args | string | `nil` | Arguments to pass to the command |
 | image.command | string | `nil` | Command to run in the Docker container |
 | image.port | int | `8080` | Port the application will listen on (>1024) |
 | image.registry | string | `"docker.io"` | Docker registry |
 | image.repository | string | `"nginx"` | Docker image repository |
-| image.tag | string | `"1.29.1@sha256:d5f28ef21aabddd098f3dbc21fe5b7a7d7a184720bc07da0b6c9b9820e97f25e"` | Docker image tag |
+| image.tag | string | `"1.29.1@sha256:8adbdcb969e2676478ee2c7ad333956f0c8e0e4c5a7463f4611d7a2e7a7ff5dc"` | Docker image tag |
 | ingress | object | `{"annotations":null,"enabled":false,"entries":null}` | Ingress configuration |
 | ingress.annotations | string | `nil` | Annotations for the Ingress |
 | ingress.enabled | bool | `false` | Whether to create an Ingress |
