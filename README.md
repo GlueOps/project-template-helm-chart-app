@@ -9,7 +9,6 @@ A Helm chart template for applications
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | appEnv | string | `"dev"` | Environment of the application |
-| appName | string | `"example-app"` | Name of the application |
 | appVersion | string | `"0.0.1"` | Version of the application |
 | commonAnnotations | string | `nil` | Common annotations for all Kubernetes objects |
 | commonLabels | string | `nil` | Common labels for all Kubernetes objects |
