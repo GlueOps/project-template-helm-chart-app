@@ -10,7 +10,7 @@ Create chart name and version as used by the chart label.
 Define the name of the chart/application.
 */}}
 {{- define "app.name" -}}
-{{- .Values.appName | default .Values.glueops_app_name | default .Chart.Name | trunc 63 | trimSuffix "-" -}}
+{{- .Values.appName | default .Release.Name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
 {{/*
