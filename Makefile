@@ -8,7 +8,7 @@ lint:
 	helm lint
 
 unittest:
-	helm unittest --release-name example-app . 
+	helm unittest . 
 
 test:
 	cd examples && bash test.sh
