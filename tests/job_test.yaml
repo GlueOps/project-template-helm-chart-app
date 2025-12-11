@@ -1,6 +1,9 @@
 suite: Job
 templates:
   - job.yaml
+set:
+  appName: "example-app"
+
 tests:
   - it: should not create a job by default
     set:

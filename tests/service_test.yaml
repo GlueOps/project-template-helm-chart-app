@@ -1,6 +1,8 @@
 suite: Service
 templates:
   - templates/service.yaml
+set:
+  appName: "example-app"
 tests:
   - it: should not create a service if service is not enabled
     set:
