@@ -8,7 +8,7 @@ lint:
 	helm lint
 
 unittest:
-	helm unittest  . 
+	helm unittest --name-template example-app . 
 
 test:
 	cd examples && bash test.sh
