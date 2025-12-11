@@ -1,6 +1,8 @@
 suite: StatefulSet
 templates:
   - templates/statefulset.yaml
+set:
+  appName: "example-app"
 tests:
   - it: should use the correct image
     set:

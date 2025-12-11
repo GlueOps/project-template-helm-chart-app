@@ -2,7 +2,9 @@ suite: Keda TriggerAuthentication
 
 templates:
   - templates/keda-triggerAuthentication.yaml
-
+set:
+  appName: "example-app"
+  
 tests:
   # Test Case 5: Check if Kafka triggerAuthentication is disabled by default
   - it: should not have Kafka triggerAuthentication enabled by default
