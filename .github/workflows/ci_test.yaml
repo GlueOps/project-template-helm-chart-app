@@ -30,7 +30,7 @@ jobs:
 
       - name: Install
         env:
-          KUBE_LINTER_VER: 0.7.6
+          KUBE_LINTER_VER: 0.6.4
           KUBE_SCORE_VER: 1.20.0
           POLARIS_VER: 10.1.3
           KUBECONFORM_VER: 0.7.0
