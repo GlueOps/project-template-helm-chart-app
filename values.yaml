@@ -1,5 +1,5 @@
 # -- Name of the application
-appName: "" # "example-app"
+# appName: "example-app"
 # -- Version of the application
 appVersion: "0.0.1"
 # -- Environment of the application

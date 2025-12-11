@@ -4,7 +4,7 @@ templates:
   - templates/pdb.yaml
 set:
   appName: "example-app"
-  
+
 tests:
   - it: does not yield PDB if disabled
     set:

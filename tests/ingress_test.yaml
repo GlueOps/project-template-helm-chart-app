@@ -3,7 +3,7 @@ templates:
   - templates/ingress.yaml
 set:
   appName: "example-app"
-  
+
 tests:
   - it: should render nothing if not enabled
     asserts:
