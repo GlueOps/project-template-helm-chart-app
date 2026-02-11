@@ -1,5 +1,5 @@
 # -- Name of the application
-appName: "example-app"
+# appName: "example-app"
 # -- Version of the application
 appVersion: "0.0.1"
 # -- Environment of the application
@@ -14,7 +14,7 @@ image:
   # -- Docker image repository
   repository: nginx
   # -- Docker image tag
-  tag: 1.29.4@sha256:fb01117203ff38c2f9af91db1a7409459182a37c87cced5cb442d1d8fcc66d19
+  tag: 1.29.4@sha256:9dd288848f4495869f76676e419ae2d767ca99fece2ec37ec0261f9fdaab5204
   # -- Command to run in the Docker container
   command:
   # - /bin/bash

@@ -1,6 +1,9 @@
 suite: CronJob
 templates:
   - cronjob.yaml
+set:
+  appName: "example-app"
+
 tests:
   - it: should be disabled by default
     set:

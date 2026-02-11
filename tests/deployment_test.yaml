@@ -2,6 +2,8 @@ suite: Deployment
 
 templates:
   - templates/deployment.yaml
+set:
+  appName: "example-app"
 
 tests:
   - it: does not fail to render when image tag not given
