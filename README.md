@@ -1,6 +1,6 @@
 # app
 
-![Version: 0.8.1](https://img.shields.io/badge/Version-0.8.1-informational?style=flat-square)
+![Version: 0.9.0-rc5](https://img.shields.io/badge/Version-0.9.0--rc5-informational?style=flat-square)
 
 A Helm chart template for applications
 
@@ -9,7 +9,6 @@ A Helm chart template for applications
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | appEnv | string | `"dev"` | Environment of the application |
-| appName | string | `"example-app"` | Name of the application |
 | appVersion | string | `"0.0.1"` | Version of the application |
 | commonAnnotations | string | `nil` | Common annotations for all Kubernetes objects |
 | commonLabels | string | `nil` | Common labels for all Kubernetes objects |

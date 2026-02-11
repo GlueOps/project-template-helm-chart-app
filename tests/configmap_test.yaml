@@ -2,6 +2,8 @@ suite: Configmap
 
 templates:
   - templates/configmap.yaml
+set:
+  appName: "example-app"
 
 tests:
   - it: should not create configmap when disabled

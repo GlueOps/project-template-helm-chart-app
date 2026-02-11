@@ -2,6 +2,8 @@ suite: Keda ScaledObject
 
 templates:
   - templates/keda-scaledObject.yaml
+set:
+  appName: "example-app"
 
 tests:
   # Test Case 1: Check if KEDA is disabled by default

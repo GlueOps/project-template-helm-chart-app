@@ -1,6 +1,8 @@
 suite: persistentVolumeClaim
 templates:
   - pvc.yaml
+set:
+  appName: "example-app"
 tests:
   - it: should not create PVC when enabled is false
     set:
