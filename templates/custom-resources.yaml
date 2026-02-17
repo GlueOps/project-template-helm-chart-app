@@ -1,6 +1,8 @@
-{{- if .Values.customResources }}
-{{- range .Values.customResources }}
+{{- $resources1 := default (list) .Values.customResources }}
+{{- $resources2 := values (default (dict) .Values.customResourcesMap) }}
+{{- range concat $resources1 $resources2 }}
+{{- with (tpl . $ | fromYaml ) }}
 ---
-{{- tpl . $ | fromYaml | toYaml }}
+{{ . | toYaml }}
 {{- end }}
 {{- end }}

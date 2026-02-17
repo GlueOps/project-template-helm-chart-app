@@ -1,0 +1,60 @@
+appName: custom-resource-example
+
+# You can define custom resources under the customResources key
+customResources:
+  # Custom resources are supplied as strings containing resource manifests
+  - |
+    apiVersion: v1
+    kind: MyResource
+    metadata:
+      name: my-custom-resource
+    spec:
+      example: config-value
+
+  # Your custom resources can include template strings which are evaluated
+  # the same way as any other Helm template
+  - |
+    apiVersion: v1
+    kind: MyTemplatedResource
+    metadata:
+      name: templated-resource
+    spec:
+      name: {{ .Values.appName }}
+
+
+# You can also define arbitrary key/value pairs and reference them in your
+# custom resource templates
+reference_domain: example.com
+optional_resource:
+  enabled: true
+  size: large
+
+# You can also supply custom resources as values in a map using the
+# customResourcesMap key
+customResourcesMap:
+  # The keys are arbitrary, but using a map allows including custom resources
+  # from multiple values files
+  example: |
+    apiVersion: v1
+    kind: MyOtherResource
+    metadata:
+      name: other-resource
+    spec:
+      domain: foo.{{ .Values.reference_domain }}
+
+  # You can also have optional custom resources that get included (or not) based
+  # on other values
+  optional-example: |
+    {{- if .Values.optional_resource.enabled }}
+    apiVersion: v1
+    kind: OptionalResource
+    metadata:
+      name: optional-example
+    spec:
+      type: pizza
+      config:
+        size: {{ .Values.optional_resource.size }}
+        toppings:
+          - cheese
+          - olives
+    {{- end }}
