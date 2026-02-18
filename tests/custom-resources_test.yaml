@@ -36,10 +36,12 @@ tests:
           apiVersion: v1
           kind: CustomThing
           name: example
+          any: true
       - containsDocument:
           apiVersion: v1
           kind: CustomThing2
           name: example2
+          any: true
 
   - it: should work with only customResourcesMap
     set:
@@ -65,10 +67,12 @@ tests:
           apiVersion: v1
           kind: CustomThing3
           name: example3
+          any: true
       - containsDocument:
           apiVersion: v1
           kind: CustomThing4
           name: example4
+          any: true
 
   - it: should work with both customResources and customResourcesMap
     set:
@@ -109,18 +113,22 @@ tests:
           apiVersion: v1
           kind: CustomThing
           name: example
+          any: true
       - containsDocument:
           apiVersion: v1
           kind: CustomThing2
           name: example2
+          any: true
       - containsDocument:
           apiVersion: v1
           kind: CustomThing3
           name: example3
+          any: true
       - containsDocument:
           apiVersion: v1
           kind: CustomThing4
           name: example4
+          any: true
 
   - it: renders templated content
     set:
@@ -166,10 +174,12 @@ tests:
           apiVersion: v1
           kind: CustomThing
           name: example
+          any: true
       - containsDocument:
           apiVersion: v1
           kind: CustomThing4
           name: example4
+          any: true
 
   - it: handles templates that render to nothing but whitespace without error
     set:
@@ -197,7 +207,9 @@ tests:
           apiVersion: v1
           kind: CustomThing
           name: example
+          any: true
       - containsDocument:
           apiVersion: v1
           kind: CustomThing4
           name: example4
+          any: true
