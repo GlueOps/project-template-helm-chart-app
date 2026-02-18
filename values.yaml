@@ -1035,7 +1035,7 @@ customResources:
   #     namespace: default
   #   data:
   #     myKey: myValue
-## -- Custom resource configuration via a map
+# -- Custom resource configuration via a map
 customResourcesMap:
   # example: |
   #  apiVersion: v1
@@ -1043,4 +1043,4 @@ customResourcesMap:
   #  metadata:
   #    name: {{ include "app.name" $ }}-example
   #  data:
-  #    myKey: "{{ .values.myValue }}"
+  #    myKey: "{{ .Values.myValue }}"

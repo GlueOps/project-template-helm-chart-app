@@ -1,0 +1,203 @@
+suite: custom-resources
+
+templates:
+  - custom-resources.yaml
+
+set:
+  appName: "example-app"
+
+tests:
+  - it: should work with no inputs provided
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should work with only a customResources list
+    set:
+      customResources:
+        - |
+          apiVersion: v1
+          kind: CustomThing
+          metadata:
+            name: example
+          spec:
+            foo: bar
+        - |
+          apiVersion: v1
+          kind: CustomThing2
+          metadata:
+            name: example2
+          spec:
+            foo: bar2
+    asserts:
+      - hasDocuments:
+          count: 2
+      - containsDocument:
+          apiVersion: v1
+          kind: CustomThing
+          name: example
+      - containsDocument:
+          apiVersion: v1
+          kind: CustomThing2
+          name: example2
+
+  - it: should work with only a customResources map
+    set:
+      customResourcesMap:
+        example3: |
+          apiVersion: v1
+          kind: CustomThing3
+          metadata:
+            name: example3
+          spec:
+            foo: bar3
+        example4: |
+          apiVersion: v1
+          kind: CustomThing4
+          metadata:
+            name: example4
+          spec:
+            foo: bar4
+    asserts:
+      - hasDocuments:
+          count: 2
+      - containsDocument:
+          apiVersion: v1
+          kind: CustomThing3
+          name: example3
+      - containsDocument:
+          apiVersion: v1
+          kind: CustomThing4
+          name: example4
+
+  - it: should work with only both customResources and customResourcesMap
+    set:
+      customResources:
+        - |
+          apiVersion: v1
+          kind: CustomThing
+          metadata:
+            name: example
+          spec:
+            foo: bar
+        - |
+          apiVersion: v1
+          kind: CustomThing2
+          metadata:
+            name: example2
+          spec:
+            foo: bar2
+      customResourcesMap:
+        example3: |
+          apiVersion: v1
+          kind: CustomThing3
+          metadata:
+            name: example3
+          spec:
+            foo: bar3
+        example4: |
+          apiVersion: v1
+          kind: CustomThing4
+          metadata:
+            name: example4
+          spec:
+            foo: bar4
+    asserts:
+      - hasDocuments:
+          count: 4
+      - containsDocument:
+          apiVersion: v1
+          kind: CustomThing
+          name: example
+      - containsDocument:
+          apiVersion: v1
+          kind: CustomThing2
+          name: example2
+      - containsDocument:
+          apiVersion: v1
+          kind: CustomThing3
+          name: example3
+      - containsDocument:
+          apiVersion: v1
+          kind: CustomThing4
+          name: example4
+
+  - it: renders templated content
+    set:
+      foo: bar
+      customResourcesMap:
+        example: |
+          apiVersion: v1
+          kind: CustomThing
+          metadata:
+            name: example
+          spec:
+            foo: {{ .Values.foo }}
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: spec.foo
+          value: bar
+
+  - it: handles empty templates without error
+    set:
+      customResourcesMap:
+        - |
+          apiVersion: v1
+          kind: CustomThing
+          metadata:
+            name: example
+          spec:
+            foo: bar
+        - ""
+        - ""
+        - |
+          apiVersion: v1
+          kind: CustomThing4
+          metadata:
+            name: example4
+          spec:
+            foo: bar4
+    asserts:
+      - hasDocuments:
+          count: 2
+      - containsDocument:
+          apiVersion: v1
+          kind: CustomThing
+          name: example
+      - containsDocument:
+          apiVersion: v1
+          kind: CustomThing4
+          name: example4
+
+  - it: handles templates that render to nothing but whitespace without error
+    set:
+      customResourcesMap:
+        - |
+          apiVersion: v1
+          kind: CustomThing
+          metadata:
+            name: example
+          spec:
+            foo: bar
+        - "   "
+        - "   "
+        - |
+          apiVersion: v1
+          kind: CustomThing4
+          metadata:
+            name: example4
+          spec:
+            foo: bar4
+    asserts:
+      - hasDocuments:
+          count: 2
+      - containsDocument:
+          apiVersion: v1
+          kind: CustomThing
+          name: example
+      - containsDocument:
+          apiVersion: v1
+          kind: CustomThing4
+          name: example4
