@@ -142,7 +142,7 @@ tests:
 
   - it: handles empty templates without error
     set:
-      customResourcesMap:
+      customResources:
         - |
           apiVersion: v1
           kind: CustomThing
@@ -173,7 +173,7 @@ tests:
 
   - it: handles templates that render to nothing but whitespace without error
     set:
-      customResourcesMap:
+      customResources:
         - |
           apiVersion: v1
           kind: CustomThing
