@@ -70,7 +70,7 @@ tests:
           kind: CustomThing4
           name: example4
 
-  - it: should work with only both customResources and customResourcesMap
+  - it: should work with both customResources and customResourcesMap
     set:
       customResources:
         - |
