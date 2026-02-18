@@ -1,7 +1,21 @@
+{{- /* First we accumulate all of the templates from both keys */}}
 {{- $resources1 := default (list) .Values.customResources }}
 {{- $resources2 := values (default (dict) .Values.customResourcesMap) }}
+{{- /* Then, we build a combined list */}}
+{{- $rendered := list }}
 {{- range concat $resources1 $resources2 }}
-{{- with (tpl . $ | fromYaml ) }}
+{{- /*
+  There can be multiple documents in the rendered output of a single template,
+  so we want to split thing so each of those becomes its own entry.
+*/}}
+{{- range (regexSplit "(?m)^---" (tpl . $) -1)}}
+{{- $rendered = append $rendered . }}
+{{- end }}
+{{- end }}
+{{- /* Now that we have a list of all the individual rendered documents, we loop over each one*/}}
+{{- range $rendered }}
+{{- /* We only want to output the document separator if the document is non-empty */}}
+{{- with (. | fromYaml) }}
 ---
 {{ . | toYaml }}
 {{- end }}
