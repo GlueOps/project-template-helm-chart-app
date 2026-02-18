@@ -1,7 +1,7 @@
 suite: custom-resources
 
 templates:
-  - custom-resources.yaml
+  - templates/custom-resources.yaml
 
 set:
   appName: "example-app"
