@@ -41,7 +41,7 @@ tests:
           kind: CustomThing2
           name: example2
 
-  - it: should work with only a customResources map
+  - it: should work with only customResourcesMap
     set:
       customResourcesMap:
         example3: |
