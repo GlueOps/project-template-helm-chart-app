@@ -67,7 +67,7 @@ customResourcesMap:
   # Make sure to include the document separator --- so that each one becomes
   # its own resource, otherwise you'll get an error
   range-example: |
-    {{- $fruit, $color := range .Values.fruit_colors }}
+    {{- range $fruit, $color := .Values.fruit_colors }}
     ---
     apiVersion: v1
     kind: ConfigMap
