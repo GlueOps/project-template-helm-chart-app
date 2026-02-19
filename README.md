@@ -1,6 +1,6 @@
 # app
 
-![Version: 0.9.0](https://img.shields.io/badge/Version-0.9.0-informational?style=flat-square)
+![Version: 0.10.0-rc2](https://img.shields.io/badge/Version-0.10.0--rc2-informational?style=flat-square)
 
 A Helm chart template for applications
 
@@ -21,6 +21,7 @@ A Helm chart template for applications
 | cronJob.enabled | bool | `false` | Whether to create a CronJob |
 | cronJob.jobs | string | `nil` | List of jobs to run |
 | customResources | string | `nil` | CustomResources configuration |
+| customResourcesMap | string | `nil` | Custom resource configuration via a map |
 | deployment | object | `{"affinity":{},"annotations":null,"containerPorts":null,"containerSecurityContext":null,"enabled":false,"envConfigMaps":null,"envMap":null,"envSecrets":null,"envVariables":null,"hostAliases":null,"initContainers":null,"labels":null,"lifecycle":null,"livenessProbe":null,"matchLabels":null,"nodeSelector":null,"readinessProbe":null,"replicas":1,"resources":{},"securityContext":null,"serviceAccount":{"enabled":false},"sidecar":null,"startupProbe":{},"strategy":"RollingUpdate","tolerations":null,"topologySpreadConstraints":null,"volumeMounts":null,"volumes":null}` | Deployment configuration |
 | deployment.affinity | object | `{}` | Affinity rules for scheduling the pods |
 | deployment.annotations | string | `nil` | Annotations for the Deployment |
