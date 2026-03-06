@@ -1035,3 +1035,12 @@ customResources:
   #     namespace: default
   #   data:
   #     myKey: myValue
+# -- Custom resource configuration via a map
+customResourcesMap:
+  # example: |
+  #  apiVersion: v1
+  #  kind: myResource
+  #  metadata:
+  #    name: {{ include "app.name" $ }}-example
+  #  data:
+  #    myKey: "{{ .Values.myValue }}"
