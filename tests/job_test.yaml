@@ -60,3 +60,33 @@ tests:
           content:
             name: foo
             value: "bar"
+
+  - it: should include commonLabels in job metadata
+    set:
+      job:
+        enabled: true
+        jobs:
+          db-migration:
+            serviceAccount:
+              enabled: false
+    asserts:
+      - equal:
+          path: metadata.labels["app.kubernetes.io/managed-by"]
+          value: Helm
+      - isNotNullOrEmpty:
+          path: metadata.labels["helm.sh/chart"]
+
+  - it: should render job.annotations in job metadata
+    set:
+      job:
+        enabled: true
+        annotations:
+          example.com/owner: my-team
+        jobs:
+          db-migration:
+            serviceAccount:
+              enabled: false
+    asserts:
+      - equal:
+          path: metadata.annotations["example.com/owner"]
+          value: "my-team"

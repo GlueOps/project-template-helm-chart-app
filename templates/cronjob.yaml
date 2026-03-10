@@ -7,7 +7,8 @@ metadata:
   name: {{ include "app.name" $ }}-{{$name}}
   namespace: {{ include "app.namespace" $ }}
   labels:
-    {{- include "chart.commonLabels" (merge $ (dict  "suffixName" $name)) | indent 4 }}
+    {{- $newContext := merge (deepCopy $) (dict "suffixName" $name) }}
+    {{- include "chart.commonLabels" $newContext | indent 4 }}
     {{- if $.Values.cronJob.labels }}
     {{- range $key, $value := $.Values.cronJob.labels }}
     {{$key}}: {{$value | quote}}
@@ -39,8 +40,7 @@ spec:
   {{- end }}
   jobTemplate:
     spec:
-      {{- $context :=  merge (dict "resourceType" "cronJob" "name" $name "Chart" $.Chart "Root" $) $job }}
-      template:
-      {{- include "chart.podTemplate" $context | nindent 8 }}
+      {{- $specContext := dict "job" $job "globalSpec" $.Values.cronJob "resourceType" "cronJob" "name" $name "Chart" $.Chart "Root" $newContext }}
+      {{- include "chart.jobSpec" $specContext | trim | nindent 6 }}
 {{- end }}
 {{- end }}

@@ -57,3 +57,159 @@ tests:
       - equal:
           path: spec.jobTemplate.spec.template.spec.tolerations[0].value
           value: "true"
+
+  - it: should render backoffLimit when specified
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          testjob:
+            schedule: "* * * * *"
+            backoffLimit: 4
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.backoffLimit
+          value: 4
+
+  - it: should render ttlSecondsAfterFinished when specified
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          testjob:
+            schedule: "* * * * *"
+            ttlSecondsAfterFinished: 300
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.ttlSecondsAfterFinished
+          value: 300
+
+  - it: should render parallelism when specified
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          testjob:
+            schedule: "* * * * *"
+            parallelism: 3
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.parallelism
+          value: 3
+
+  - it: should render completions when specified
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          testjob:
+            schedule: "* * * * *"
+            completions: 5
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.completions
+          value: 5
+
+  - it: should render activeDeadlineSeconds when specified
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          testjob:
+            schedule: "* * * * *"
+            activeDeadlineSeconds: 600
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.activeDeadlineSeconds
+          value: 600
+
+  - it: should honor explicit zero values for numeric fields
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          testjob:
+            schedule: "* * * * *"
+            backoffLimit: 0
+            parallelism: 0
+            completions: 0
+            activeDeadlineSeconds: 0
+            ttlSecondsAfterFinished: 0
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.backoffLimit
+          value: 0
+      - equal:
+          path: spec.jobTemplate.spec.parallelism
+          value: 0
+      - equal:
+          path: spec.jobTemplate.spec.completions
+          value: 0
+      - equal:
+          path: spec.jobTemplate.spec.activeDeadlineSeconds
+          value: 0
+      - equal:
+          path: spec.jobTemplate.spec.ttlSecondsAfterFinished
+          value: 0
+
+  - it: should not render job spec fields when not specified
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          testjob:
+            schedule: "* * * * *"
+            image: nginx
+    asserts:
+      - isNull:
+          path: spec.jobTemplate.spec.backoffLimit
+      - isNull:
+          path: spec.jobTemplate.spec.ttlSecondsAfterFinished
+      - isNull:
+          path: spec.jobTemplate.spec.parallelism
+      - isNull:
+          path: spec.jobTemplate.spec.completions
+      - isNull:
+          path: spec.jobTemplate.spec.activeDeadlineSeconds
+
+  - it: should keep suspend at CronJob spec level only
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          testjob:
+            schedule: "* * * * *"
+            suspend: true
+    asserts:
+      - equal:
+          path: spec.suspend
+          value: true
+      - isNull:
+          path: spec.jobTemplate.spec.suspend
+
+  - it: should render distinct labels for multiple cronjobs
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          first-job:
+            schedule: "0 * * * *"
+            image: nginx
+          second-job:
+            schedule: "30 * * * *"
+            image: nginx
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: example-app-first-job
+        documentSelector:
+          path: metadata.name
+          value: example-app-first-job
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: example-app-second-job
+        documentSelector:
+          path: metadata.name
+          value: example-app-second-job
