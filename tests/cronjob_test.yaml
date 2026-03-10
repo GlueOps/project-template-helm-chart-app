@@ -75,8 +75,12 @@ tests:
       - equal:
           path: metadata.labels["app.kubernetes.io/name"]
           value: example-app-first-job
-        documentIndex: 0
+        documentSelector:
+          path: metadata.name
+          value: example-app-first-job
       - equal:
           path: metadata.labels["app.kubernetes.io/name"]
           value: example-app-second-job
-        documentIndex: 1
+        documentSelector:
+          path: metadata.name
+          value: example-app-second-job
