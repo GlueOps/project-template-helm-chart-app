@@ -57,3 +57,26 @@ tests:
       - equal:
           path: spec.jobTemplate.spec.template.spec.tolerations[0].value
           value: "true"
+
+  - it: should render distinct labels for multiple cronjobs
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          first-job:
+            schedule: "0 * * * *"
+            image: nginx
+          second-job:
+            schedule: "30 * * * *"
+            image: nginx
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: example-app-first-job
+        documentIndex: 0
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: example-app-second-job
+        documentIndex: 1
