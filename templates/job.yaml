@@ -54,7 +54,7 @@ spec:
   {{- else if $job.podFailurePolicy }}
   podFailurePolicy: {{- toYaml $job.podFailurePolicy | nindent 4 }}
   {{- end }}
-  {{- $context :=  merge (dict "resourceType" "job" "name" $name "Chart" $.Chart "Root" $) $job }}
+  {{- $context :=  merge (dict "resourceType" "job" "name" $name "Chart" $.Chart "Root" $newContext) $job }}
   template:
   {{- include "chart.podTemplate" $context | nindent 4 }}
 
