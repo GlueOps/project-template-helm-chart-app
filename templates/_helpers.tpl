@@ -50,7 +50,7 @@ Allow the release namespace to be overridden
 {{/* Shared labels used for selector */}}
 {{- define "chart.appLabels" }}
 {{- if .suffixName }}
-app.kubernetes.io/name: {{ include "app.name" . }}-{{.suffixName}}
+app.kubernetes.io/name: {{ printf "%s-%s" (include "app.name" .) .suffixName | trunc 63 | trimSuffix "-" }}
 {{- else}}
 app.kubernetes.io/name: {{ include "app.name" . }}
 {{- end }}
@@ -112,6 +112,10 @@ Renders labels or annotations from either map or list format.
 Renders JobSpec fields shared between Job and CronJob.
 Accepts a dict with "global" (top-level job/cronJob values) and "job" (per-job values).
 Per-job values override global values (specific beats general).
+
+WARNING: If activeDeadlineSeconds is set, Kubernetes will terminate the Job when
+the deadline expires, even if backoffLimit retries remain. These two fields interact
+and users should understand the implications of setting both.
 
 Integer fields: numeric values. Add new numeric K8s fields to $intFields.
 String fields: string values. Add new string K8s fields to $stringFields.

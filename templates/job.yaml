@@ -7,7 +7,8 @@ metadata:
   name: {{ include "app.name" $ }}-{{$name}}
   namespace: {{ include "app.namespace" $ }}
   labels:
-    {{- include "chart.commonLabels" (merge (deepCopy $) (dict "suffixName" $name)) | indent 4 }}
+    {{- $newContext := merge (deepCopy $) (dict "suffixName" $name) -}}
+    {{- include "chart.commonLabels" $newContext | indent 4 }}
     {{- if $.Values.job.labels }}
     {{- range $key, $value := $.Values.job.labels }}
     {{$key}}: {{$value | quote}}
@@ -29,7 +30,7 @@ metadata:
 spec:
   suspend: {{ $job.suspend | default false }}
   {{- include "chart.jobSpec" (dict "global" $.Values.job "job" $job) | indent 2 }}
-  {{- $context :=  merge (dict "resourceType" "job" "name" $name "Chart" $.Chart "Root" $) $job }}
+  {{- $context :=  merge (dict "resourceType" "job" "name" $name "Chart" $.Chart "Root" $newContext) $job }}
   template:
   {{- include "chart.podTemplate" $context | nindent 4 }}
 

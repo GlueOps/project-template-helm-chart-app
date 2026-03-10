@@ -8,10 +8,10 @@ metadata:
     {{- end }}
     {{- if eq .resourceType "cronJob" }}
     resource-type: "cronjob"
-    cronjob: {{ include "app.name" .Root }}-{{.name}}
+    cronjob: {{ printf "%s-%s" (include "app.name" .Root) .name | trunc 63 | trimSuffix "-" }}
     {{- else if eq .resourceType "job" }}
     resource-type: "job"
-    job: {{ include "app.name" .Root }}-{{.name}}
+    job: {{ printf "%s-%s" (include "app.name" .Root) .name | trunc 63 | trimSuffix "-" }}
     {{- end }}
     {{- if .labels }}
     {{- include "chart.renderLabels" .labels | indent 4 }}

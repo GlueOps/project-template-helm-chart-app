@@ -606,3 +606,12 @@ tests:
       - equal:
           path: spec.template.spec.enableServiceLinks
           value: true
+
+  - it: should NOT include any suffix in pod template app.kubernetes.io/name label
+    set:
+      deployment:
+        enabled: true
+    asserts:
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/name"]
+          value: example-app
