@@ -2,7 +2,7 @@
 
 ## Shared Helpers (`_helpers.tpl`)
 
-- **`chart.jobSpec`** — Data-driven helper rendering JobSpec fields for both Job and CronJob. Uses `$simpleFields` and `$objectFields` lists. To add a new K8s JobSpec field, append to the appropriate list.
+- **`chart.jobSpec`** — Data-driven helper rendering JobSpec fields for both Job and CronJob. Uses `$intFields`, `$stringFields`, and `$objectFields` lists. To add a new K8s JobSpec field, append to the appropriate list.
 - **`chart.renderLabels`** — Dual-format helper supporting both map (`{key: val}`) and list (`[{key: k, value: v}]`) formats. Used for both labels AND annotations (name is misleading but intentional). Only map format is documented to users; list format exists for backwards compatibility.
 - **`chart.commonLabels`** — Full metadata labels (includes `helm.sh/chart`, `app.kubernetes.io/managed-by`, etc.)
 - **`chart.appLabels`** — Selector labels only (used in `matchLabels`). Never add mutable fields here.

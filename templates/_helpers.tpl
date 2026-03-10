@@ -113,7 +113,8 @@ Renders JobSpec fields shared between Job and CronJob.
 Accepts a dict with "global" (top-level job/cronJob values) and "job" (per-job values).
 Per-job values override global values (specific beats general).
 
-Simple fields: scalars (int, string). Add new K8s fields to $simpleFields.
+Integer fields: numeric values. Add new numeric K8s fields to $intFields.
+String fields: string values. Add new string K8s fields to $stringFields.
 Object fields: structured YAML (maps/lists). Add new K8s fields to $objectFields.
 */}}
 {{- define "chart.jobSpec" -}}
