@@ -25,29 +25,29 @@ and users should understand the implications of setting both.
 {{- if ne .resourceType "cronJob" }}
 suspend: {{ .job.suspend | default false }}
 {{- end }}
-{{- if .globalSpec.parallelism }}
+{{- if hasKey .globalSpec "parallelism" }}
 parallelism: {{ .globalSpec.parallelism }}
-{{- else if .job.parallelism }}
+{{- else if hasKey .job "parallelism" }}
 parallelism: {{ .job.parallelism }}
 {{- end }}
-{{- if .globalSpec.completions }}
+{{- if hasKey .globalSpec "completions" }}
 completions: {{ .globalSpec.completions }}
-{{- else if .job.completions }}
+{{- else if hasKey .job "completions" }}
 completions: {{ .job.completions }}
 {{- end }}
-{{- if .globalSpec.backoffLimit }}
+{{- if hasKey .globalSpec "backoffLimit" }}
 backoffLimit: {{ .globalSpec.backoffLimit }}
-{{- else if .job.backoffLimit }}
+{{- else if hasKey .job "backoffLimit" }}
 backoffLimit: {{ .job.backoffLimit }}
 {{- end }}
-{{- if .globalSpec.activeDeadlineSeconds }}
+{{- if hasKey .globalSpec "activeDeadlineSeconds" }}
 activeDeadlineSeconds: {{ .globalSpec.activeDeadlineSeconds }}
-{{- else if .job.activeDeadlineSeconds }}
+{{- else if hasKey .job "activeDeadlineSeconds" }}
 activeDeadlineSeconds: {{ .job.activeDeadlineSeconds }}
 {{- end }}
-{{- if .globalSpec.ttlSecondsAfterFinished }}
+{{- if hasKey .globalSpec "ttlSecondsAfterFinished" }}
 ttlSecondsAfterFinished: {{ .globalSpec.ttlSecondsAfterFinished }}
-{{- else if .job.ttlSecondsAfterFinished }}
+{{- else if hasKey .job "ttlSecondsAfterFinished" }}
 ttlSecondsAfterFinished: {{ .job.ttlSecondsAfterFinished }}
 {{- end }}
 {{- if .globalSpec.podFailurePolicy }}

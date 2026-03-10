@@ -123,6 +123,35 @@ tests:
           path: spec.jobTemplate.spec.activeDeadlineSeconds
           value: 600
 
+  - it: should honor explicit zero values for numeric fields
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          testjob:
+            schedule: "* * * * *"
+            backoffLimit: 0
+            parallelism: 0
+            completions: 0
+            activeDeadlineSeconds: 0
+            ttlSecondsAfterFinished: 0
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.backoffLimit
+          value: 0
+      - equal:
+          path: spec.jobTemplate.spec.parallelism
+          value: 0
+      - equal:
+          path: spec.jobTemplate.spec.completions
+          value: 0
+      - equal:
+          path: spec.jobTemplate.spec.activeDeadlineSeconds
+          value: 0
+      - equal:
+          path: spec.jobTemplate.spec.ttlSecondsAfterFinished
+          value: 0
+
   - it: should not render job spec fields when not specified
     set:
       cronJob:
