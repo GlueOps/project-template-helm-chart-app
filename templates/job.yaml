@@ -8,7 +8,7 @@ metadata:
   namespace: {{ include "app.namespace" $ }}
   labels:
     {{- $newContext := set $ "suffixName" $name }}
-    {{- include "chart.appLabels" $newContext | indent 4 }}
+    {{- include "chart.commonLabels" $newContext | indent 4 }}
     {{- if $.Values.job.labels }}
     {{- range $key, $value := $.Values.job.labels }}
     {{$key}}: {{$value | quote}}
@@ -19,8 +19,8 @@ metadata:
     {{- end }}
   annotations:
     {{- include "chart.commonAnnotations" $ | indent 4 }}
-    {{- if $.Values.cronJob.annotations }}
-    {{- range $key, $value := $.Values.cronJob.annotations }}
+    {{- if $.Values.job.annotations }}
+    {{- range $key, $value := $.Values.job.annotations }}
     {{$key}}: {{$value | quote}}
     {{- end }}
     {{- end }}
