@@ -73,7 +73,7 @@ tests:
       - equal:
           path: metadata.labels["app.kubernetes.io/managed-by"]
           value: Helm
-      - isNotEmpty:
+      - isNotNullOrEmpty:
           path: metadata.labels["helm.sh/chart"]
 
   - it: should render job.annotations in job metadata
