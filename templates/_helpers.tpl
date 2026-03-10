@@ -120,10 +120,21 @@ Object fields: structured YAML (maps/lists). Add new K8s fields to $objectFields
 {{- $global := .global -}}
 {{- $job := .job -}}
 
-{{/* Simple scalar fields — to add a new K8s field, append to this list */}}
-{{- $simpleFields := list "parallelism" "completions" "backoffLimit" "ttlSecondsAfterFinished" "activeDeadlineSeconds" "completionMode" "podReplacementPolicy" -}}
+{{/* Integer fields — cast with int to handle quoted strings. To add a new numeric K8s field, append here */}}
+{{- $intFields := list "parallelism" "completions" "backoffLimit" "ttlSecondsAfterFinished" "activeDeadlineSeconds" -}}
 
-{{- range $field := $simpleFields }}
+{{- range $field := $intFields }}
+{{- if hasKey $job $field }}
+{{ $field }}: {{ int (index $job $field) }}
+{{- else if hasKey $global $field }}
+{{ $field }}: {{ int (index $global $field) }}
+{{- end }}
+{{- end }}
+
+{{/* String fields — rendered as-is. To add a new string K8s field, append here */}}
+{{- $stringFields := list "completionMode" "podReplacementPolicy" -}}
+
+{{- range $field := $stringFields }}
 {{- if hasKey $job $field }}
 {{ $field }}: {{ index $job $field }}
 {{- else if hasKey $global $field }}

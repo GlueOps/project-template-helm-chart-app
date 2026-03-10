@@ -127,6 +127,22 @@ tests:
           path: spec.podReplacementPolicy
           value: "Failed"
 
+  - it: should cast quoted string numbers to integers (backwards compatibility)
+    set:
+      job:
+        enabled: true
+        jobs:
+          test:
+            backoffLimit: "3"
+            ttlSecondsAfterFinished: "300"
+    asserts:
+      - equal:
+          path: spec.backoffLimit
+          value: 3
+      - equal:
+          path: spec.ttlSecondsAfterFinished
+          value: 300
+
   - it: should render backoffLimit 0 correctly (zero-value)
     set:
       job:

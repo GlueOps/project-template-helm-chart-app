@@ -97,6 +97,27 @@ tests:
           path: spec.concurrencyPolicy
           value: Forbid
 
+  - it: should cast quoted string numbers to integers (backwards compatibility)
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          test:
+            schedule: "* * * * *"
+            startingDeadlineSeconds: "120"
+            successfulJobsHistoryLimit: "5"
+            failedJobsHistoryLimit: "3"
+    asserts:
+      - equal:
+          path: spec.startingDeadlineSeconds
+          value: 120
+      - equal:
+          path: spec.successfulJobsHistoryLimit
+          value: 5
+      - equal:
+          path: spec.failedJobsHistoryLimit
+          value: 3
+
   - it: should default startingDeadlineSeconds to 30
     set:
       cronJob:

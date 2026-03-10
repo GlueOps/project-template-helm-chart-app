@@ -31,7 +31,7 @@ spec:
   schedule: {{ $job.schedule | quote }}
   concurrencyPolicy: {{ $job.concurrencyPolicy | default "Replace" }}
   {{- if hasKey $job "startingDeadlineSeconds" }}
-  startingDeadlineSeconds: {{ $job.startingDeadlineSeconds }}
+  startingDeadlineSeconds: {{ int $job.startingDeadlineSeconds }}
   {{- else }}
   startingDeadlineSeconds: 30
   {{- end }}
@@ -39,10 +39,10 @@ spec:
   timeZone: {{ $job.timeZone | quote }}
   {{- end }}
   {{- if hasKey $job "successfulJobsHistoryLimit" }}
-  successfulJobsHistoryLimit: {{ $job.successfulJobsHistoryLimit }}
+  successfulJobsHistoryLimit: {{ int $job.successfulJobsHistoryLimit }}
   {{- end }}
   {{- if hasKey $job "failedJobsHistoryLimit" }}
-  failedJobsHistoryLimit: {{ $job.failedJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ int $job.failedJobsHistoryLimit }}
   {{- end }}
   jobTemplate:
     spec:
