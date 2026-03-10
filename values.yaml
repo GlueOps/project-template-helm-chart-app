@@ -603,6 +603,18 @@ cronJob:
     #   # imagePullPolicy: IfNotPresent
     #   # command: ["/bin/bash"]
     #   # args: ["-c","sleep 5000"]
+    #   # backoffLimit: 6
+    #   # ttlSecondsAfterFinished: 300
+    #   # parallelism: 1
+    #   # completions: 1
+    #   # activeDeadlineSeconds: 600
+    #   # podFailurePolicy:
+    #   #   rules:
+    #   #   - action: FailJob
+    #   #     onExitCodes:
+    #   #       containerName: main
+    #   #       operator: In
+    #   #       values: [42]
     #   resources:  {}
     #     # requests:
     #     #   memory: 5Gi

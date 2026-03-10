@@ -40,8 +40,7 @@ spec:
   {{- end }}
   jobTemplate:
     spec:
-      {{- $context :=  merge (dict "resourceType" "cronJob" "name" $name "Chart" $.Chart "Root" $) $job }}
-      template:
-      {{- include "chart.podTemplate" $context | nindent 8 }}
+      {{- $specContext := dict "job" $job "globalSpec" $.Values.cronJob "resourceType" "cronJob" "name" $name "Chart" $.Chart "Root" $ }}
+      {{- include "chart.jobSpec" $specContext | trim | nindent 6 }}
 {{- end }}
 {{- end }}
