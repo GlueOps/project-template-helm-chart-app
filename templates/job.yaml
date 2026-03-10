@@ -7,7 +7,7 @@ metadata:
   name: {{ include "app.name" $ }}-{{$name}}
   namespace: {{ include "app.namespace" $ }}
   labels:
-    {{- $newContext := set $ "suffixName" $name }}
+    {{- $newContext := merge (deepCopy $) (dict "suffixName" $name) }}
     {{- include "chart.commonLabels" $newContext | indent 4 }}
     {{- if $.Values.job.labels }}
     {{- range $key, $value := $.Values.job.labels }}
@@ -28,7 +28,7 @@ metadata:
     {{.key}}: {{.value | quote}}
     {{- end }}
 spec:
-  {{- $specContext := dict "job" $job "globalSpec" $.Values.job "resourceType" "job" "name" $name "Chart" $.Chart "Root" $ }}
+  {{- $specContext := dict "job" $job "globalSpec" $.Values.job "resourceType" "job" "name" $name "Chart" $.Chart "Root" $newContext }}
   {{- include "chart.jobSpec" $specContext | trim | nindent 2 }}
 
 {{- end }}

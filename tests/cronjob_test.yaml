@@ -157,3 +157,30 @@ tests:
           value: true
       - isNull:
           path: spec.jobTemplate.spec.suspend
+
+  - it: should render distinct labels for multiple cronjobs
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          first-job:
+            schedule: "0 * * * *"
+            image: nginx
+          second-job:
+            schedule: "30 * * * *"
+            image: nginx
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: example-app-first-job
+        documentSelector:
+          path: metadata.name
+          value: example-app-first-job
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: example-app-second-job
+        documentSelector:
+          path: metadata.name
+          value: example-app-second-job
