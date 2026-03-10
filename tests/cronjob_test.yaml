@@ -57,3 +57,429 @@ tests:
       - equal:
           path: spec.jobTemplate.spec.template.spec.tolerations[0].value
           value: "true"
+
+  # CronJobSpec field tests
+
+  - it: should render schedule correctly
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          test:
+            schedule: "*/5 * * * *"
+    asserts:
+      - equal:
+          path: spec.schedule
+          value: "*/5 * * * *"
+
+  - it: should default concurrencyPolicy to Replace
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          test:
+            schedule: "* * * * *"
+    asserts:
+      - equal:
+          path: spec.concurrencyPolicy
+          value: Replace
+
+  - it: should allow concurrencyPolicy override
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          test:
+            schedule: "* * * * *"
+            concurrencyPolicy: Forbid
+    asserts:
+      - equal:
+          path: spec.concurrencyPolicy
+          value: Forbid
+
+  - it: should default startingDeadlineSeconds to 30
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          test:
+            schedule: "* * * * *"
+    asserts:
+      - equal:
+          path: spec.startingDeadlineSeconds
+          value: 30
+
+  - it: should allow startingDeadlineSeconds override
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          test:
+            schedule: "* * * * *"
+            startingDeadlineSeconds: 120
+    asserts:
+      - equal:
+          path: spec.startingDeadlineSeconds
+          value: 120
+
+  - it: should render startingDeadlineSeconds 0 correctly (zero-value)
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          test:
+            schedule: "* * * * *"
+            startingDeadlineSeconds: 0
+    asserts:
+      - equal:
+          path: spec.startingDeadlineSeconds
+          value: 0
+
+  - it: should set timeZone when specified
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          test:
+            schedule: "0 9 * * *"
+            timeZone: "America/New_York"
+    asserts:
+      - equal:
+          path: spec.timeZone
+          value: "America/New_York"
+
+  - it: should not render timeZone when not set
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          test:
+            schedule: "* * * * *"
+    asserts:
+      - notExists:
+          path: spec.timeZone
+
+  - it: should set successfulJobsHistoryLimit when specified
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          test:
+            schedule: "* * * * *"
+            successfulJobsHistoryLimit: 5
+    asserts:
+      - equal:
+          path: spec.successfulJobsHistoryLimit
+          value: 5
+
+  - it: should set failedJobsHistoryLimit when specified
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          test:
+            schedule: "* * * * *"
+            failedJobsHistoryLimit: 3
+    asserts:
+      - equal:
+          path: spec.failedJobsHistoryLimit
+          value: 3
+
+  # JobSpec integration test (shared helper is fully tested in job_test.yaml)
+
+  - it: should wire jobSpec fields to jobTemplate.spec
+    set:
+      cronJob:
+        enabled: true
+        backoffLimit: 6
+        jobs:
+          test:
+            schedule: "*/5 * * * *"
+            backoffLimit: 3
+            ttlSecondsAfterFinished: 300
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.backoffLimit
+          value: 3
+      - equal:
+          path: spec.jobTemplate.spec.ttlSecondsAfterFinished
+          value: 300
+
+  # Per-job labels/annotations format tests
+
+  - it: should render per-job labels in map format on metadata and pod template
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          test:
+            schedule: "* * * * *"
+            labels:
+              env: production
+              team: platform
+    asserts:
+      - equal:
+          path: metadata.labels.env
+          value: "production"
+      - equal:
+          path: metadata.labels.team
+          value: "platform"
+      - equal:
+          path: spec.jobTemplate.spec.template.metadata.labels.env
+          value: "production"
+
+  - it: should render per-job labels in list format on metadata and pod template
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          test:
+            schedule: "* * * * *"
+            labels:
+              - key: env
+                value: production
+              - key: team
+                value: platform
+    asserts:
+      - equal:
+          path: metadata.labels.env
+          value: "production"
+      - equal:
+          path: metadata.labels.team
+          value: "platform"
+      - equal:
+          path: spec.jobTemplate.spec.template.metadata.labels.env
+          value: "production"
+
+  - it: should render per-job annotations in map format on metadata and pod template
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          test:
+            schedule: "* * * * *"
+            annotations:
+              custom-annotation: my-value
+    asserts:
+      - equal:
+          path: metadata.annotations.custom-annotation
+          value: "my-value"
+      - equal:
+          path: spec.jobTemplate.spec.template.metadata.annotations.custom-annotation
+          value: "my-value"
+
+  - it: should render per-job annotations in list format on metadata and pod template
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          test:
+            schedule: "* * * * *"
+            annotations:
+              - key: custom-annotation
+                value: my-value
+    asserts:
+      - equal:
+          path: metadata.annotations.custom-annotation
+          value: "my-value"
+      - equal:
+          path: spec.jobTemplate.spec.template.metadata.annotations.custom-annotation
+          value: "my-value"
+
+  # Suspend field tests
+
+  - it: should default suspend to false when not set
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          test:
+            schedule: "* * * * *"
+    asserts:
+      - equal:
+          path: spec.suspend
+          value: false
+
+  - it: should render suspend true when set
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          test:
+            schedule: "* * * * *"
+            suspend: true
+    asserts:
+      - equal:
+          path: spec.suspend
+          value: true
+
+  # Multi-job isolation tests
+
+  - it: should isolate per-job config between multiple cronjobs
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          job1:
+            schedule: "*/5 * * * *"
+            backoffLimit: 1
+            labels:
+              job-id: job1
+          job2:
+            schedule: "0 * * * *"
+            backoffLimit: 5
+            labels:
+              job-id: job2
+    asserts:
+      - hasDocuments:
+          count: 2
+      - matchRegex:
+          path: metadata.name
+          pattern: "-job1$"
+        documentIndex: 0
+      - equal:
+          path: spec.jobTemplate.spec.backoffLimit
+          value: 1
+        documentIndex: 0
+      - equal:
+          path: metadata.labels.job-id
+          value: "job1"
+        documentIndex: 0
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: example-app-job1
+        documentIndex: 0
+      - matchRegex:
+          path: metadata.name
+          pattern: "-job2$"
+        documentIndex: 1
+      - equal:
+          path: spec.jobTemplate.spec.backoffLimit
+          value: 5
+        documentIndex: 1
+      - equal:
+          path: metadata.labels.job-id
+          value: "job2"
+        documentIndex: 1
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: example-app-job2
+        documentIndex: 1
+
+  - it: should not leak config between cronjobs in range loop
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          job1:
+            schedule: "*/5 * * * *"
+            backoffLimit: 1
+            labels:
+              job-id: job1
+            restartPolicy: Never
+            annotations:
+              note: first
+          job2:
+            schedule: "0 * * * *"
+            restartPolicy: OnFailure
+    asserts:
+      - hasDocuments:
+          count: 2
+      - notExists:
+          path: spec.jobTemplate.spec.backoffLimit
+        documentIndex: 1
+      - notExists:
+          path: metadata.labels.job-id
+        documentIndex: 1
+      - notExists:
+          path: metadata.annotations.note
+        documentIndex: 1
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.restartPolicy
+          value: "OnFailure"
+        documentIndex: 1
+
+  # Label layering test
+
+  - it: should layer commonLabels, global cronJob labels, and per-job labels together
+    set:
+      commonLabels:
+        common-label: from-common
+      cronJob:
+        enabled: true
+        labels:
+          global-label: from-cronjob-global
+        jobs:
+          test:
+            schedule: "* * * * *"
+            labels:
+              per-job-label: from-per-job
+    asserts:
+      - equal:
+          path: metadata.labels.common-label
+          value: "from-common"
+      - equal:
+          path: metadata.labels.global-label
+          value: "from-cronjob-global"
+      - equal:
+          path: metadata.labels.per-job-label
+          value: "from-per-job"
+      - exists:
+          path: metadata.labels["app.kubernetes.io/managed-by"]
+
+  # app.kubernetes.io/name suffix test
+
+  - it: should include cronjob suffix in app.kubernetes.io/name label
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          my-cron:
+            schedule: "* * * * *"
+    asserts:
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: example-app-my-cron
+
+  # Pod template defaults tests
+
+  - it: should default restartPolicy to OnFailure for cronjobs
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          test:
+            schedule: "* * * * *"
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.restartPolicy
+          value: OnFailure
+
+  - it: should allow restartPolicy override on cronjobs
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          test:
+            schedule: "* * * * *"
+            restartPolicy: Never
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.restartPolicy
+          value: Never
+
+  - it: should set resource-type label to cronjob in pod template
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          my-cron:
+            schedule: "* * * * *"
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.metadata.labels.resource-type
+          value: "cronjob"
+      - equal:
+          path: spec.jobTemplate.spec.template.metadata.labels.cronjob
+          value: example-app-my-cron
+

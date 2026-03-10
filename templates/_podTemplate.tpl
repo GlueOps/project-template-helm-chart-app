@@ -11,24 +11,16 @@ metadata:
     cronjob: {{ include "app.name" .Root }}-{{.name}}
     {{- else if eq .resourceType "job" }}
     resource-type: "job"
-    {{- if .suffixName }}
-    job: {{ include "app.name" .Root }}-{{.suffixName}}
-    {{- else}}
     job: {{ include "app.name" .Root }}-{{.name}}
     {{- end }}
-    {{- end }}
     {{- if .labels }}
-    {{- range $key, $value := .labels }}
-    {{ $key }}: {{ $value | quote }}
-    {{- end }}
+    {{- include "chart.renderLabels" .labels | indent 4 }}
     {{- end }}
   annotations:
     {{- include "chart.commonAnnotations" .Root | indent 4 }}
     {{- include "chart.deploymentAnnotations" .Root | indent 4 }}
     {{- if .annotations }}
-    {{- range $key, $value := .annotations }}
-    {{ $key }}: {{ $value | quote }}
-    {{- end }}
+    {{- include "chart.renderLabels" .annotations | indent 4 }}
     {{- end }}
 spec:
   {{- if hasKey . "enableServiceLinks" }}

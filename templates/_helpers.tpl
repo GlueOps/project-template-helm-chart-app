@@ -90,3 +90,58 @@ helm.sh/chart: {{ include "chart.name" . }}
 {{/* Deployment annotations */}}
 {{- define "chart.deploymentAnnotations" -}}
 {{- end }}
+
+{{/*
+Renders labels or annotations from either map or list format.
+  Map:  {key1: val1, key2: val2}
+  List: [{key: key1, value: val1}, {key: key2, value: val2}]
+*/}}
+{{- define "chart.renderLabels" -}}
+{{- if kindIs "slice" . -}}
+{{- range . }}
+{{ .key }}: {{ .value | quote }}
+{{- end }}
+{{- else if kindIs "map" . -}}
+{{- range $key, $value := . }}
+{{ $key }}: {{ $value | quote }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Renders JobSpec fields shared between Job and CronJob.
+Accepts a dict with "global" (top-level job/cronJob values) and "job" (per-job values).
+Per-job values override global values (specific beats general).
+
+Simple fields: scalars (int, string). Add new K8s fields to $simpleFields.
+Object fields: structured YAML (maps/lists). Add new K8s fields to $objectFields.
+*/}}
+{{- define "chart.jobSpec" -}}
+{{- $global := .global -}}
+{{- $job := .job -}}
+
+{{/* Simple scalar fields — to add a new K8s field, append to this list */}}
+{{- $simpleFields := list "parallelism" "completions" "backoffLimit" "ttlSecondsAfterFinished" "activeDeadlineSeconds" "completionMode" "podReplacementPolicy" -}}
+
+{{- range $field := $simpleFields }}
+{{- if hasKey $job $field }}
+{{ $field }}: {{ index $job $field }}
+{{- else if hasKey $global $field }}
+{{ $field }}: {{ index $global $field }}
+{{- end }}
+{{- end }}
+
+{{/* Complex object fields — to add a new structured K8s field, append to this list */}}
+{{- $objectFields := list "podFailurePolicy" -}}
+
+{{- range $field := $objectFields }}
+{{- if hasKey $job $field }}
+{{ $field }}:
+  {{- toYaml (index $job $field) | nindent 2 }}
+{{- else if hasKey $global $field }}
+{{ $field }}:
+  {{- toYaml (index $global $field) | nindent 2 }}
+{{- end }}
+{{- end }}
+
+{{- end -}}
