@@ -22,4 +22,4 @@ values.yaml             # Default values with inline documentation
 - **`templates/_helpers.tpl`** — All shared template helpers. New helpers go here.
 - **`templates/_podTemplate.tpl`** — Shared pod spec for all workload types. Receives a context dict with `resourceType`, `name`, `Chart`, `Root`, plus per-resource config.
 - **`examples/test.sh`** — Runs the full validation pipeline (yamllint, kubeconform, kube-linter, kube-score, polaris, kubeval, kubectl dry-run) against each example directory.
-- **`.github/workflows/test-helm-chart.yaml`** — CI pipeline: lint, unittest, full validation against a real k3s cluster.
+- **`.github/workflows/ci_test.yaml`** — CI pipeline: lint, unittest, full validation against a real k3s cluster.
