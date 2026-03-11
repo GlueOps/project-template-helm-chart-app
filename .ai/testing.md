@@ -23,7 +23,7 @@ make test                # Full validation pipeline (requires tools below)
 - Suite name matches the resource type
 - Canonical tests for shared helpers (like `chart.jobSpec`) live in `job_test.yaml`
 - CronJob tests cover CronJob-specific fields + one integration smoke test for the shared helper
-- Use `documentIndex` for multi-document tests (multiple jobs/cronjobs)
+- Use `documentSelector` (not `documentIndex`) for multi-document tests (multiple jobs/cronjobs). Go map iteration order is non-deterministic, so positional `documentIndex` is fragile.
 
 ## Local Validation Tools
 
