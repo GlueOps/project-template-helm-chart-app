@@ -4,6 +4,7 @@ job:
     db-migration:
       ttlSecondsAfterFinished: 300
       backoffLimit: 2
+      activeDeadlineSeconds: 600
       serviceAccount:
         enabled: false
       envMap:

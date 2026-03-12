@@ -50,7 +50,7 @@ Allow the release namespace to be overridden
 {{/* Shared labels used for selector */}}
 {{- define "chart.appLabels" }}
 {{- if .suffixName }}
-app.kubernetes.io/name: {{ include "app.name" . }}-{{.suffixName}}
+app.kubernetes.io/name: {{ printf "%s-%s" (include "app.name" .) .suffixName | trunc 63 | trimSuffix "-" }}
 {{- else}}
 app.kubernetes.io/name: {{ include "app.name" . }}
 {{- end }}
@@ -90,3 +90,74 @@ helm.sh/chart: {{ include "chart.name" . }}
 {{/* Deployment annotations */}}
 {{- define "chart.deploymentAnnotations" -}}
 {{- end }}
+
+{{/*
+Renders labels or annotations from either map or list format.
+  Map:  {key1: val1, key2: val2}
+  List: [{key: key1, value: val1}, {key: key2, value: val2}]
+*/}}
+{{- define "chart.renderLabels" -}}
+{{- if kindIs "slice" . -}}
+{{- range . }}
+{{ .key }}: {{ .value | quote }}
+{{- end }}
+{{- else if kindIs "map" . -}}
+{{- range $key, $value := . }}
+{{ $key }}: {{ $value | quote }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{/*
+Renders JobSpec fields shared between Job and CronJob.
+Accepts a dict with "global" (top-level job/cronJob values) and "job" (per-job values).
+Per-job values override global values (specific beats general).
+
+WARNING: If activeDeadlineSeconds is set, Kubernetes will terminate the Job when
+the deadline expires, even if backoffLimit retries remain. These two fields interact
+and users should understand the implications of setting both.
+
+Integer fields: numeric values. Add new numeric K8s fields to $intFields.
+String fields: string values. Add new string K8s fields to $stringFields.
+Object fields: structured YAML (maps/lists). Add new K8s fields to $objectFields.
+*/}}
+{{- define "chart.jobSpec" -}}
+{{- $global := .global -}}
+{{- $job := .job -}}
+
+{{/* Integer fields — cast with int to handle quoted strings. To add a new numeric K8s field, append here */}}
+{{- $intFields := list "parallelism" "completions" "backoffLimit" "ttlSecondsAfterFinished" "activeDeadlineSeconds" -}}
+
+{{- range $field := $intFields }}
+{{- if hasKey $job $field }}
+{{ $field }}: {{ int (index $job $field) }}
+{{- else if hasKey $global $field }}
+{{ $field }}: {{ int (index $global $field) }}
+{{- end }}
+{{- end }}
+
+{{/* String fields — rendered as-is. To add a new string K8s field, append here */}}
+{{- $stringFields := list "completionMode" "podReplacementPolicy" -}}
+
+{{- range $field := $stringFields }}
+{{- if hasKey $job $field }}
+{{ $field }}: {{ index $job $field }}
+{{- else if hasKey $global $field }}
+{{ $field }}: {{ index $global $field }}
+{{- end }}
+{{- end }}
+
+{{/* Complex object fields — to add a new structured K8s field, append to this list */}}
+{{- $objectFields := list "podFailurePolicy" -}}
+
+{{- range $field := $objectFields }}
+{{- if hasKey $job $field }}
+{{ $field }}:
+  {{- toYaml (index $job $field) | nindent 2 }}
+{{- else if hasKey $global $field }}
+{{ $field }}:
+  {{- toYaml (index $global $field) | nindent 2 }}
+{{- end }}
+{{- end }}
+
+{{- end -}}

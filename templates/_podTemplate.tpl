@@ -8,27 +8,19 @@ metadata:
     {{- end }}
     {{- if eq .resourceType "cronJob" }}
     resource-type: "cronjob"
-    cronjob: {{ include "app.name" .Root }}-{{.name}}
+    cronjob: {{ printf "%s-%s" (include "app.name" .Root) .name | trunc 63 | trimSuffix "-" }}
     {{- else if eq .resourceType "job" }}
     resource-type: "job"
-    {{- if .suffixName }}
-    job: {{ include "app.name" .Root }}-{{.suffixName}}
-    {{- else}}
-    job: {{ include "app.name" .Root }}-{{.name}}
-    {{- end }}
+    job: {{ printf "%s-%s" (include "app.name" .Root) .name | trunc 63 | trimSuffix "-" }}
     {{- end }}
     {{- if .labels }}
-    {{- range $key, $value := .labels }}
-    {{ $key }}: {{ $value | quote }}
-    {{- end }}
+    {{- include "chart.renderLabels" .labels | indent 4 }}
     {{- end }}
   annotations:
     {{- include "chart.commonAnnotations" .Root | indent 4 }}
     {{- include "chart.deploymentAnnotations" .Root | indent 4 }}
     {{- if .annotations }}
-    {{- range $key, $value := .annotations }}
-    {{ $key }}: {{ $value | quote }}
-    {{- end }}
+    {{- include "chart.renderLabels" .annotations | indent 4 }}
     {{- end }}
 spec:
   {{- if hasKey . "enableServiceLinks" }}

@@ -575,17 +575,54 @@ statefulSet:
 cronJob:
   # -- Whether to create a CronJob
   enabled: false
+
+  # -- Global JobSpec defaults for all cronjobs (per-job values override these)
+  # backoffLimit: 6
+  # parallelism: 1
+  # completions: 1
+  # ttlSecondsAfterFinished: 300
+  # activeDeadlineSeconds: 3600
+  # completionMode: "NonIndexed"
+  # podReplacementPolicy: "TerminatingOrFailed"
+  # podFailurePolicy: {}
+  #
+  # NOTE: Field constraints:
+  #   - podFailurePolicy requires restartPolicy: Never on the pod template
+  #   - completionMode: "Indexed" requires completions to be set
+  #   - backoffLimit: 0 means the job will never retry on failure
+
   # -- List of jobs to run
   jobs:
     # cronjob:
     #   labels: {}
     #   annotations: {}
+    #   schedule: "* * * 8 *"
+    #   # -- Timezone for the cron schedule (e.g., "America/New_York", "UTC"). Requires K8s 1.27+.
+    #   # timeZone: "UTC"
+    #   concurrencyPolicy: Replace
     #   startingDeadlineSeconds: 60
+    #   suspend: false
+    #   successfulJobsHistoryLimit: 3
+    #   failedJobsHistoryLimit: 1
+    #   # -- JobSpec fields (control the Job spawned by this CronJob):
+    #   # backoffLimit: 6           # max retries before marking failed (0 = never retry)
+    #   # parallelism: 1            # max pods running concurrently
+    #   # completions: 1            # number of successful completions needed
+    #   # ttlSecondsAfterFinished: 300  # auto-cleanup time after job finishes
+    #   # activeDeadlineSeconds: 3600   # max total runtime before job is terminated
+    #   # completionMode: "NonIndexed" # "NonIndexed" or "Indexed"
+    #   # podReplacementPolicy: "TerminatingOrFailed" # "TerminatingOrFailed" or "Failed"
+    #   # podFailurePolicy:
+    #   #   rules:
+    #   #   - action: FailJob
+    #   #     onExitCodes:
+    #   #       values: [1]
+    #   # NOTE: backoffLimit > 0 with concurrencyPolicy: Replace may cause retries to be
+    #   # interrupted when the next scheduled run fires and replaces the retrying job.
     #   serviceAccount:
     #     enabled: false
     #   # Set to false to prevent pods from seeing environment variables of other services in the namespace
     #   # enableServiceLinks: false
-    #   # schedule: "* * * 8 *"
     #   envMap: {}
     #     # foo:
     #     #   value: bar
@@ -641,15 +678,47 @@ cronJob:
 job:
   # -- Whether to create a Job
   enabled: false
+
+  # -- Global JobSpec defaults for all jobs (per-job values override these)
+  # backoffLimit: 6
+  # parallelism: 1
+  # completions: 1
+  # ttlSecondsAfterFinished: 300
+  # activeDeadlineSeconds: 3600
+  # completionMode: "NonIndexed"
+  # podReplacementPolicy: "TerminatingOrFailed"
+  # podFailurePolicy: {}
+  #
+  # NOTE: Field constraints:
+  #   - podFailurePolicy requires restartPolicy: Never on the pod template
+  #   - completionMode: "Indexed" requires completions to be set
+  #   - backoffLimit: 0 means the job will never retry on failure
+
   # -- List of jobs to run
   jobs:
     # db-migration:
-    #   # ttlSecondsAfterFinished: 300
-    #   # backoffLimit: 2
+    #   suspend: false
+    #   # -- JobSpec fields:
+    #   # backoffLimit: 2            # max retries before marking failed (0 = never retry)
+    #   # ttlSecondsAfterFinished: 300  # auto-cleanup time after job finishes
+    #   # activeDeadlineSeconds: 600    # max total runtime before job is terminated
+    #   # parallelism: 1             # max pods running concurrently
+    #   # completions: 1             # number of successful completions needed
+    #   # completionMode: "NonIndexed" # "NonIndexed" or "Indexed"
+    #   # podReplacementPolicy: "TerminatingOrFailed" # "TerminatingOrFailed" or "Failed"
+    #   # podFailurePolicy:
+    #   #   rules:
+    #   #   - action: FailJob
+    #   #     onExitCodes:
+    #   #       values: [1]
     #   serviceAccount:
     #     enabled: false
     #   # Set to false to prevent pods from seeing environment variables of other services in the namespace
     #   # enableServiceLinks: false
+    #   # image: docker.io/nginx:v1.2.3
+    #   # imagePullPolicy: IfNotPresent
+    #   # command: ["/bin/bash"]
+    #   # args: ["-c","sleep 5000"]
     #   envMap: {}
     #     # foo:
     #     #   value: bar
@@ -663,6 +732,13 @@ job:
     #     #     secretKeyRef:
     #     #       name: secret-name
     #     #       key: secretKey
+    #   resources: {}
+    #     # requests:
+    #     #   cpu: 50m
+    #     #   memory: 100Mi
+    #     # limits:
+    #     #   cpu: 100m
+    #     #   memory: 200Mi
     #   affinity:
     #     # nodeAffinity:
     #     #   requiredDuringSchedulingIgnoredDuringExecution:

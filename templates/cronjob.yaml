@@ -7,14 +7,15 @@ metadata:
   name: {{ include "app.name" $ }}-{{$name}}
   namespace: {{ include "app.namespace" $ }}
   labels:
-    {{- include "chart.commonLabels" (merge $ (dict  "suffixName" $name)) | indent 4 }}
+    {{- $newContext := merge (deepCopy $) (dict "suffixName" $name) -}}
+    {{- include "chart.commonLabels" $newContext | indent 4 }}
     {{- if $.Values.cronJob.labels }}
     {{- range $key, $value := $.Values.cronJob.labels }}
     {{$key}}: {{$value | quote}}
     {{- end }}
     {{- end }}
-    {{- range $job.labels }}
-    {{.key}}: {{.value | quote}}
+    {{- if $job.labels }}
+    {{- include "chart.renderLabels" $job.labels | indent 4 }}
     {{- end }}
   annotations:
     {{- include "chart.commonAnnotations" $ | indent 4 }}
@@ -23,23 +24,31 @@ metadata:
     {{$key}}: {{$value | quote}}
     {{- end }}
     {{- end }}
-    {{- range $job.annotations }}
-    {{.key}}: {{.value | quote}}
+    {{- if $job.annotations }}
+    {{- include "chart.renderLabels" $job.annotations | indent 4 }}
     {{- end }}
 spec:
   suspend: {{ $job.suspend | default false }}
   schedule: {{ $job.schedule | quote }}
   concurrencyPolicy: {{ $job.concurrencyPolicy | default "Replace" }}
-  startingDeadlineSeconds: {{ int $job.startingDeadlineSeconds | default 30 }}
-  {{- if $job.successfulJobsHistoryLimit }}
+  {{- if hasKey $job "startingDeadlineSeconds" }}
+  startingDeadlineSeconds: {{ int $job.startingDeadlineSeconds }}
+  {{- else }}
+  startingDeadlineSeconds: 30
+  {{- end }}
+  {{- if hasKey $job "timeZone" }}
+  timeZone: {{ $job.timeZone | quote }}
+  {{- end }}
+  {{- if hasKey $job "successfulJobsHistoryLimit" }}
   successfulJobsHistoryLimit: {{ int $job.successfulJobsHistoryLimit }}
   {{- end }}
-  {{- if $job.failedJobsHistoryLimit }}
+  {{- if hasKey $job "failedJobsHistoryLimit" }}
   failedJobsHistoryLimit: {{ int $job.failedJobsHistoryLimit }}
   {{- end }}
   jobTemplate:
     spec:
-      {{- $context :=  merge (dict "resourceType" "cronJob" "name" $name "Chart" $.Chart "Root" $) $job }}
+      {{- include "chart.jobSpec" (dict "global" $.Values.cronJob "job" $job) | indent 6 }}
+      {{- $context :=  merge (dict "resourceType" "cronJob" "name" $name "Chart" $.Chart "Root" $newContext) $job }}
       template:
       {{- include "chart.podTemplate" $context | nindent 8 }}
 {{- end }}

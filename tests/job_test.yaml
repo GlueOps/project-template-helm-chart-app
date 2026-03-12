@@ -60,3 +60,520 @@ tests:
           content:
             name: foo
             value: "bar"
+
+  - it: should use commonLabels instead of appLabels for metadata
+    set:
+      job:
+        enabled: true
+        jobs:
+          db-migration: {}
+    asserts:
+      - exists:
+          path: metadata.labels["app.kubernetes.io/managed-by"]
+      - exists:
+          path: metadata.labels["helm.sh/chart"]
+
+  - it: should use job.annotations not cronJob.annotations
+    set:
+      job:
+        enabled: true
+        annotations:
+          test-annotation: "from-job"
+        jobs:
+          db-migration: {}
+      cronJob:
+        annotations:
+          test-annotation: "from-cronjob"
+    asserts:
+      - equal:
+          path: metadata.annotations["test-annotation"]
+          value: "from-job"
+
+  # JobSpec field tests
+
+  - it: should render all simple JobSpec fields when specified
+    set:
+      job:
+        enabled: true
+        jobs:
+          test:
+            backoffLimit: 3
+            parallelism: 5
+            completions: 10
+            ttlSecondsAfterFinished: 300
+            activeDeadlineSeconds: 600
+            completionMode: "Indexed"
+            podReplacementPolicy: "Failed"
+    asserts:
+      - equal:
+          path: spec.backoffLimit
+          value: 3
+      - equal:
+          path: spec.parallelism
+          value: 5
+      - equal:
+          path: spec.completions
+          value: 10
+      - equal:
+          path: spec.ttlSecondsAfterFinished
+          value: 300
+      - equal:
+          path: spec.activeDeadlineSeconds
+          value: 600
+      - equal:
+          path: spec.completionMode
+          value: "Indexed"
+      - equal:
+          path: spec.podReplacementPolicy
+          value: "Failed"
+
+  - it: should cast quoted string numbers to integers (backwards compatibility)
+    set:
+      job:
+        enabled: true
+        jobs:
+          test:
+            backoffLimit: "3"
+            ttlSecondsAfterFinished: "300"
+    asserts:
+      - equal:
+          path: spec.backoffLimit
+          value: 3
+      - equal:
+          path: spec.ttlSecondsAfterFinished
+          value: 300
+
+  - it: should render backoffLimit 0 correctly (zero-value)
+    set:
+      job:
+        enabled: true
+        jobs:
+          test:
+            backoffLimit: 0
+    asserts:
+      - equal:
+          path: spec.backoffLimit
+          value: 0
+
+  - it: should set podFailurePolicy when specified per-job
+    set:
+      job:
+        enabled: true
+        jobs:
+          test:
+            podFailurePolicy:
+              rules:
+                - action: FailJob
+                  onExitCodes:
+                    values: [1]
+    asserts:
+      - equal:
+          path: spec.podFailurePolicy.rules[0].action
+          value: FailJob
+
+  - it: should use global JobSpec values as defaults
+    set:
+      job:
+        enabled: true
+        backoffLimit: 3
+        ttlSecondsAfterFinished: 600
+        jobs:
+          test: {}
+    asserts:
+      - equal:
+          path: spec.backoffLimit
+          value: 3
+      - equal:
+          path: spec.ttlSecondsAfterFinished
+          value: 600
+
+  - it: should allow per-job values to override global values
+    set:
+      job:
+        enabled: true
+        backoffLimit: 6
+        jobs:
+          test:
+            backoffLimit: 2
+    asserts:
+      - equal:
+          path: spec.backoffLimit
+          value: 2
+
+  - it: should not render JobSpec fields when not set
+    set:
+      job:
+        enabled: true
+        jobs:
+          test: {}
+    asserts:
+      - notExists:
+          path: spec.backoffLimit
+      - notExists:
+          path: spec.parallelism
+      - notExists:
+          path: spec.completions
+      - notExists:
+          path: spec.ttlSecondsAfterFinished
+      - notExists:
+          path: spec.activeDeadlineSeconds
+      - notExists:
+          path: spec.completionMode
+      - notExists:
+          path: spec.podReplacementPolicy
+      - notExists:
+          path: spec.podFailurePolicy
+
+  # Per-job labels/annotations format tests
+
+  - it: should render per-job labels in map format on metadata and pod template
+    set:
+      job:
+        enabled: true
+        jobs:
+          test:
+            labels:
+              env: production
+              team: platform
+    asserts:
+      - equal:
+          path: metadata.labels.env
+          value: "production"
+      - equal:
+          path: metadata.labels.team
+          value: "platform"
+      - equal:
+          path: spec.template.metadata.labels.env
+          value: "production"
+
+  - it: should render per-job labels in list format on metadata and pod template
+    set:
+      job:
+        enabled: true
+        jobs:
+          test:
+            labels:
+              - key: env
+                value: production
+              - key: team
+                value: platform
+    asserts:
+      - equal:
+          path: metadata.labels.env
+          value: "production"
+      - equal:
+          path: metadata.labels.team
+          value: "platform"
+      - equal:
+          path: spec.template.metadata.labels.env
+          value: "production"
+
+  - it: should render per-job annotations in map format on metadata and pod template
+    set:
+      job:
+        enabled: true
+        jobs:
+          test:
+            annotations:
+              custom-annotation: my-value
+    asserts:
+      - equal:
+          path: metadata.annotations.custom-annotation
+          value: "my-value"
+      - equal:
+          path: spec.template.metadata.annotations.custom-annotation
+          value: "my-value"
+
+  - it: should render per-job annotations in list format on metadata and pod template
+    set:
+      job:
+        enabled: true
+        jobs:
+          test:
+            annotations:
+              - key: custom-annotation
+                value: my-value
+    asserts:
+      - equal:
+          path: metadata.annotations.custom-annotation
+          value: "my-value"
+      - equal:
+          path: spec.template.metadata.annotations.custom-annotation
+          value: "my-value"
+
+  # Suspend field tests
+
+  - it: should default suspend to false when not set
+    set:
+      job:
+        enabled: true
+        jobs:
+          test: {}
+    asserts:
+      - equal:
+          path: spec.suspend
+          value: false
+
+  - it: should render suspend true when set
+    set:
+      job:
+        enabled: true
+        jobs:
+          test:
+            suspend: true
+    asserts:
+      - equal:
+          path: spec.suspend
+          value: true
+
+  # Multi-job isolation tests
+
+  - it: should isolate per-job config between multiple jobs
+    set:
+      job:
+        enabled: true
+        jobs:
+          job1:
+            backoffLimit: 1
+            labels:
+              job-id: job1
+          job2:
+            backoffLimit: 5
+            labels:
+              job-id: job2
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: spec.backoffLimit
+          value: 1
+        documentSelector:
+          path: metadata.name
+          value: example-app-job1
+      - equal:
+          path: metadata.labels.job-id
+          value: "job1"
+        documentSelector:
+          path: metadata.name
+          value: example-app-job1
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: example-app-job1
+        documentSelector:
+          path: metadata.name
+          value: example-app-job1
+      - equal:
+          path: spec.backoffLimit
+          value: 5
+        documentSelector:
+          path: metadata.name
+          value: example-app-job2
+      - equal:
+          path: metadata.labels.job-id
+          value: "job2"
+        documentSelector:
+          path: metadata.name
+          value: example-app-job2
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: example-app-job2
+        documentSelector:
+          path: metadata.name
+          value: example-app-job2
+
+  - it: should not leak config between jobs in range loop
+    set:
+      job:
+        enabled: true
+        jobs:
+          job1:
+            backoffLimit: 1
+            labels:
+              job-id: job1
+            restartPolicy: Never
+            annotations:
+              note: first
+          job2:
+            restartPolicy: OnFailure
+    asserts:
+      - hasDocuments:
+          count: 2
+      - notExists:
+          path: spec.backoffLimit
+        documentSelector:
+          path: metadata.name
+          value: example-app-job2
+      - notExists:
+          path: metadata.labels.job-id
+        documentSelector:
+          path: metadata.name
+          value: example-app-job2
+      - notExists:
+          path: metadata.annotations.note
+        documentSelector:
+          path: metadata.name
+          value: example-app-job2
+      - equal:
+          path: spec.template.spec.restartPolicy
+          value: "OnFailure"
+        documentSelector:
+          path: metadata.name
+          value: example-app-job2
+
+  # Label layering test
+
+  - it: should layer commonLabels, global job labels, and per-job labels together
+    set:
+      commonLabels:
+        common-label: from-common
+      job:
+        enabled: true
+        labels:
+          global-label: from-job-global
+        jobs:
+          test:
+            labels:
+              per-job-label: from-per-job
+    asserts:
+      - equal:
+          path: metadata.labels.common-label
+          value: "from-common"
+      - equal:
+          path: metadata.labels.global-label
+          value: "from-job-global"
+      - equal:
+          path: metadata.labels.per-job-label
+          value: "from-per-job"
+      - exists:
+          path: metadata.labels["app.kubernetes.io/managed-by"]
+
+  # app.kubernetes.io/name suffix test
+
+  - it: should include job suffix in app.kubernetes.io/name label
+    set:
+      job:
+        enabled: true
+        jobs:
+          my-job: {}
+    asserts:
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: example-app-my-job
+
+  # Pod template label suffix tests
+
+  - it: should include job suffix in pod template app.kubernetes.io/name label
+    set:
+      job:
+        enabled: true
+        jobs:
+          my-job: {}
+    asserts:
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/name"]
+          value: example-app-my-job
+
+  - it: should render version and instance labels correctly in pod template
+    set:
+      appVersion: "2.0.0"
+      job:
+        enabled: true
+        jobs:
+          my-job: {}
+    asserts:
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/version"]
+          value: "2.0.0"
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/instance"]
+          value: RELEASE-NAME
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/managed-by"]
+          value: Helm
+
+  - it: should include job suffix in topology spread constraints matchLabels
+    set:
+      job:
+        enabled: true
+        jobs:
+          my-job: {}
+    asserts:
+      - equal:
+          path: spec.template.spec.topologySpreadConstraints[0].labelSelector.matchLabels["app.kubernetes.io/name"]
+          value: example-app-my-job
+
+  - it: should isolate pod template labels between multiple jobs
+    set:
+      job:
+        enabled: true
+        jobs:
+          alpha: {}
+          beta: {}
+    asserts:
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/name"]
+          value: example-app-alpha
+        documentSelector:
+          path: metadata.name
+          value: example-app-alpha
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/name"]
+          value: example-app-beta
+        documentSelector:
+          path: metadata.name
+          value: example-app-beta
+
+  - it: should truncate app.kubernetes.io/name to 63 chars with long names
+    set:
+      appName: "my-app-with-a-very-long-name-for-testing-purposes"
+      job:
+        enabled: true
+        jobs:
+          database-migration-job: {}
+    asserts:
+      - matchRegex:
+          path: metadata.labels["app.kubernetes.io/name"]
+          pattern: "^.{1,63}$"
+      - matchRegex:
+          path: spec.template.metadata.labels["app.kubernetes.io/name"]
+          pattern: "^.{1,63}$"
+
+  # Pod template defaults tests
+
+  - it: should default restartPolicy to Never for jobs
+    set:
+      job:
+        enabled: true
+        jobs:
+          test: {}
+    asserts:
+      - equal:
+          path: spec.template.spec.restartPolicy
+          value: Never
+
+  - it: should allow restartPolicy override on jobs
+    set:
+      job:
+        enabled: true
+        jobs:
+          test:
+            restartPolicy: OnFailure
+    asserts:
+      - equal:
+          path: spec.template.spec.restartPolicy
+          value: OnFailure
+
+  - it: should set resource-type label to job in pod template
+    set:
+      job:
+        enabled: true
+        jobs:
+          my-job: {}
+    asserts:
+      - equal:
+          path: spec.template.metadata.labels.resource-type
+          value: "job"
+      - equal:
+          path: spec.template.metadata.labels.job
+          value: example-app-my-job
+

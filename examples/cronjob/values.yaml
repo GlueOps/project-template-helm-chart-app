@@ -10,6 +10,12 @@ cronJob:
       serviceAccount:
         enabled: true
       schedule: "* * * 8 *"
+      timeZone: "UTC"
+      concurrencyPolicy: Replace
+      startingDeadlineSeconds: 60
+      backoffLimit: 3
+      ttlSecondsAfterFinished: 3600
+      activeDeadlineSeconds: 1800
       envMap:
         foo:
           value: bar
@@ -38,7 +44,7 @@ cronJob:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
-            - matchExpressions: 
+            - matchExpressions:
               - key: k8s-node-role/job-worker
                 operator: In
                 values:
