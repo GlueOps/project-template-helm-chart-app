@@ -577,3 +577,57 @@ tests:
           path: spec.template.metadata.labels.job
           value: example-app-my-job
 
+
+  # Image rendering tests for shared chart.imageReference helper
+
+  - it: should support per-job image repository override with inherited registry and tag
+    set:
+      appName: example-app
+      image:
+        registry: ghcr.io
+        repository: default-worker
+        tag: v3.2.1
+      job:
+        enabled: true
+        jobs:
+          import-data:
+            image:
+              repository: data-importer
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/data-importer:v3.2.1
+
+  - it: should fallback to appVersion for job image tag when no image tag is set
+    set:
+      appName: example-app
+      appVersion: 1.9.0
+      image:
+        registry: docker.io
+        repository: batch-worker
+        tag: ""
+      job:
+        enabled: true
+        jobs:
+          run-once: {}
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/batch-worker:1.9.0
+
+  - it: should not fallback to chart version for job image tag when appVersion and image tag are unset
+    set:
+      appName: example-app
+      appVersion: ""
+      image:
+        registry: docker.io
+        repository: batch-worker
+        tag: ""
+      job:
+        enabled: true
+        jobs:
+          run-once: {}
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/batch-worker

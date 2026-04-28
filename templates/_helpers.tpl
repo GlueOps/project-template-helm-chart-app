@@ -208,27 +208,31 @@ assumed to match image tags for generic charts.
 {{- $root := .root }}
 {{- $image := .image }}
 {{- $defaultImage := .defaultImage }}
+{{/* If image is a string (not a map), use it directly for backward compatibility */}}
 {{- if and $image (not (kindIs "map" $image)) }}
 {{- toString $image }}
-{{- else if and (kindIs "map" $image) $image }}
-{{- $registry := $image.registry | default $defaultImage.registry | default "docker.io" }}
-{{- $repository := $image.repository | default $defaultImage.repository | default "" }}
-{{- $tag := $image.tag | default $defaultImage.tag | default $root.Values.appVersion | default "" }}
+{{- else }}
+{{/* Normalize inputs: derive effective registry/repository/tag once */}}
+{{- $effectiveImage := dict }}
+{{- if and (kindIs "map" $image) $image }}
+{{- $effectiveImage = $image }}
+{{- else if $defaultImage }}
+{{- $effectiveImage = $defaultImage }}
+{{- end }}
+{{- if $effectiveImage }}
+{{- $registry := $effectiveImage.registry | default $defaultImage.registry | default "docker.io" }}
+{{- $repository := $effectiveImage.repository | default $defaultImage.repository | default "" }}
+{{/* Validate: repository is required to form a valid image reference */}}
+{{- if not $repository }}
+{{- fail "image.repository is required after inheritance (set at top-level image.repository or resource-level image.repository)" }}
+{{- end }}
+{{- $tag := $effectiveImage.tag | default $defaultImage.tag | default $root.Values.appVersion | default "" }}
 {{- $imageRef := printf "%s/%s" $registry $repository }}
 {{- if $tag }}
 {{- printf "%s:%s" $imageRef (toString $tag) }}
 {{- else }}
 {{- $imageRef }}
 {{- end }}
-{{- else if $defaultImage }}
-{{- $registry := $defaultImage.registry | default "docker.io" }}
-{{- $repository := $defaultImage.repository | default "" }}
-{{- $tag := $defaultImage.tag | default $root.Values.appVersion | default "" }}
-{{- $imageRef := printf "%s/%s" $registry $repository }}
-{{- if $tag }}
-{{- printf "%s:%s" $imageRef (toString $tag) }}
-{{- else }}
-{{- $imageRef }}
 {{- end }}
 {{- end -}}
 {{- end -}}

@@ -725,11 +725,15 @@ tests:
     asserts:
       - hasDocuments:
           count: 2
-      - documentIndex: 0
+      - documentSelector:
+          path: spec.schedule
+          value: "0 2 * * *"
         equal:
           path: spec.jobTemplate.spec.template.spec.containers[0].image
           value: gcr.io/backup-job:v1.0.0
-      - documentIndex: 1
+      - documentSelector:
+          path: spec.schedule
+          value: "0 3 * * *"
         equal:
           path: spec.jobTemplate.spec.template.spec.containers[0].image
           value: gcr.io/cleanup-job:v1.0.0
