@@ -52,3 +52,49 @@ tests:
       - equal:
           path: .spec.triggers
           value: []
+
+  # Test Case 5: Nested spec values should render as valid YAML objects
+  - it: should render nested fallback and advanced spec fields
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.fallback.failureThreshold: 3
+      keda.scaledObject.spec.fallback.replicas: 6
+      keda.scaledObject.spec.advanced.restoreToOriginalReplicaCount: true
+      keda.scaledObject.spec.advanced.horizontalPodAutoscalerConfig.behavior.scaleDown.stabilizationWindowSeconds: 300
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ScaledObject
+      - equal:
+          path: .spec.fallback.failureThreshold
+          value: 3
+      - equal:
+          path: .spec.fallback.replicas
+          value: 6
+      - equal:
+          path: .spec.advanced.restoreToOriginalReplicaCount
+          value: true
+      - equal:
+          path: .spec.advanced.horizontalPodAutoscalerConfig.behavior.scaleDown.stabilizationWindowSeconds
+          value: 300
+
+  # Test Case 6: Scalar spec values should continue rendering correctly
+  - it: should render scalar spec fields
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.pollingInterval: 30
+      keda.scaledObject.spec.minReplicaCount: 1
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ScaledObject
+      - equal:
+          path: .spec.pollingInterval
+          value: 30
+      - equal:
+          path: .spec.minReplicaCount
+          value: 1
