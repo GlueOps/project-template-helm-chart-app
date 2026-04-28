@@ -161,3 +161,74 @@ Object fields: structured YAML (maps/lists). Add new K8s fields to $objectFields
 {{- end }}
 
 {{- end -}}
+
+{{/*
+Build a container image reference with support for per-resource overrides and inheritance.
+
+This helper supports two modes:
+1. Direct string image: If .image is a non-map value, return it as-is (e.g., "nginx:latest")
+2. Object-based config: If .image is a map, merge fields with top-level defaults.
+
+Per-resource image configuration inheritance allows charts with multiple resources
+to share common registry and tag values at the top level while specifying individual
+repositories per resource.
+
+Example 1 - String override (backward compatible):
+  image: "myregistry.com/myrepo:v1.0"
+  → Output: myregistry.com/myrepo:v1.0
+
+Example 2 - Per-resource inheritance:
+  Top-level:
+    image:
+      registry: myregistry.com
+      repository: default-repo
+      tag: v1.0
+  Deployment override:
+    deployment.image:
+      repository: api-service
+  → Output: myregistry.com/api-service:v1.0
+
+Arguments (dict):
+  - .root: Full template context (needed for .Root.Values)
+  - .image: Per-resource image config (string or map/object)
+  - .defaultImage: Top-level image config map (.Root.Values.image)
+
+Returns: Container image reference string (registry/repository:tag)
+
+Fallback chain for tag:
+  1. .image.tag (if provided as object)
+  2. .defaultImage.tag (top-level default)
+  3. .root.Values.appVersion (application version)
+  4. Empty string (no tag if none specified)
+
+Note: .Chart.Version is no longer used as a fallback. Chart version should not be
+assumed to match image tags for generic charts.
+*/}}
+{{- define "chart.imageReference" -}}
+{{- $root := .root }}
+{{- $image := .image }}
+{{- $defaultImage := .defaultImage }}
+{{- if and $image (not (kindIs "map" $image)) }}
+{{- toString $image }}
+{{- else if and (kindIs "map" $image) $image }}
+{{- $registry := $image.registry | default $defaultImage.registry | default "docker.io" }}
+{{- $repository := $image.repository | default $defaultImage.repository | default "" }}
+{{- $tag := $image.tag | default $defaultImage.tag | default $root.Values.appVersion | default "" }}
+{{- $imageRef := printf "%s/%s" $registry $repository }}
+{{- if $tag }}
+{{- printf "%s:%s" $imageRef (toString $tag) }}
+{{- else }}
+{{- $imageRef }}
+{{- end }}
+{{- else if $defaultImage }}
+{{- $registry := $defaultImage.registry | default "docker.io" }}
+{{- $repository := $defaultImage.repository | default "" }}
+{{- $tag := $defaultImage.tag | default $root.Values.appVersion | default "" }}
+{{- $imageRef := printf "%s/%s" $registry $repository }}
+{{- if $tag }}
+{{- printf "%s:%s" $imageRef (toString $tag) }}
+{{- else }}
+{{- $imageRef }}
+{{- end }}
+{{- end -}}
+{{- end -}}

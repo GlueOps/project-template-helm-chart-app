@@ -15,6 +15,24 @@ image:
   repository: nginx
   # -- Docker image tag
   tag: 1.29.5@sha256:341bf0f3ce6c5277d6002cf6e1fb0319fa4252add24ab6a0e262e0056d313208
+  # -- Image inheritance notes:
+  # Set shared defaults here (registry/repository/tag), then override per workload.
+  # Per-workload image can be either:
+  # 1) Full string: deployment.image: my-registry/my-repo:v1.0.0
+  # 2) Object override: deployment.image.repository: my-repo (inherits registry/tag from top-level image)
+  #
+  # Multi-resource example:
+  # image:
+  #   registry: ghcr.io
+  #   tag: v1.2.3
+  # deployment:
+  #   image:
+  #     repository: api
+  # cronJob:
+  #   jobs:
+  #     cleanup:
+  #       image:
+  #         repository: cleanup-worker
   # -- Command to run in the Docker container
   command:
   # - /bin/bash

@@ -615,3 +615,115 @@ tests:
       - equal:
           path: spec.template.metadata.labels["app.kubernetes.io/name"]
           value: example-app
+
+  - it: should support per-resource image repository override with inherited registry and tag
+    set:
+      appName: example-app
+      image:
+        registry: myregistry.io
+        repository: default-repo
+        tag: v2.0.0
+      deployment:
+        enabled: true
+        image:
+          repository: api-service
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: myregistry.io/api-service:v2.0.0
+
+  - it: should inherit all image fields when no deployment-level override is provided
+    set:
+      appName: example-app
+      image:
+        registry: gcr.io
+        repository: my-project/app
+        tag: latest
+      deployment:
+        enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: gcr.io/my-project/app:latest
+
+  - it: should support per-resource image override with all fields specified
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: default-repo
+        tag: v1.0.0
+      deployment:
+        enabled: true
+        image:
+          registry: quay.io
+          repository: my-org/service
+          tag: v3.0.0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: quay.io/my-org/service:v3.0.0
+
+  - it: should use appVersion as tag fallback when deployment image has no tag
+    set:
+      appName: example-app
+      appVersion: 1.5.0
+      image:
+        registry: docker.io
+        repository: default-repo
+        tag: ""
+      deployment:
+        enabled: true
+        image:
+          repository: backend-service
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/backend-service:1.5.0
+
+  - it: should construct image without tag if none is available (tag fallback empty)
+    set:
+      appName: example-app
+      appVersion: ""
+      image:
+        registry: docker.io
+        repository: default-repo
+        tag: ""
+      deployment:
+        enabled: true
+        image:
+          repository: frontend-service
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/frontend-service
+
+  - it: should support string image override (backward compatibility)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: nginx
+        tag: latest
+      deployment:
+        enabled: true
+        image: myregistry.com/custom-image:v5.0.0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: myregistry.com/custom-image:v5.0.0
+
+  - it: should use default registry when deployment-level registry not specified
+    set:
+      appName: example-app
+      image:
+        repository: my-app
+        tag: v1.2.3
+      deployment:
+        enabled: true
+        image:
+          repository: custom-service
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/custom-service:v1.2.3
