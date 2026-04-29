@@ -99,6 +99,21 @@ tests:
           path: .spec.minReplicaCount
           value: 1
 
+  # Test Case 6b: Quoted numeric scalar should preserve previous rendering behavior
+  - it: should render quoted numeric scalar input without string typing in output
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.pollingInterval: "30"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ScaledObject
+      - equal:
+          path: .spec.pollingInterval
+          value: 30
+
   # Test Case 7: User-provided scaleTargetRef should not be overridden by default
   - it: should use user-provided scaleTargetRef and not insert the default
     set:
