@@ -98,3 +98,41 @@ tests:
       - equal:
           path: .spec.minReplicaCount
           value: 1
+
+  # Test Case 7: User-provided scaleTargetRef should not be overridden by default
+  - it: should use user-provided scaleTargetRef and not insert the default
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.scaleTargetRef.name: custom-deployment
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ScaledObject
+      - equal:
+          path: .spec.scaleTargetRef.name
+          value: custom-deployment
+
+  # Test Case 8: advanced.scalingModifiers (KEDA 2.15+ GA) should render as nested YAML
+  - it: should render advanced.scalingModifiers as nested YAML
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.advanced.scalingModifiers.formula: "workload1 + workload2"
+      keda.scaledObject.spec.advanced.scalingModifiers.target: "10"
+      keda.scaledObject.spec.advanced.scalingModifiers.activationTarget: "2"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ScaledObject
+      - equal:
+          path: .spec.advanced.scalingModifiers.formula
+          value: "workload1 + workload2"
+      - equal:
+          path: .spec.advanced.scalingModifiers.target
+          value: "10"
+      - equal:
+          path: .spec.advanced.scalingModifiers.activationTarget
+          value: "2"
