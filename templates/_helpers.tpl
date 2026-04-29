@@ -163,51 +163,16 @@ Object fields: structured YAML (maps/lists). Add new K8s fields to $objectFields
 {{- end -}}
 
 {{/*
-Build a container image reference with support for per-resource overrides and inheritance.
-
-This helper supports two modes:
-1. Direct string image: If .image is a non-map value, return it as-is (e.g., "nginx:latest")
-2. Object-based config: If .image is a map, merge fields with top-level defaults.
-
-Per-resource image configuration inheritance allows charts with multiple resources
-to share common registry and tag values at the top level while specifying individual
-repositories per resource.
-
-Example 1 - String override (backward compatible):
-  image: "myregistry.com/myrepo:v1.0"
-  → Output: myregistry.com/myrepo:v1.0
-
-Example 2 - Per-resource inheritance:
-  Top-level:
-    image:
-      registry: myregistry.com
-      repository: default-repo
-      tag: v1.0
-  Deployment override:
-    deployment.image:
-      repository: api-service
-  → Output: myregistry.com/api-service:v1.0
-
-Arguments (dict):
-  - .root: Full template context (needed for .Root.Values)
-  - .image: Per-resource image config (string or map/object)
-  - .defaultImage: Top-level image config map (.Root.Values.image)
-
-Returns: Container image reference string (registry/repository:tag)
-
-Fallback chain for tag:
-  1. .image.tag (if provided as object)
-  2. .defaultImage.tag (top-level default)
-  3. .root.Values.appVersion (application version)
-  4. Empty string (no tag if none specified)
-
-Note: .Chart.Version is no longer used as a fallback. Chart version should not be
-assumed to match image tags for generic charts.
+Build a container image reference with per-resource override and inheritance support.
+Inputs: .root (template context), .image (per-resource: string or map), .defaultImage (top-level image map)
+Output: registry/repository[:tag] string
+Fallback chain (tag): resource image.tag → defaultImage.tag → .root.Values.appVersion → (no tag)
+String form (.image: "reg/repo:tag") is returned as-is (backward compat, required for digest-pinned images).
 */}}
 {{- define "chart.imageReference" -}}
 {{- $root := .root }}
 {{- $image := .image }}
-{{- $defaultImage := .defaultImage }}
+{{- $defaultImage := .defaultImage | default (dict) }}
 {{/* If image is a string (not a map), use it directly for backward compatibility */}}
 {{- if and $image (not (kindIs "map" $image)) }}
 {{- toString $image }}
@@ -226,6 +191,10 @@ assumed to match image tags for generic charts.
 {{- if not $repository }}
 {{- fail "image.repository is required after inheritance (set at top-level image.repository or resource-level image.repository)" }}
 {{- end }}
+{{/* Validate: digests in repository are not supported in map mode — use string form instead */}}
+{{- if contains "@sha256:" $repository }}
+{{- fail "image.repository must not contain a digest in map form — use a full image string (e.g. deployment.image: \"registry/repo@sha256:...\")" }}
+{{- end }}
 {{- $tag := $effectiveImage.tag | default $defaultImage.tag | default $root.Values.appVersion | default "" }}
 {{- $imageRef := printf "%s/%s" $registry $repository }}
 {{- if $tag }}
@@ -233,6 +202,8 @@ assumed to match image tags for generic charts.
 {{- else }}
 {{- $imageRef }}
 {{- end }}
+{{- else }}
+{{- fail "chart.imageReference: could not resolve image — set image.repository at the top level or per resource" }}
 {{- end }}
 {{- end -}}
 {{- end -}}

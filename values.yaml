@@ -33,6 +33,15 @@ image:
   #     cleanup:
   #       image:
   #         repository: cleanup-worker
+  #
+  # NOTE - registry default: if registry is omitted, "docker.io" is used. On air-gapped clusters
+  # that cannot reach Docker Hub, always set image.registry explicitly to avoid silent pull failures.
+  #
+  # NOTE - empty string tag: tag: "" is treated as unset, so per-resource tag: "" inherits the
+  # top-level tag. To intentionally produce an untagged image reference, omit the tag field entirely.
+  #
+  # NOTE - digest-pinned images: repository must not contain "@sha256:..." in map/object form.
+  # Use the full string form instead: deployment.image: "registry/repo@sha256:abc123"
   # -- Command to run in the Docker container
   command:
   # - /bin/bash
