@@ -38,17 +38,45 @@ tests:
           path: .spec.triggers
           value: []
 
-  # Test Case 4: Check if Triggers is empty by default
-  - it: should have empty Triggers by default
+  # Test Case 5: Scalar spec values should render as unquoted integers
+  - it: should render numeric scalar spec fields without quoting
     set:
       keda.enabled: true
       keda.scaledObject.enabled: true
-      keda.scaledObject.spec.triggers: []
+      keda.scaledObject.spec.pollingInterval: 30
+      keda.scaledObject.spec.minReplicaCount: 1
     asserts:
-      - hasDocuments:
-          count: 1
-      - isKind:
-          of: ScaledObject
       - equal:
-          path: .spec.triggers
-          value: []
+          path: spec.pollingInterval
+          value: 30
+      - equal:
+          path: spec.minReplicaCount
+          value: 1
+
+  # Test Case 6: String-typed numeric scalar should not be re-quoted
+  - it: should render string-typed numeric scalar spec fields preserving type
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.pollingInterval: "30"
+    asserts:
+      - equal:
+          path: spec.pollingInterval
+          value: 30
+
+  # Test Case 7: Map spec values should render correctly using toYaml
+  - it: should render map spec fields correctly
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.scaleTargetRef:
+        name: my-deployment
+        envSourceContainerName: my-container
+    asserts:
+      - equal:
+          path: spec.scaleTargetRef.name
+          value: my-deployment
+      - equal:
+          path: spec.scaleTargetRef.envSourceContainerName
+          value: my-container
+
