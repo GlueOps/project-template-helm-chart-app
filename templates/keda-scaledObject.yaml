@@ -22,12 +22,7 @@ metadata:
 spec:
   {{- range $specKey, $specValue := .Values.keda.scaledObject.spec }}
   {{- if not (or (eq $specKey "triggers") (eq $specKey "triggersMap")) }}
-  {{- if or (kindIs "map" $specValue) (kindIs "slice" $specValue) }}
-  {{ $specKey }}:
-  {{- toYaml $specValue | nindent 4 }}
-  {{- else }}
   {{ $specKey }}: {{ $specValue }}
-  {{- end }}
   {{- end }}
   {{- end }}
 
