@@ -38,7 +38,8 @@ image:
   # that cannot reach Docker Hub, always set image.registry explicitly to avoid silent pull failures.
   #
   # NOTE - empty string tag: tag: "" is treated as unset, so per-resource tag: "" inherits the
-  # top-level tag. To intentionally produce an untagged image reference, omit the tag field entirely.
+  # top-level tag. Omitting the tag field alone may still fall back to appVersion; to intentionally
+  # produce an untagged image reference, both image.tag and appVersion must be unset or empty.
   #
   # NOTE - digest-pinned images: repository must not contain "@sha256:..." in map/object form.
   # Use the full string form instead: deployment.image: "registry/repo@sha256:abc123"

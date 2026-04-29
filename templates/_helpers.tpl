@@ -192,7 +192,7 @@ String form (.image: "reg/repo:tag") is returned as-is (backward compat, require
 {{- fail "image.repository is required after inheritance (set at top-level image.repository or resource-level image.repository)" }}
 {{- end }}
 {{/* Validate: digests in repository are not supported in map mode — use string form instead */}}
-{{- if contains "@sha256:" $repository }}
+{{- if contains "@" $repository }}
 {{- fail "image.repository must not contain a digest in map form — use a full image string (e.g. deployment.image: \"registry/repo@sha256:...\")" }}
 {{- end }}
 {{- $tag := $effectiveImage.tag | default $defaultImage.tag | default $root.Values.appVersion | default "" }}

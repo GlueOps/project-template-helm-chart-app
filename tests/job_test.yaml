@@ -679,3 +679,18 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "must not contain a digest"
+
+  - it: should fail when non-sha256 digest is set in repository in map form
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: "nginx@sha512:abc123def456"
+        tag: v1.0
+      job:
+        enabled: true
+        jobs:
+          run-once: {}
+    asserts:
+      - failedTemplate:
+          errorPattern: "must not contain a digest"
