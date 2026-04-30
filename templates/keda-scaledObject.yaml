@@ -25,8 +25,13 @@ spec:
   {{- if or (kindIs "map" $specValue) (kindIs "slice" $specValue) }}
   {{ $specKey }}:
   {{- toYaml $specValue | nindent 4 }}
+  {{- else if and (kindIs "string" $specValue) (contains "\n" $specValue) }}
+  {{ $specKey }}: |-
+{{ $specValue | nindent 4 }}
+  {{- else if and (kindIs "string" $specValue) (or (regexMatch "^[+-]?[0-9]+$" $specValue) (regexMatch "^[+-]?(?:[0-9]+\\.[0-9]*|[0-9]*\\.[0-9]+)(?:[eE][+-]?[0-9]+)?$" $specValue) (regexMatch "^[+-]?[0-9]+(?:[eE][+-]?[0-9]+)$" $specValue) (regexMatch "^(?i:true|false)$" $specValue)) }}
+  {{ $specKey }}: {{ $specValue }}
   {{- else }}
-  {{ $specKey }}: {{ $specValue | toYaml | trimSuffix "\n" }}
+  {{ $specKey }}: {{ $specValue | toJson }}
   {{- end }}
   {{- end }}
   {{- end }}

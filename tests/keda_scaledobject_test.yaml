@@ -114,6 +114,46 @@ tests:
           path: .spec.pollingInterval
           value: 30
 
+  # Test Case 6c: Multi-line top-level scalar spec fields should render as valid YAML
+  - it: should render multi-line scalar spec fields as block scalars
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.cooldownNote: |-
+        cool down
+        gradually
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ScaledObject
+      - equal:
+          path: .spec.cooldownNote
+          value: "cool down\ngradually"
+
+  # Test Case 6d: Single-line scalar strings with YAML metacharacters should be quoted safely
+  - it: should render YAML-special scalar strings as strings
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.someField: "my: value"
+      keda.scaledObject.spec.commentLike: "# a comment"
+      keda.scaledObject.spec.boolLike: "yes"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ScaledObject
+      - equal:
+          path: .spec.someField
+          value: "my: value"
+      - equal:
+          path: .spec.commentLike
+          value: "# a comment"
+      - equal:
+          path: .spec.boolLike
+          value: "yes"
+
   # Test Case 7: User-provided scaleTargetRef should not be overridden by default
   - it: should use user-provided scaleTargetRef and not insert the default
     set:
