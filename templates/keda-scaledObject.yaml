@@ -26,7 +26,7 @@ spec:
   {{ $specKey }}:
   {{- toYaml $specValue | nindent 4 }}
   {{- else }}
-  {{ $specKey }}: {{ $specValue }}
+  {{ $specKey }}: {{ $specValue | toYaml }}
   {{- end }}
   {{- end }}
   {{- end }}
