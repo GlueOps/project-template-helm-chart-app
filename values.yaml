@@ -893,7 +893,7 @@ externalSecret:
     #     mongo-password:
     #       envName: MONGO_PASSWORD
     #       remoteRef:
-    #         key: monodb
+    #         key: mongodb
     #         property: password
     #         version: 'AWSCURRENT'
     #   secretStore:
