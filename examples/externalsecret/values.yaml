@@ -10,7 +10,7 @@ externalSecret:
       data:
         mongo-password: 
           remoteRef: 
-            key: monodb
+            key: mongodb
             property: password
             version: "AWSCURRENT"
             decodingStrategy: "None"
