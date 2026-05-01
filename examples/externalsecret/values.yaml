@@ -13,7 +13,7 @@ externalSecret:
             key: monodb
             property: password
             version: "AWSCURRENT"
-            decodingStrategy: None
+            decodingStrategy: "None"
       secretStore:                       
         name: secret-store-name-2    # specify if value is other than default secretstore  
       labels:
