@@ -13,37 +13,14 @@ image:
   registry: docker.io
   # -- Docker image repository
   repository: nginx
-  # -- Docker image tag
+  # -- Docker image tag.
+  # Per-workload image overrides are supported via either a full image string
+  # (e.g. `deployment.image: my-registry/my-repo:v1.0.0`) or an object that inherits
+  # from the top-level `image` config (e.g. `deployment.image.repository: my-repo`).
+  # Tag fallback order: resource tag → top-level tag → appVersion → empty (no tag).
+  # If registry is omitted, `docker.io` is used. On air-gapped clusters set `image.registry` explicitly.
+  # Digest-pinned images must use the full string form (`deployment.image: "registry/repo@sha256:abc123"`).
   tag: 1.29.5@sha256:341bf0f3ce6c5277d6002cf6e1fb0319fa4252add24ab6a0e262e0056d313208
-  # -- Image inheritance notes:
-  # Set shared defaults here (registry/repository/tag), then override per workload.
-  # Per-workload image can be either:
-  # 1) Full string: deployment.image: my-registry/my-repo:v1.0.0
-  # 2) Object override: deployment.image.repository: my-repo (inherits registry/tag from top-level image)
-  #
-  # Multi-resource example:
-  # image:
-  #   registry: ghcr.io
-  #   tag: v1.2.3
-  # deployment:
-  #   image:
-  #     repository: api
-  # cronJob:
-  #   jobs:
-  #     cleanup:
-  #       image:
-  #         repository: cleanup-worker
-  #
-  # NOTE - registry default: if registry is omitted, "docker.io" is used. On air-gapped clusters
-  # that cannot reach Docker Hub, always set image.registry explicitly to avoid silent pull failures.
-  #
-  # NOTE - empty string tag: tag: "" is treated as unset, so per-resource tag: "" inherits the
-  # top-level tag. Omitting the tag field alone may still fall back to appVersion; because this
-  # chart defaults appVersion to "0.0.1", set both image.tag and appVersion to "" or null in your
-  # values override to intentionally produce an untagged image reference.
-  #
-  # NOTE - digest-pinned images: repository must not contain "@sha256:..." in map/object form.
-  # Use the full string form instead: deployment.image: "registry/repo@sha256:abc123"
   # -- Command to run in the Docker container
   command:
   # - /bin/bash
