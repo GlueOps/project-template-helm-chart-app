@@ -13,13 +13,14 @@ image:
   registry: docker.io
   # -- Docker image repository
   repository: nginx
-  # -- Docker image tag.
+  # -- Docker image tag (may include a digest suffix, e.g. `1.29.5@sha256:...`).
   # Per-workload image overrides are supported via either a full image string
   # (e.g. `deployment.image: my-registry/my-repo:v1.0.0`) or an object that inherits
   # from the top-level `image` config (e.g. `deployment.image.repository: my-repo`).
   # Tag fallback order: resource tag → top-level tag → appVersion → empty (no tag).
   # If registry is omitted, `docker.io` is used. On air-gapped clusters set `image.registry` explicitly.
-  # Digest-pinned images must use the full string form (`deployment.image: "registry/repo@sha256:abc123"`).
+  # Note: `image.repository` in map/object form must not contain `@`; use `image.tag` for digest pinning
+  # or set the per-resource image as a full string (e.g. `deployment.image: "registry/repo@sha256:abc123"`).
   tag: 1.29.5@sha256:341bf0f3ce6c5277d6002cf6e1fb0319fa4252add24ab6a0e262e0056d313208
   # -- Command to run in the Docker container
   command:
