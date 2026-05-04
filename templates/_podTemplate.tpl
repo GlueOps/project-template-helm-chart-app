@@ -130,11 +130,7 @@ spec:
   containers:
   - name: {{ include "app.name" .Root }}
     imagePullPolicy: {{ title (.imagePullPolicy | default "IfNotPresent") }}
-    {{- if .image }}
-    image: {{.image}}
-    {{- else }}
-    image: {{ printf "%s/%s:%s" .Root.Values.image.registry .Root.Values.image.repository (toString (.Root.Values.image.tag | default .Root.Values.appVersion | default .Chart.Version)) }}
-    {{- end }}
+    image: {{ include "chart.imageReference" (dict "root" .Root "image" .image "defaultImage" .Root.Values.image) | trim }}
     {{- if .Root.Values.image.command }}
     command:
     {{- range .Root.Values.image.command }}

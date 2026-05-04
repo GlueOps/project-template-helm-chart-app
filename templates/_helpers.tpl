@@ -161,3 +161,49 @@ Object fields: structured YAML (maps/lists). Add new K8s fields to $objectFields
 {{- end }}
 
 {{- end -}}
+
+{{/*
+Build a container image reference with per-resource override and inheritance support.
+Inputs: .root (template context), .image (per-resource: string or map), .defaultImage (top-level image map)
+Output: registry/repository[:tag] string
+Fallback chain (tag): resource image.tag → defaultImage.tag → .root.Values.appVersion → (no tag)
+String form (.image: "reg/repo:tag") is returned as-is (backward compat, required for digest-pinned images).
+*/}}
+{{- define "chart.imageReference" -}}
+{{- $root := .root }}
+{{- $image := .image }}
+{{- $defaultImage := .defaultImage | default (dict) }}
+{{/* If image is a string (not a map), use it directly for backward compatibility */}}
+{{- if and $image (not (kindIs "map" $image)) }}
+{{- toString $image }}
+{{- else }}
+{{/* Normalize inputs: derive effective registry/repository/tag once */}}
+{{- $effectiveImage := dict }}
+{{- if and (kindIs "map" $image) $image }}
+{{- $effectiveImage = $image }}
+{{- else if $defaultImage }}
+{{- $effectiveImage = $defaultImage }}
+{{- end }}
+{{- if $effectiveImage }}
+{{- $registry := $effectiveImage.registry | default $defaultImage.registry | default "docker.io" }}
+{{- $repository := $effectiveImage.repository | default $defaultImage.repository | default "" }}
+{{/* Validate: repository is required to form a valid image reference */}}
+{{- if not $repository }}
+{{- fail "image.repository is required after inheritance (set at top-level image.repository or resource-level image.repository)" }}
+{{- end }}
+{{/* Validate: digests in repository are not supported in map mode — use string form instead */}}
+{{- if contains "@" $repository }}
+{{- fail "image.repository must not contain a digest in map form — use a full image string (e.g. deployment.image: \"registry/repo@sha256:...\")" }}
+{{- end }}
+{{- $tag := $effectiveImage.tag | default $defaultImage.tag | default $root.Values.appVersion | default "" }}
+{{- $imageRef := printf "%s/%s" $registry $repository }}
+{{- if $tag }}
+{{- printf "%s:%s" $imageRef (toString $tag) }}
+{{- else }}
+{{- $imageRef }}
+{{- end }}
+{{- else }}
+{{- fail "chart.imageReference: could not resolve image — set image.repository at the top level or per resource" }}
+{{- end }}
+{{- end -}}
+{{- end -}}
