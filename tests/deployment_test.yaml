@@ -103,38 +103,35 @@ tests:
       - failedTemplate:
           errorMessage: "image.repository must not include a registry hostname in map form — set image.registry separately (got: ghcr.io/myorg/myapp)"
 
-  - it: should allow dotted two-segment repository names in map form
+  - it: should fail when image.repository starts with dotted hostname-like segment
     set:
       deployment.enabled: true
       image.registry: docker.io
       image.repository: my.team/service
       image.tag: v1.0.0
     asserts:
-      - equal:
-          path: spec.template.spec.containers[0].image
-          value: docker.io/my.team/service:v1.0.0
+      - failedTemplate:
+          errorMessage: "image.repository must not include a registry hostname in map form — set image.registry separately (got: my.team/service)"
 
-  - it: should allow dotted three-segment repository paths in map form
+  - it: should fail when image.repository starts with dotted hostname-like segment and longer path
     set:
       deployment.enabled: true
       image.registry: docker.io
       image.repository: org.example/platform/service
       image.tag: v1.0.0
     asserts:
-      - equal:
-          path: spec.template.spec.containers[0].image
-          value: docker.io/org.example/platform/service:v1.0.0
+      - failedTemplate:
+          errorMessage: "image.repository must not include a registry hostname in map form — set image.registry separately (got: org.example/platform/service)"
 
-  - it: should allow local-style dotted namespace paths in map form
+  - it: should fail when image.repository starts with local dotted hostname-like segment
     set:
       deployment.enabled: true
       image.registry: docker.io
       image.repository: team.internal/api
       image.tag: v1.0.0
     asserts:
-      - equal:
-          path: spec.template.spec.containers[0].image
-          value: docker.io/team.internal/api:v1.0.0
+      - failedTemplate:
+          errorMessage: "image.repository must not include a registry hostname in map form — set image.registry separately (got: team.internal/api)"
 
   - it: should fail when image.repository includes two-segment registry hostname form
     set:
@@ -166,38 +163,35 @@ tests:
       - failedTemplate:
           errorMessage: "image.repository must not include a tag in map form — set image.tag separately (got: nginx:1.2.3)"
 
-  - it: should allow two-segment dotted repository names as valid Docker Hub org/repo paths
+  - it: should fail when image.repository starts with dotted hostname-like segment (two segments)
     set:
       deployment.enabled: true
       image.registry: docker.io
       image.repository: registry.tools/myapp
       image.tag: v1.0.0
     asserts:
-      - equal:
-          path: spec.template.spec.containers[0].image
-          value: docker.io/registry.tools/myapp:v1.0.0
+      - failedTemplate:
+          errorMessage: "image.repository must not include a registry hostname in map form — set image.registry separately (got: registry.tools/myapp)"
 
-  - it: should allow custom domain repository paths in map form (not a known registry)
+  - it: should fail when image.repository includes custom domain registry host form
     set:
       deployment.enabled: true
       image.registry: docker.io
       image.repository: registry.example.com/team/app
       image.tag: v1.0.0
     asserts:
-      - equal:
-          path: spec.template.spec.containers[0].image
-          value: docker.io/registry.example.com/team/app:v1.0.0
+      - failedTemplate:
+          errorMessage: "image.repository must not include a registry hostname in map form — set image.registry separately (got: registry.example.com/team/app)"
 
-  - it: should allow harbor-style repository paths in map form (not a known registry)
+  - it: should fail when image.repository includes harbor-style registry host form
     set:
       deployment.enabled: true
       image.registry: docker.io
       image.repository: harbor.company.io/team/app
       image.tag: v1.0.0
     asserts:
-      - equal:
-          path: spec.template.spec.containers[0].image
-          value: docker.io/harbor.company.io/team/app:v1.0.0
+      - failedTemplate:
+          errorMessage: "image.repository must not include a registry hostname in map form — set image.registry separately (got: harbor.company.io/team/app)"
 
   - it: should fail when deployment image override is not string or map
     set:
@@ -888,6 +882,21 @@ tests:
       deployment:
         enabled: true
         image: myregistry.com/custom-image:v5.0.0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: myregistry.com/custom-image:v5.0.0
+
+  - it: should trim string image override before rendering
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: nginx
+        tag: latest
+      deployment:
+        enabled: true
+        image: "  myregistry.com/custom-image:v5.0.0  "
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image

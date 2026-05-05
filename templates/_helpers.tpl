@@ -185,7 +185,7 @@ String form (.image: "reg/repo:tag") is returned as-is for backward compatibilit
 {{- if $imageIsWhitespaceOnly }}
 {{- fail "image override string must not be whitespace-only" }}
 {{- end }}
-{{- toString $image }}
+{{- trim (toString $image) }}
 {{- else }}
 {{- fail (printf "image override must be a string or map, got %s" (kindOf $image)) }}
 {{- end }}
@@ -221,19 +221,21 @@ Set image.tag separately, or use a full image string for combined forms. */}}
 {{- fail (printf "image.repository must not include a tag in map form — set image.tag separately (got: %s)" $repository) }}
 {{- end }}
 {{/* Validate: repository should not include a registry host in map form.
-Catches known public registries, localhost, IP-literal hosts, and port-based hosts (host:port).
-Other dotted paths are treated as repository namespaces for backward compatibility. */}}
+Catches known public registries, localhost, IP-literal hosts, port-based hosts (host:port),
+and dotted host-like prefixes (for example, harbor.company.io). */}}
 {{- $repositoryFirstPart := index $repositoryParts 0 }}
 {{- $knownRegistryHosts := list "docker.io" "ghcr.io" "quay.io" "gcr.io" "k8s.gcr.io" "registry.k8s.io" "mcr.microsoft.com" "public.ecr.aws" "index.docker.io" }}
 {{- $hasRegistryPort := contains ":" $repositoryFirstPart }}
 {{- $isKnownRegistryHost := has $repositoryFirstPart $knownRegistryHosts }}
 {{- $isLocalRegistry := eq $repositoryFirstPart "localhost" }}
 {{- $isIPv4Host := regexMatch "^[0-9]{1,3}(\\.[0-9]{1,3}){3}$" $repositoryFirstPart }}
+{{- $looksLikeHostname := contains "." $repositoryFirstPart }}
 {{- if and (ge (len $repositoryParts) 2) (or
   $hasRegistryPort
   $isLocalRegistry
   $isKnownRegistryHost
   $isIPv4Host
+  $looksLikeHostname
 ) }}
 {{- fail (printf "image.repository must not include a registry hostname in map form — set image.registry separately (got: %s)" $repository) }}
 {{- end }}
