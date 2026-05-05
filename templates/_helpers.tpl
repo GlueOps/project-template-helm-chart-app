@@ -244,16 +244,31 @@ Custom registry hostnames (e.g. harbor.company.io) are not detected here — set
 {{- if and (kindIs "map" $image) (hasKey $image "tag") }}
 {{- $explicitTag := index $image "tag" }}
 {{- if not (eq $explicitTag nil) }}
-{{- $tag = $explicitTag }}
+{{- /* per-resource tag explicitly set (even 0): trim to string; empty/whitespace means render without tag */}}
+{{- $tag = trim (toString $explicitTag) }}
 {{- else }}
-{{- $tag = ($defaultImage.tag | default $root.Values.appVersion | default "") }}
+{{- /* per-resource tag key present but nil: inherit from top-level defaults */}}
+{{- $rawDefaultTag := index $defaultImage "tag" }}
+{{- if not (kindIs "invalid" $rawDefaultTag) }}
+{{- $tag = trim (toString $rawDefaultTag) }}
+{{- end }}
+{{- if eq $tag "" }}
+{{- $tag = trim (toString ($root.Values.appVersion | default "")) }}
+{{- end }}
 {{- end }}
 {{- else }}
-{{- $tag = ($defaultImage.tag | default $root.Values.appVersion | default "") }}
+{{- /* no per-resource tag: resolve from top-level defaults, then appVersion */}}
+{{- $rawDefaultTag := index $defaultImage "tag" }}
+{{- if not (kindIs "invalid" $rawDefaultTag) }}
+{{- $tag = trim (toString $rawDefaultTag) }}
+{{- end }}
+{{- if eq $tag "" }}
+{{- $tag = trim (toString ($root.Values.appVersion | default "")) }}
+{{- end }}
 {{- end }}
 {{- $imageRef := printf "%s/%s" $registry $repository }}
 {{- if $tag }}
-{{- printf "%s:%s" $imageRef (toString $tag) }}
+{{- printf "%s:%s" $imageRef $tag }}
 {{- else }}
 {{- $imageRef }}
 {{- end }}
