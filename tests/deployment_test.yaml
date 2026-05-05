@@ -93,15 +93,18 @@ tests:
           path: spec.template.spec.containers[0].image
           pattern: '^docker.io/nginx:1.0.0$'
 
-  - it: should fail when image.repository includes a registry hostname in map form
+  - it: should allow dotted single-label namespace (ghcr.io/myorg/myapp is a valid repository path when registry is set separately)
     set:
       deployment.enabled: true
       image.registry: docker.io
       image.repository: ghcr.io/myorg/myapp
       image.tag: v1.0.0
     asserts:
-      - failedTemplate:
-          errorMessage: "image.repository must not include a registry hostname in map form — set image.registry separately (got: ghcr.io/myorg/myapp)"
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/ghcr.io/myorg/myapp:v1.0.0
 
   - it: should allow dotted namespace in image.repository (my.team/service is a valid Docker Hub path)
     set:
@@ -142,15 +145,18 @@ tests:
           path: spec.template.spec.containers[0].image
           value: docker.io/team.internal/api:v1.0.0
 
-  - it: should fail when image.repository includes two-segment registry hostname form
+  - it: should allow two-segment dotted namespace (ghcr.io/myapp is a valid repository path when registry is set separately)
     set:
       deployment.enabled: true
       image.registry: docker.io
       image.repository: ghcr.io/myapp
       image.tag: v1.0.0
     asserts:
-      - failedTemplate:
-          errorMessage: "image.repository must not include a registry hostname in map form — set image.registry separately (got: ghcr.io/myapp)"
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/ghcr.io/myapp:v1.0.0
 
   - it: should fail when image.repository includes an IPv4 registry host in map form
     set:

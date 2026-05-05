@@ -20,7 +20,9 @@ image:
   # from the top-level `image` config (e.g. `deployment.image.repository: my-repo`).
   # Tag fallback order: resource tag → top-level tag → appVersion → empty (no tag).
   # Set resource image tag to "" (for example `deployment.image.tag: ""`) to clear inherited tags.
-  # If registry is omitted, `docker.io` is used. On air-gapped clusters set `image.registry` explicitly.
+  # Per-resource map-form overrides inherit the top-level `image.registry` when registry is omitted;
+  # `docker.io` is the final fallback when neither the resource nor the top-level registry is set.
+  # On air-gapped clusters set `image.registry` explicitly.
   # Note: app.kubernetes.io/version comes from appVersion and can differ from the running image tag.
   # Note: `image.repository` in map/object form must not contain `@`; use `image.tag` for digest pinning
   # or set the per-resource image as a full string (e.g. `deployment.image: "registry/repo@sha256:abc123"`).
