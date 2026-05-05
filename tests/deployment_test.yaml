@@ -198,25 +198,49 @@ tests:
           path: spec.template.spec.containers[0].image
           value: docker.io/example.com/team/app:v1.0.0
 
-  - it: should fail when image.repository includes a FQDN-style registry host (registry.example.com/team/app has 3 DNS labels and 3 path segments)
+  - it: should render dotted FQDN-style namespace (registry.example.com/team/app) as a valid repository path
     set:
       deployment.enabled: true
       image.registry: docker.io
       image.repository: registry.example.com/team/app
       image.tag: v1.0.0
     asserts:
-      - failedTemplate:
-          errorPattern: "image.repository must not include a registry hostname in map form"
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/registry.example.com/team/app:v1.0.0
 
-  - it: should fail when image.repository includes a Harbor-style registry host (harbor.company.io/team/app has 3 DNS labels and 3 path segments)
+  - it: should render Harbor-style namespace (harbor.company.io/team/app) as a valid repository path
     set:
       deployment.enabled: true
       image.registry: docker.io
       image.repository: harbor.company.io/team/app
       image.tag: v1.0.0
     asserts:
-      - failedTemplate:
-          errorPattern: "image.repository must not include a registry hostname in map form"
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/harbor.company.io/team/app:v1.0.0
+
+  - it: should render three-label dotted namespace (foo.bar.baz/team/app) as a valid repository path
+    set:
+      deployment.enabled: true
+      image.registry: docker.io
+      image.repository: foo.bar.baz/team/app
+      image.tag: v1.0.0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/foo.bar.baz/team/app:v1.0.0
+
+  - it: should render localhost namespace (localhost/myapp) as a valid repository path
+    set:
+      deployment.enabled: true
+      image.registry: docker.io
+      image.repository: localhost/myapp
+      image.tag: v1.0.0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/localhost/myapp:v1.0.0
 
   - it: should fail when image.registry is whitespace-only
     set:

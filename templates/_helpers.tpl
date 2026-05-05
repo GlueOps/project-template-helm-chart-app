@@ -224,28 +224,21 @@ Set image.tag separately, or use a full image string for combined forms. */}}
 {{- fail (printf "image.repository must not include a tag in map form — set image.tag separately (got: %s)" $repository) }}
 {{- end }}
 {{/* Validate: repository should not include a registry host in map form.
-Catches known public registries, localhost, IP-literal hosts, port-based hosts,
-and FQDN-style private registry hosts with 3+ DNS labels AND 3+ path segments
-(e.g. harbor.company.io/team/app or registry.example.com/team/app). Dotted
-two-label namespaces like example.com/team/app, team.internal/api, and
-org.example/platform/service are valid repository paths and are allowed. */}}
+Catches known public registries, IP-literal hosts, and port-based hosts
+(e.g. docker.io/myapp, 127.0.0.1/myapp, myregistry:5000/myapp).
+Dotted namespaces like example.com/team/app, team.internal/api,
+harbor.company.io/team/app, foo.bar.baz/team/app, and localhost/myapp
+are valid repository paths and are allowed. */}}
 {{- $repositoryFirstPart := index $repositoryParts 0 }}
 {{- $knownRegistryHosts := list "docker.io" "ghcr.io" "quay.io" "gcr.io" "k8s.gcr.io" "registry.k8s.io" "mcr.microsoft.com" "public.ecr.aws" "index.docker.io" }}
 {{- $repositoryFirstPartLower := lower $repositoryFirstPart }}
 {{- $hasRegistryPort := contains ":" $repositoryFirstPart }}
 {{- $isKnownRegistryHost := has $repositoryFirstPartLower $knownRegistryHosts }}
-{{- $isLocalRegistry := eq $repositoryFirstPartLower "localhost" }}
 {{- $isIPv4Host := regexMatch "^[0-9]{1,3}(\\.[0-9]{1,3}){3}$" $repositoryFirstPartLower }}
-{{- $firstPartDNSLabels := splitList "." $repositoryFirstPartLower }}
-{{- /* FQDN-style registry-host detection: require both 3+ DNS labels AND 3+ path segments
-     to avoid rejecting two-label dotted namespaces like example.com/team/app. */}}
-{{- $isFQDNWithDeepPath := and (ge (len $firstPartDNSLabels) 3) (ge (len $repositoryParts) 3) }}
 {{- if and (ge (len $repositoryParts) 2) (or
   $hasRegistryPort
-  $isLocalRegistry
   $isKnownRegistryHost
   $isIPv4Host
-  $isFQDNWithDeepPath
 ) }}
 {{- fail (printf "image.repository must not include a registry hostname in map form — set image.registry separately (got: %s)" $repository) }}
 {{- end }}
