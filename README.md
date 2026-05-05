@@ -28,15 +28,15 @@ A Helm chart template for applications
 | deployment.containerPorts | string | `nil` | Additional container ports |
 | deployment.containerSecurityContext | string | `nil` | Security context for the container |
 | deployment.enabled | bool | `false` | Whether to create a Deployment |
-| deployment.image | object | `{"registry":null,"repository":null,"tag":null}` | Per-resource image override. Accepts either a full image string (e.g. `myregistry/myapp:v1.0.0`) or a map that inherits from the top-level `image` config. |
-| deployment.image.registry | string | `nil` | Override image registry for Deployment when using map form. |
-| deployment.image.repository | string | `nil` | Override image repository for Deployment when using map form. |
-| deployment.image.tag | string | `nil` | Override image tag for Deployment when using map form. Set to `""` to clear inherited tags. |
 | deployment.envConfigMaps | string | `nil` | List of ConfigMap environment variables variable   - name of env variable inside container configMapName - name of kubernetes ConfigMap object configMapKey  - name of the key in ConfigMap object which holds the value |
 | deployment.envMap | string | `nil` | Map of environment variables |
 | deployment.envSecrets | string | `nil` | List of secret environment variables variable   - name of env variable inside container secretName - name of kubernetes secret object secretKey  - name of the key in secret object which holds the value |
 | deployment.envVariables | string | `nil` | List of environment variables |
 | deployment.hostAliases | string | `nil` | Host aliases for the pods |
+| deployment.image | object | `{"registry":null,"repository":null,"tag":null}` | Per-resource image override. Accepts either a full image string (e.g. `myregistry/myapp:v1.0.0`) or a map that inherits from the top-level `image` config. |
+| deployment.image.registry | string | `nil` | Override image registry for Deployment when using map form. |
+| deployment.image.repository | string | `nil` | Override image repository for Deployment when using map form. |
+| deployment.image.tag | string | `nil` | Override image tag for Deployment when using map form. Set to "" to clear inherited tags. |
 | deployment.initContainers | string | `nil` | Init containers configuration |
 | deployment.labels | string | `nil` | Labels for the Deployment |
 | deployment.lifecycle | string | `nil` | Lifecycle hooks |
@@ -109,15 +109,15 @@ A Helm chart template for applications
 | statefulSet.containerPorts | string | `nil` | Additional container ports |
 | statefulSet.containerSecurityContext | string | `nil` | Security context for the container |
 | statefulSet.enabled | bool | `false` | Whether to create a StatefulSet |
-| statefulSet.image | object | `{"registry":null,"repository":null,"tag":null}` | Per-resource image override. Accepts either a full image string (e.g. `myregistry/myapp:v1.0.0`) or a map that inherits from the top-level `image` config. |
-| statefulSet.image.registry | string | `nil` | Override image registry for StatefulSet when using map form. |
-| statefulSet.image.repository | string | `nil` | Override image repository for StatefulSet when using map form. |
-| statefulSet.image.tag | string | `nil` | Override image tag for StatefulSet when using map form. Set to `""` to clear inherited tags. |
 | statefulSet.envConfigMaps | string | `nil` | List of ConfigMap environment variables variable   - name of env variable inside container configMapName - name of kubernetes ConfigMap object configMapKey  - name of the key in ConfigMap object which holds the value |
 | statefulSet.envMap | string | `nil` | Map of environment variables |
 | statefulSet.envSecrets | string | `nil` | List of secret environment variables variable   - name of env variable inside container secretName - name of kubernetes secret object secretKey  - name of the key in secret object which holds the value |
 | statefulSet.envVariables | string | `nil` | List of environment variables |
 | statefulSet.hostAliases | string | `nil` | Host aliases for the pods |
+| statefulSet.image | object | `{"registry":null,"repository":null,"tag":null}` | Per-resource image override. Accepts either a full image string (e.g. `myregistry/myapp:v1.0.0`) or a map that inherits from the top-level `image` config. |
+| statefulSet.image.registry | string | `nil` | Override image registry for StatefulSet when using map form. |
+| statefulSet.image.repository | string | `nil` | Override image repository for StatefulSet when using map form. |
+| statefulSet.image.tag | string | `nil` | Override image tag for StatefulSet when using map form. Set to "" to clear inherited tags. |
 | statefulSet.initContainers | string | `nil` | Init containers configuration |
 | statefulSet.labels | string | `nil` | Labels for the StatefulSet |
 | statefulSet.lifecycle | string | `nil` | Lifecycle hooks |
