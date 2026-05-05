@@ -231,22 +231,31 @@ paths like team.internal/api and three-segment paths like org.example/platform/s
 are valid repository names and are allowed. */}}
 {{- $repositoryFirstPart := index $repositoryParts 0 }}
 {{- $knownRegistryHosts := list "docker.io" "ghcr.io" "quay.io" "gcr.io" "k8s.gcr.io" "registry.k8s.io" "mcr.microsoft.com" "public.ecr.aws" "index.docker.io" }}
+{{- $commonRegistryTLDs := list "com" "io" "net" "org" "dev" "app" "ai" "co" "cloud" "tech" "biz" "info" "me" "gg" "us" "uk" "de" "ca" "jp" "fr" "au" "ch" "it" "nl" "se" "no" "es" }}
+{{- $repositoryFirstPartLower := lower $repositoryFirstPart }}
 {{- $hasRegistryPort := contains ":" $repositoryFirstPart }}
-{{- $isKnownRegistryHost := has $repositoryFirstPart $knownRegistryHosts }}
-{{- $isLocalRegistry := eq $repositoryFirstPart "localhost" }}
-{{- $isIPv4Host := regexMatch "^[0-9]{1,3}(\\.[0-9]{1,3}){3}$" $repositoryFirstPart }}
-{{- $firstPartDNSLabels := splitList "." $repositoryFirstPart }}
-{{- /* FQDN+deep-path: require BOTH 3+ DNS labels in the first segment AND 3+ total path segments.
-     This catches real registry FQDNs like harbor.company.io/team/app (3 DNS labels, 3 segments),
-     but allows dotted org names like org.example/platform/service (2 DNS labels, 3 segments) and
-     a.b.c/service (3 DNS labels, only 2 segments). */}}
+{{- $isKnownRegistryHost := has $repositoryFirstPartLower $knownRegistryHosts }}
+{{- $isLocalRegistry := eq $repositoryFirstPartLower "localhost" }}
+{{- $isIPv4Host := regexMatch "^[0-9]{1,3}(\\.[0-9]{1,3}){3}$" $repositoryFirstPartLower }}
+{{- $firstPartDNSLabels := splitList "." $repositoryFirstPartLower }}
+{{- $firstPartTLD := "" }}
+{{- if ge (len $firstPartDNSLabels) 2 }}
+{{- $firstPartTLD = index $firstPartDNSLabels (sub (len $firstPartDNSLabels) 1) }}
+{{- end }}
+{{- /* Deep-path registry-host detection:
+     - keep catching obvious registry hosts (known hosts, localhost, IPv4, host:port),
+     - catch 3+ label FQDNs like harbor.company.io/team/app,
+     - also catch common 2-label domains like example.com/team/app,
+     while still requiring a deep path so dotted org names are less likely to be rejected. */}}
 {{- $isFQDNWithDeepPath := and (ge (len $firstPartDNSLabels) 3) (ge (len $repositoryParts) 3) }}
+{{- $isTwoLabelDomainWithDeepPath := and (eq (len $firstPartDNSLabels) 2) (has $firstPartTLD $commonRegistryTLDs) (ge (len $repositoryParts) 3) }}
 {{- if and (ge (len $repositoryParts) 2) (or
   $hasRegistryPort
   $isLocalRegistry
   $isKnownRegistryHost
   $isIPv4Host
   $isFQDNWithDeepPath
+  $isTwoLabelDomainWithDeepPath
 ) }}
 {{- fail (printf "image.repository must not include a registry hostname in map form — set image.registry separately (got: %s)" $repository) }}
 {{- end }}
