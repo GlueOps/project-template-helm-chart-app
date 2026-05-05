@@ -9,7 +9,7 @@ A Helm chart template for applications
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | appEnv | string | `"dev"` | Environment of the application |
-| appVersion | string | `"0.0.1"` | Version label value for app.kubernetes.io/version (not automatically tied to image.tag). Also used as image tag fallback when no image tag is set. |
+| appVersion | string | `"0.0.1"` | Version label value for app.kubernetes.io/version (not automatically tied to image.tag) Also used as image tag fallback when no image tag is set. |
 | commonAnnotations | string | `nil` | Common annotations for all Kubernetes objects |
 | commonLabels | string | `nil` | Common labels for all Kubernetes objects |
 | configMap | object | `{"annotations":null,"configs":null,"enabled":false,"labels":null}` | ConfigMap configuration |
@@ -63,7 +63,7 @@ A Helm chart template for applications
 | image.port | int | `8080` | Port the application will listen on (>1024) |
 | image.registry | string | `"docker.io"` | Docker registry |
 | image.repository | string | `"nginx"` | Docker image repository |
-| image.tag | string | `"1.29.5@sha256:341bf0f3ce6c5277d6002cf6e1fb0319fa4252add24ab6a0e262e0056d313208"` | Docker image tag (may include a digest suffix, e.g. `1.29.5@sha256:...`). Per-workload image overrides are supported via either a full image string (e.g. `deployment.image: my-registry/my-repo:v1.0.0`) or an object that inherits from the top-level `image` config (e.g. `deployment.image.repository: my-repo`). Tag fallback order: resource tag → top-level tag → appVersion → empty (no tag). Set resource image tag to `""` (for example `deployment.image.tag: ""`) to clear inherited tags. If registry is omitted, `docker.io` is used. On air-gapped clusters set `image.registry` explicitly. Note: app.kubernetes.io/version comes from appVersion and can differ from the running image tag. Note: `image.repository` in map/object form must not contain `@`; use `image.tag` for digest pinning or set the per-resource image as a full string (e.g. `deployment.image: "registry/repo@sha256:abc123"`). |
+| image.tag | string | `"1.29.5@sha256:341bf0f3ce6c5277d6002cf6e1fb0319fa4252add24ab6a0e262e0056d313208"` | Docker image tag (may include a digest suffix, e.g. `1.29.5@sha256:...`). Per-workload image overrides are supported via either a full image string (e.g. `deployment.image: my-registry/my-repo:v1.0.0`) or an object that inherits from the top-level `image` config (e.g. `deployment.image.repository: my-repo`). Tag fallback order: resource tag → top-level tag → appVersion → empty (no tag). Set resource image tag to "" (for example `deployment.image.tag: ""`) to clear inherited tags. If registry is omitted, `docker.io` is used. On air-gapped clusters set `image.registry` explicitly. Note: app.kubernetes.io/version comes from appVersion and can differ from the running image tag. Note: `image.repository` in map/object form must not contain `@`; use `image.tag` for digest pinning or set the per-resource image as a full string (e.g. `deployment.image: "registry/repo@sha256:abc123"`). |
 | ingress | object | `{"annotations":null,"enabled":false,"entries":null}` | Ingress configuration |
 | ingress.annotations | string | `nil` | Annotations for the Ingress |
 | ingress.enabled | bool | `false` | Whether to create an Ingress |
