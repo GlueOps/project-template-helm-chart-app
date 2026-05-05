@@ -197,11 +197,18 @@ String form (.image: "reg/repo:tag") is returned as-is for backward compatibilit
 {{- if contains "@" $repository }}
 {{- fail "image.repository must not contain a digest in map form — use a full image string instead (e.g. <resource>.image: \"registry/repo@sha256:...\")" }}
 {{- end }}
-{{/* Validate: repository should not include a registry host in map mode. Use a conservative check
-to avoid false positives for valid two-segment names like my.team/service on Docker Hub. */}}
+{{/* Validate: repository should not include a registry host in map mode.
+Catch explicit host-prefixed forms like ghcr.io/myapp and localhost/myimg,
+while allowing valid dotted two-segment namespaces like my.team/service. */}}
 {{- $repositoryParts := splitList "/" $repository }}
 {{- $repositoryFirstPart := index $repositoryParts 0 }}
-{{- if and (ge (len $repositoryParts) 3) (or (contains "." $repositoryFirstPart) (contains ":" $repositoryFirstPart) (eq $repositoryFirstPart "localhost")) }}
+{{- $knownRegistryHosts := list "docker.io" "ghcr.io" "quay.io" "gcr.io" "k8s.gcr.io" "registry.k8s.io" "mcr.microsoft.com" "public.ecr.aws" "index.docker.io" }}
+{{- if and (ge (len $repositoryParts) 2) (or
+  (contains ":" $repositoryFirstPart)
+  (eq $repositoryFirstPart "localhost")
+  (has $repositoryFirstPart $knownRegistryHosts)
+  (and (ge (len $repositoryParts) 3) (contains "." $repositoryFirstPart))
+) }}
 {{- fail (printf "image.repository must not include a registry hostname in map form — set image.registry separately (got: %s)" $repository) }}
 {{- end }}
 {{- $tag := "" }}
