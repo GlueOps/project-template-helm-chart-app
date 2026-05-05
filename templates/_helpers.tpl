@@ -224,16 +224,15 @@ Set image.tag separately, or use a full image string for combined forms. */}}
 {{- fail (printf "image.repository must not include a tag in map form — set image.tag separately (got: %s)" $repository) }}
 {{- end }}
 {{/* Validate: repository should not include a registry host in map form.
-Treat the first path component as a registry host when it matches the standard image-reference
-heuristic: it contains a dot, contains a colon, or equals localhost. This catches both public
-and private registries (for example, harbor.company.io) so callers must set image.registry separately. */}}
+When image.registry is supplied separately, dotted path components in image.repository are valid
+namespace/repository segments (for example, my.team/service or org.example/platform/service).
+Only reject first path components that are unambiguously host-like in this context: localhost,
+an IPv4 literal, or a value containing a port. */}}
 {{- $repositoryFirstPart := index $repositoryParts 0 }}
-{{- $hasRegistryHostname := contains "." $repositoryFirstPart }}
 {{- $hasRegistryPort := contains ":" $repositoryFirstPart }}
 {{- $isLocalRegistry := eq $repositoryFirstPart "localhost" }}
 {{- $isIPv4Host := regexMatch "^[0-9]{1,3}(\\.[0-9]{1,3}){3}$" $repositoryFirstPart }}
 {{- if and (ge (len $repositoryParts) 2) (or
-  $hasRegistryHostname
   $hasRegistryPort
   $isLocalRegistry
   $isIPv4Host
