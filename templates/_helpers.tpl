@@ -224,18 +224,25 @@ Set image.tag separately, or use a full image string for combined forms. */}}
 {{- fail (printf "image.repository must not include a tag in map form — set image.tag separately (got: %s)" $repository) }}
 {{- end }}
 {{/* Validate: repository should not include a registry host in map form.
-When image.registry is supplied separately, dotted path components in image.repository are valid
-namespace/repository segments (for example, my.team/service or org.example/platform/service).
-Only reject first path components that are unambiguously host-like in this context: localhost,
-an IPv4 literal, or a value containing a port. */}}
+Catches known public registries, localhost, IP-literal hosts, port-based hosts,
+and FQDN-style private registry hosts (3+ DNS labels AND 3+ path segments, e.g.
+harbor.company.io/team/app or registry.example.com/team/app). Dotted two-segment
+paths like team.internal/api and three-segment paths like org.example/platform/service
+are valid repository names and are allowed. */}}
 {{- $repositoryFirstPart := index $repositoryParts 0 }}
+{{- $knownRegistryHosts := list "docker.io" "ghcr.io" "quay.io" "gcr.io" "k8s.gcr.io" "registry.k8s.io" "mcr.microsoft.com" "public.ecr.aws" "index.docker.io" }}
 {{- $hasRegistryPort := contains ":" $repositoryFirstPart }}
+{{- $isKnownRegistryHost := has $repositoryFirstPart $knownRegistryHosts }}
 {{- $isLocalRegistry := eq $repositoryFirstPart "localhost" }}
 {{- $isIPv4Host := regexMatch "^[0-9]{1,3}(\\.[0-9]{1,3}){3}$" $repositoryFirstPart }}
+{{- $firstPartDNSLabels := splitList "." $repositoryFirstPart }}
+{{- $isFQDNWithDeepPath := and (ge (len $firstPartDNSLabels) 3) (ge (len $repositoryParts) 3) }}
 {{- if and (ge (len $repositoryParts) 2) (or
   $hasRegistryPort
   $isLocalRegistry
+  $isKnownRegistryHost
   $isIPv4Host
+  $isFQDNWithDeepPath
 ) }}
 {{- fail (printf "image.repository must not include a registry hostname in map form — set image.registry separately (got: %s)" $repository) }}
 {{- end }}

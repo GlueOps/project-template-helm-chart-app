@@ -185,31 +185,25 @@ tests:
           path: spec.template.spec.containers[0].image
           value: docker.io/registry.tools/myapp:v1.0.0
 
-  - it: should allow custom domain registry in image.repository (no heuristic for private registries)
+  - it: should fail when image.repository includes a FQDN-style registry host (registry.example.com/team/app has 3 DNS labels and 3 path segments)
     set:
       deployment.enabled: true
       image.registry: docker.io
       image.repository: registry.example.com/team/app
       image.tag: v1.0.0
     asserts:
-      - hasDocuments:
-          count: 1
-      - equal:
-          path: spec.template.spec.containers[0].image
-          value: docker.io/registry.example.com/team/app:v1.0.0
+      - failedTemplate:
+          errorPattern: "image.repository must not include a registry hostname in map form"
 
-  - it: should allow harbor-style path in image.repository (users must set image.registry separately for private registries)
+  - it: should fail when image.repository includes a Harbor-style registry host (harbor.company.io/team/app has 3 DNS labels and 3 path segments)
     set:
       deployment.enabled: true
       image.registry: docker.io
       image.repository: harbor.company.io/team/app
       image.tag: v1.0.0
     asserts:
-      - hasDocuments:
-          count: 1
-      - equal:
-          path: spec.template.spec.containers[0].image
-          value: docker.io/harbor.company.io/team/app:v1.0.0
+      - failedTemplate:
+          errorPattern: "image.repository must not include a registry hostname in map form"
 
   - it: should fail when image.registry is whitespace-only
     set:
