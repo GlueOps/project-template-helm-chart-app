@@ -124,6 +124,16 @@ tests:
       - failedTemplate:
           errorMessage: "image.repository must not include a registry hostname in map form — set image.registry separately (got: ghcr.io/myapp)"
 
+  - it: should fail when image.repository includes custom domain registry host form
+    set:
+      deployment.enabled: true
+      image.registry: docker.io
+      image.repository: registry.example.com/myapp
+      image.tag: v1.0.0
+    asserts:
+      - failedTemplate:
+          errorMessage: "image.repository must not include a registry hostname in map form — set image.registry separately (got: registry.example.com/myapp)"
+
   - it: should use the correct port
     set:
       image.port: 9999

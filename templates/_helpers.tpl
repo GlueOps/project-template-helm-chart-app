@@ -203,10 +203,16 @@ while allowing valid dotted two-segment namespaces like my.team/service. */}}
 {{- $repositoryParts := splitList "/" $repository }}
 {{- $repositoryFirstPart := index $repositoryParts 0 }}
 {{- $knownRegistryHosts := list "docker.io" "ghcr.io" "quay.io" "gcr.io" "k8s.gcr.io" "registry.k8s.io" "mcr.microsoft.com" "public.ecr.aws" "index.docker.io" }}
+{{- $hasRegistryPort := contains ":" $repositoryFirstPart }}
+{{- $isKnownRegistryHost := has $repositoryFirstPart $knownRegistryHosts }}
+{{- $isLocalRegistry := eq $repositoryFirstPart "localhost" }}
+{{- $isDomainLikeHost := regexMatch "^[a-zA-Z0-9][a-zA-Z0-9-]*(?:\\.[a-zA-Z0-9-]+)+$" $repositoryFirstPart }}
+{{- $hasLikelyRegistryTld := regexMatch "(?i)\\.(com|io|org|net|dev|app|cloud|ai|co|edu|gov|mil|info|biz|xyz|me|local|internal|corp|lan|home)$" $repositoryFirstPart }}
 {{- if and (ge (len $repositoryParts) 2) (or
-  (contains ":" $repositoryFirstPart)
-  (eq $repositoryFirstPart "localhost")
-  (has $repositoryFirstPart $knownRegistryHosts)
+  $hasRegistryPort
+  $isLocalRegistry
+  $isKnownRegistryHost
+  (and (eq (len $repositoryParts) 2) $isDomainLikeHost $hasLikelyRegistryTld)
   (and (ge (len $repositoryParts) 3) (contains "." $repositoryFirstPart))
 ) }}
 {{- fail (printf "image.repository must not include a registry hostname in map form — set image.registry separately (got: %s)" $repository) }}

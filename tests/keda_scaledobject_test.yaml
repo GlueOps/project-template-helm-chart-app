@@ -99,8 +99,8 @@ tests:
           path: .spec.minReplicaCount
           value: 1
 
-  # Test Case 6b: Quoted numeric scalar should preserve previous rendering behavior
-  - it: should render quoted numeric scalar input without string typing in output
+  # Test Case 6b: Quoted numeric scalar should preserve string typing
+  - it: should render quoted numeric scalar input as string
     set:
       keda.enabled: true
       keda.scaledObject.enabled: true
@@ -112,7 +112,22 @@ tests:
           of: ScaledObject
       - equal:
           path: .spec.pollingInterval
-          value: 30
+          value: "30"
+
+  # Test Case 6e: String-typed fields must remain strings even when numeric-looking
+  - it: should preserve string type for envSourceContainerName numeric-looking values
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.envSourceContainerName: "123"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ScaledObject
+      - equal:
+          path: .spec.envSourceContainerName
+          value: "123"
 
   # Test Case 6c: Multi-line top-level scalar spec fields should render as valid YAML
   - it: should render multi-line scalar spec fields as block scalars
