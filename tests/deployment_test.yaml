@@ -146,15 +146,16 @@ tests:
       - failedTemplate:
           errorMessage: "image.repository must not include a registry hostname in map form — set image.registry separately (got: ghcr.io/myapp)"
 
-  - it: should fail when image.repository includes custom domain registry host form
+  - it: should allow two-segment dotted repository names as valid Docker Hub org/repo paths
     set:
       deployment.enabled: true
       image.registry: docker.io
-      image.repository: registry.example.com/myapp
+      image.repository: registry.tools/myapp
       image.tag: v1.0.0
     asserts:
-      - failedTemplate:
-          errorMessage: "image.repository must not include a registry hostname in map form — set image.registry separately (got: registry.example.com/myapp)"
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/registry.tools/myapp:v1.0.0
 
   - it: should fail when image.repository includes custom domain registry host with longer path
     set:
@@ -165,6 +166,16 @@ tests:
     asserts:
       - failedTemplate:
           errorMessage: "image.repository must not include a registry hostname in map form — set image.registry separately (got: registry.example.com/team/app)"
+
+  - it: should fail when image.repository includes harbor-style custom registry with org and repo
+    set:
+      deployment.enabled: true
+      image.registry: docker.io
+      image.repository: harbor.company.io/team/app
+      image.tag: v1.0.0
+    asserts:
+      - failedTemplate:
+          errorMessage: "image.repository must not include a registry hostname in map form — set image.registry separately (got: harbor.company.io/team/app)"
 
   - it: should fail when deployment image override is not string or map
     set:
