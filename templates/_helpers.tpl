@@ -173,8 +173,10 @@ String form (.image: "reg/repo:tag") is returned as-is for backward compatibilit
 {{- define "chart.imageReference" -}}
 {{- $root := .root }}
 {{- $image := .image }}
-{{- $defaultImage := .defaultImage | default (dict) }}
-{{- if not (kindIs "map" $defaultImage) }}
+{{- $defaultImage := .defaultImage }}
+{{- if kindIs "invalid" $defaultImage }}
+{{- $defaultImage = dict }}
+{{- else if not (kindIs "map" $defaultImage) }}
 {{- fail (printf "top-level image must be a map, got %s" (kindOf $defaultImage)) }}
 {{- end }}
 {{- $imageIsEmptyString := and (kindIs "string" $image) (eq $image "") }}
