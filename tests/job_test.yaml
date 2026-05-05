@@ -634,7 +634,7 @@ tests:
 
   # Image edge-case and failure tests for shared chart.imageReference helper
 
-  - it: should inherit top-level tag when per-job image tag is empty string
+  - it: should clear inherited top-level tag when per-job image tag is empty string
     set:
       appName: example-app
       image:
@@ -651,7 +651,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: docker.io/override-repo:v2.0
+          value: docker.io/override-repo
 
   - it: should fail when top-level image is null and no per-job image is set
     set:

@@ -167,6 +167,7 @@ Build a container image reference with per-resource override and inheritance sup
 Inputs: .root (template context), .image (per-resource: string or map), .defaultImage (top-level image map)
 Output: registry/repository[:tag] string
 Fallback chain (tag): resource image.tag → defaultImage.tag → .root.Values.appVersion → (no tag)
+If a resource-level image map explicitly sets tag to empty (tag: ""), it clears inherited tags.
 String form (.image: "reg/repo:tag") is returned as-is (backward compat, required for digest-pinned images).
 */}}
 {{- define "chart.imageReference" -}}
@@ -201,7 +202,12 @@ String form (.image: "reg/repo:tag") is returned as-is (backward compat, require
 {{- if or (contains "." $repositoryFirstPart) (contains ":" $repositoryFirstPart) (eq $repositoryFirstPart "localhost") }}
 {{- fail (printf "image.repository must not include a registry hostname in map form — set image.registry separately (got: %s)" $repository) }}
 {{- end }}
-{{- $tag := $effectiveImage.tag | default $defaultImage.tag | default $root.Values.appVersion | default "" }}
+{{- $tag := "" }}
+{{- if and (kindIs "map" $image) (hasKey $image "tag") }}
+{{- $tag = index $image "tag" }}
+{{- else }}
+{{- $tag = ($defaultImage.tag | default $root.Values.appVersion | default "") }}
+{{- end }}
 {{- $imageRef := printf "%s/%s" $registry $repository }}
 {{- if $tag }}
 {{- printf "%s:%s" $imageRef (toString $tag) }}

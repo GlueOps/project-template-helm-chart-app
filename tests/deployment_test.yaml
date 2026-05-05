@@ -691,6 +691,24 @@ tests:
           path: spec.template.spec.containers[0].image
           value: docker.io/backend-service:1.5.0
 
+  - it: should allow explicit empty deployment image tag to clear inherited tags
+    set:
+      appName: example-app
+      appVersion: 9.9.9
+      image:
+        registry: docker.io
+        repository: default-repo
+        tag: v2.0.0
+      deployment:
+        enabled: true
+        image:
+          repository: backend-service
+          tag: ""
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/backend-service
+
   - it: should construct image without tag if none is available (tag fallback empty)
     set:
       appName: example-app
