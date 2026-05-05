@@ -201,23 +201,22 @@ String form (.image: "reg/repo:tag") is returned as-is for backward compatibilit
 {{- if contains "@" $repository }}
 {{- fail "image.repository must not contain a digest in map form — use a full image string instead (e.g. <resource>.image: \"registry/repo@sha256:...\")" }}
 {{- end }}
-{{/* Validate: repository should not include a registry host in map mode.
-Catch explicit host-prefixed forms like ghcr.io/myapp and localhost/myimg,
-while allowing valid dotted two-segment namespaces like my.team/service. */}}
+{{/* Validate: repository should not include a registry host in map form.
+Catches known public registries, localhost (with or without port), port-based hosts,
+and any host starting with "registry." (e.g. registry.example.com).
+Dotted namespace paths like my.team/service remain valid. */}}
 {{- $repositoryParts := splitList "/" $repository }}
 {{- $repositoryFirstPart := index $repositoryParts 0 }}
 {{- $knownRegistryHosts := list "docker.io" "ghcr.io" "quay.io" "gcr.io" "k8s.gcr.io" "registry.k8s.io" "mcr.microsoft.com" "public.ecr.aws" "index.docker.io" }}
 {{- $hasRegistryPort := contains ":" $repositoryFirstPart }}
 {{- $isKnownRegistryHost := has $repositoryFirstPart $knownRegistryHosts }}
 {{- $isLocalRegistry := eq $repositoryFirstPart "localhost" }}
-{{- $isDomainLikeHost := regexMatch "^[a-zA-Z0-9][a-zA-Z0-9-]*(?:\\.[a-zA-Z0-9-]+)+$" $repositoryFirstPart }}
-{{- $hasLikelyRegistryTld := regexMatch "(?i)\\.(com|io|org|net|dev|app|cloud|ai|co|edu|gov|mil|info|biz|xyz|me)$" $repositoryFirstPart }}
-{{- $isLikelyExplicitRegistryHost := and $isDomainLikeHost $hasLikelyRegistryTld (or (eq (len $repositoryParts) 2) (hasPrefix "registry." $repositoryFirstPart)) }}
+{{- $isRegistryPrefixed := hasPrefix "registry." $repositoryFirstPart }}
 {{- if and (ge (len $repositoryParts) 2) (or
   $hasRegistryPort
   $isLocalRegistry
   $isKnownRegistryHost
-  $isLikelyExplicitRegistryHost
+  $isRegistryPrefixed
 ) }}
 {{- fail (printf "image.repository must not include a registry hostname in map form — set image.registry separately (got: %s)" $repository) }}
 {{- end }}

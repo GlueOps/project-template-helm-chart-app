@@ -181,8 +181,9 @@ tests:
       - isKind:
           of: ScaledObject
       - equal:
-          path: .spec.scaleTargetRef.name
-          value: custom-deployment
+          path: .spec.scaleTargetRef
+          value:
+            name: custom-deployment
 
   # Test Case 8: advanced.scalingModifiers (KEDA 2.15+ GA) should render as nested YAML
   - it: should render advanced.scalingModifiers as nested YAML
