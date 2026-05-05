@@ -185,7 +185,8 @@ String form (.image: "reg/repo:tag") is returned as-is (backward compat, require
 {{- $effectiveImage = $defaultImage }}
 {{- end }}
 {{- if $effectiveImage }}
-{{- $registry := $effectiveImage.registry | default $defaultImage.registry | default "docker.io" }}
+{{- $registryRaw := $effectiveImage.registry | default $defaultImage.registry | default "docker.io" }}
+{{- $registry := trimSuffix "/" $registryRaw }}
 {{- $repository := $effectiveImage.repository | default $defaultImage.repository | default "" }}
 {{/* Validate: repository is required to form a valid image reference */}}
 {{- if not $repository }}
@@ -194,6 +195,11 @@ String form (.image: "reg/repo:tag") is returned as-is (backward compat, require
 {{/* Validate: digests in repository are not supported in map mode — use string form instead */}}
 {{- if contains "@" $repository }}
 {{- fail "image.repository must not contain a digest in map form — use a full image string instead (e.g. <resource>.image: \"registry/repo@sha256:...\")" }}
+{{- end }}
+{{/* Validate: repository must not include a registry host in map mode */}}
+{{- $repositoryFirstPart := index (splitList "/" $repository) 0 }}
+{{- if or (contains "." $repositoryFirstPart) (contains ":" $repositoryFirstPart) (eq $repositoryFirstPart "localhost") }}
+{{- fail (printf "image.repository must not include a registry hostname in map form — set image.registry separately (got: %s)" $repository) }}
 {{- end }}
 {{- $tag := $effectiveImage.tag | default $defaultImage.tag | default $root.Values.appVersion | default "" }}
 {{- $imageRef := printf "%s/%s" $registry $repository }}
