@@ -62,11 +62,14 @@ deployment:
   replicas: 1
 
   # -- Per-resource image override. Accepts either a full image string
-  # (e.g. `myregistry/myapp:v1.0.0`) or a map that inherits from the top-level
-  # `image` config (e.g. `{repository: my-service}` or `{repository: my-service, tag: ""}`).
-  # image:
-  #   repository: my-service
-  #   # tag: "" # Explicit empty tag clears inherited tags for this resource.
+  # (e.g. `myregistry/myapp:v1.0.0`) or a map that inherits from the top-level `image` config.
+  image:
+    # -- Override image registry for Deployment when using map form.
+    registry:
+    # -- Override image repository for Deployment when using map form.
+    repository:
+    # -- Override image tag for Deployment when using map form. Set to "" to clear inherited tags.
+    tag:
 
   # -- Deployment strategy
   strategy: RollingUpdate
@@ -333,11 +336,14 @@ statefulSet:
   # replicas: 1
 
   # -- Per-resource image override. Accepts either a full image string
-  # (e.g. `myregistry/myapp:v1.0.0`) or a map that inherits from the top-level
-  # `image` config (e.g. `{repository: my-service}` or `{repository: my-service, tag: ""}`).
-  # image:
-  #   repository: my-service
-  #   # tag: "" # Explicit empty tag clears inherited tags for this resource.
+  # (e.g. `myregistry/myapp:v1.0.0`) or a map that inherits from the top-level `image` config.
+  image:
+    # -- Override image registry for StatefulSet when using map form.
+    registry:
+    # -- Override image repository for StatefulSet when using map form.
+    repository:
+    # -- Override image tag for StatefulSet when using map form. Set to "" to clear inherited tags.
+    tag:
 
   # -- Update strategy for the StatefulSet
   updateStrategy: RollingUpdate #RollingUpdate, OnDelete
@@ -615,7 +621,7 @@ cronJob:
   #   - completionMode: "Indexed" requires completions to be set
   #   - backoffLimit: 0 means the job will never retry on failure
 
-  # -- List of jobs to run
+  # -- List of jobs to run. Per-cronjob image overrides are set via `cronJob.jobs.<name>.image`.
   jobs:
     # cronjob:
     #   labels: {}
@@ -724,7 +730,7 @@ job:
   #   - completionMode: "Indexed" requires completions to be set
   #   - backoffLimit: 0 means the job will never retry on failure
 
-  # -- List of jobs to run
+  # -- List of jobs to run. Per-job image overrides are set via `job.jobs.<name>.image`.
   jobs:
     # db-migration:
     #   suspend: false

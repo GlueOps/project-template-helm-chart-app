@@ -219,7 +219,12 @@ while allowing valid dotted two-segment namespaces like my.team/service. */}}
 {{- end }}
 {{- $tag := "" }}
 {{- if and (kindIs "map" $image) (hasKey $image "tag") }}
-{{- $tag = index $image "tag" }}
+{{- $explicitTag := index $image "tag" }}
+{{- if not (eq $explicitTag nil) }}
+{{- $tag = $explicitTag }}
+{{- else }}
+{{- $tag = ($defaultImage.tag | default $root.Values.appVersion | default "") }}
+{{- end }}
 {{- else }}
 {{- $tag = ($defaultImage.tag | default $root.Values.appVersion | default "") }}
 {{- end }}

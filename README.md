@@ -19,15 +19,19 @@ A Helm chart template for applications
 | configMap.labels | string | `nil` | Labels for the ConfigMap |
 | cronJob | object | `{"enabled":false,"jobs":null}` | CronJob configuration |
 | cronJob.enabled | bool | `false` | Whether to create a CronJob |
-| cronJob.jobs | string | `nil` | List of jobs to run |
+| cronJob.jobs | string | `nil` | List of jobs to run. Per-cronjob image overrides are set via `cronJob.jobs.<name>.image`. |
 | customResources | string | `nil` | CustomResources configuration |
 | customResourcesMap | string | `nil` | Custom resource configuration via a map |
-| deployment | object | `{"affinity":{},"annotations":null,"containerPorts":null,"containerSecurityContext":null,"enabled":false,"envConfigMaps":null,"envMap":null,"envSecrets":null,"envVariables":null,"hostAliases":null,"initContainers":null,"labels":null,"lifecycle":null,"livenessProbe":null,"matchLabels":null,"nodeSelector":null,"readinessProbe":null,"replicas":1,"resources":{},"securityContext":null,"serviceAccount":{"enabled":false},"sidecar":null,"startupProbe":{},"strategy":"RollingUpdate","tolerations":null,"topologySpreadConstraints":null,"volumeMounts":null,"volumes":null}` | Deployment configuration |
+| deployment | object | `{"affinity":{},"annotations":null,"containerPorts":null,"containerSecurityContext":null,"enabled":false,"envConfigMaps":null,"envMap":null,"envSecrets":null,"envVariables":null,"hostAliases":null,"image":{"registry":null,"repository":null,"tag":null},"initContainers":null,"labels":null,"lifecycle":null,"livenessProbe":null,"matchLabels":null,"nodeSelector":null,"readinessProbe":null,"replicas":1,"resources":{},"securityContext":null,"serviceAccount":{"enabled":false},"sidecar":null,"startupProbe":{},"strategy":"RollingUpdate","tolerations":null,"topologySpreadConstraints":null,"volumeMounts":null,"volumes":null}` | Deployment configuration |
 | deployment.affinity | object | `{}` | Affinity rules for scheduling the pods |
 | deployment.annotations | string | `nil` | Annotations for the Deployment |
 | deployment.containerPorts | string | `nil` | Additional container ports |
 | deployment.containerSecurityContext | string | `nil` | Security context for the container |
 | deployment.enabled | bool | `false` | Whether to create a Deployment |
+| deployment.image | object | `{"registry":null,"repository":null,"tag":null}` | Per-resource image override. Accepts either a full image string (e.g. `myregistry/myapp:v1.0.0`) or a map that inherits from the top-level `image` config. |
+| deployment.image.registry | string | `nil` | Override image registry for Deployment when using map form. |
+| deployment.image.repository | string | `nil` | Override image repository for Deployment when using map form. |
+| deployment.image.tag | string | `nil` | Override image tag for Deployment when using map form. Set to `""` to clear inherited tags. |
 | deployment.envConfigMaps | string | `nil` | List of ConfigMap environment variables variable   - name of env variable inside container configMapName - name of kubernetes ConfigMap object configMapKey  - name of the key in ConfigMap object which holds the value |
 | deployment.envMap | string | `nil` | Map of environment variables |
 | deployment.envSecrets | string | `nil` | List of secret environment variables variable   - name of env variable inside container secretName - name of kubernetes secret object secretKey  - name of the key in secret object which holds the value |
@@ -70,7 +74,7 @@ A Helm chart template for applications
 | ingress.entries | string | `nil` | Entries for the Ingress |
 | job | object | `{"enabled":false,"jobs":null}` | Job configuration |
 | job.enabled | bool | `false` | Whether to create a Job |
-| job.jobs | string | `nil` | List of jobs to run |
+| job.jobs | string | `nil` | List of jobs to run. Per-job image overrides are set via `job.jobs.<name>.image`. |
 | keda | object | `{"enabled":false,"scaledObject":{"enabled":false,"spec":{"triggers":[],"triggersMap":{}}},"triggerAuthentication":null}` | Keda configuration |
 | keda.enabled | bool | `false` | Whether to enable Keda |
 | keda.scaledObject | object | `{"enabled":false,"spec":{"triggers":[],"triggersMap":{}}}` | ScaledObject's spec |
@@ -99,12 +103,16 @@ A Helm chart template for applications
 | serviceAccount.annotations | string | `nil` | Annotations for the Service Account |
 | serviceAccount.create | bool | `false` | Whether to create a Service Account |
 | serviceAccount.labels | string | `nil` | Labels for the Service Account |
-| statefulSet | object | `{"affinity":{},"annotations":null,"containerPorts":null,"containerSecurityContext":null,"enabled":false,"envConfigMaps":null,"envMap":null,"envSecrets":null,"envVariables":null,"hostAliases":null,"initContainers":null,"labels":null,"lifecycle":null,"livenessProbe":null,"matchLabels":null,"nodeSelector":null,"readinessProbe":null,"resources":{},"securityContext":null,"serviceAccount":{"enabled":false},"sidecar":null,"startupProbe":{},"tolerations":null,"topologySpreadConstraints":null,"updateStrategy":"RollingUpdate","volumeClaimTemplates":null,"volumeMounts":null,"volumes":null}` | StatefulSet configuration |
+| statefulSet | object | `{"affinity":{},"annotations":null,"containerPorts":null,"containerSecurityContext":null,"enabled":false,"envConfigMaps":null,"envMap":null,"envSecrets":null,"envVariables":null,"hostAliases":null,"image":{"registry":null,"repository":null,"tag":null},"initContainers":null,"labels":null,"lifecycle":null,"livenessProbe":null,"matchLabels":null,"nodeSelector":null,"readinessProbe":null,"resources":{},"securityContext":null,"serviceAccount":{"enabled":false},"sidecar":null,"startupProbe":{},"tolerations":null,"topologySpreadConstraints":null,"updateStrategy":"RollingUpdate","volumeClaimTemplates":null,"volumeMounts":null,"volumes":null}` | StatefulSet configuration |
 | statefulSet.affinity | object | `{}` | Affinity rules for scheduling the pods |
 | statefulSet.annotations | string | `nil` | Annotations for the StatefulSet |
 | statefulSet.containerPorts | string | `nil` | Additional container ports |
 | statefulSet.containerSecurityContext | string | `nil` | Security context for the container |
 | statefulSet.enabled | bool | `false` | Whether to create a StatefulSet |
+| statefulSet.image | object | `{"registry":null,"repository":null,"tag":null}` | Per-resource image override. Accepts either a full image string (e.g. `myregistry/myapp:v1.0.0`) or a map that inherits from the top-level `image` config. |
+| statefulSet.image.registry | string | `nil` | Override image registry for StatefulSet when using map form. |
+| statefulSet.image.repository | string | `nil` | Override image repository for StatefulSet when using map form. |
+| statefulSet.image.tag | string | `nil` | Override image tag for StatefulSet when using map form. Set to `""` to clear inherited tags. |
 | statefulSet.envConfigMaps | string | `nil` | List of ConfigMap environment variables variable   - name of env variable inside container configMapName - name of kubernetes ConfigMap object configMapKey  - name of the key in ConfigMap object which holds the value |
 | statefulSet.envMap | string | `nil` | Map of environment variables |
 | statefulSet.envSecrets | string | `nil` | List of secret environment variables variable   - name of env variable inside container secretName - name of kubernetes secret object secretKey  - name of the key in secret object which holds the value |
