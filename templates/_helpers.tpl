@@ -176,7 +176,11 @@ String form (.image: "reg/repo:tag") is returned as-is for backward compatibilit
 {{- $defaultImage := .defaultImage | default (dict) }}
 {{/* If image is a string (not a map), use it directly for backward compatibility */}}
 {{- if and $image (not (kindIs "map" $image)) }}
+{{- if kindIs "string" $image }}
 {{- toString $image }}
+{{- else }}
+{{- fail (printf "image override must be a string or map, got %T" $image) }}
+{{- end }}
 {{- else }}
 {{/* Normalize inputs: derive effective registry/repository/tag once */}}
 {{- $effectiveImage := dict }}
@@ -207,13 +211,12 @@ while allowing valid dotted two-segment namespaces like my.team/service. */}}
 {{- $isKnownRegistryHost := has $repositoryFirstPart $knownRegistryHosts }}
 {{- $isLocalRegistry := eq $repositoryFirstPart "localhost" }}
 {{- $isDomainLikeHost := regexMatch "^[a-zA-Z0-9][a-zA-Z0-9-]*(?:\\.[a-zA-Z0-9-]+)+$" $repositoryFirstPart }}
-{{- $hasLikelyRegistryTld := regexMatch "(?i)\\.(com|io|org|net|dev|app|cloud|ai|co|edu|gov|mil|info|biz|xyz|me|local|internal|corp|lan|home)$" $repositoryFirstPart }}
+{{- $hasLikelyRegistryTld := regexMatch "(?i)\\.(com|io|org|net|dev|app|cloud|ai|co|edu|gov|mil|info|biz|xyz|me)$" $repositoryFirstPart }}
 {{- if and (ge (len $repositoryParts) 2) (or
   $hasRegistryPort
   $isLocalRegistry
   $isKnownRegistryHost
   (and (eq (len $repositoryParts) 2) $isDomainLikeHost $hasLikelyRegistryTld)
-  (and (ge (len $repositoryParts) 3) (contains "." $repositoryFirstPart))
 ) }}
 {{- fail (printf "image.repository must not include a registry hostname in map form — set image.registry separately (got: %s)" $repository) }}
 {{- end }}
