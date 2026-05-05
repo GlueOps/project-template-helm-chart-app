@@ -185,6 +185,19 @@ tests:
           path: spec.template.spec.containers[0].image
           value: docker.io/registry.tools/myapp:v1.0.0
 
+  - it: should allow example.com/team/app (two-label dotted namespace is a valid repository path)
+    set:
+      deployment.enabled: true
+      image.registry: docker.io
+      image.repository: example.com/team/app
+      image.tag: v1.0.0
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/example.com/team/app:v1.0.0
+
   - it: should fail when image.repository includes a FQDN-style registry host (registry.example.com/team/app has 3 DNS labels and 3 path segments)
     set:
       deployment.enabled: true

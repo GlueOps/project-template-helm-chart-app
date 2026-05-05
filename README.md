@@ -33,7 +33,7 @@ A Helm chart template for applications
 | deployment.envSecrets | string | `nil` | List of secret environment variables variable   - name of env variable inside container secretName - name of kubernetes secret object secretKey  - name of the key in secret object which holds the value |
 | deployment.envVariables | string | `nil` | List of environment variables |
 | deployment.hostAliases | string | `nil` | Host aliases for the pods |
-| deployment.image | object | `{"registry":null,"repository":null,"tag":null}` | Per-resource image override. Accepts either a full image string (e.g. `myregistry/myapp:v1.0.0`) or a map that inherits from the top-level `image` config. |
+| deployment.image | string\|object | `{"registry":null,"repository":null,"tag":null}` | Per-resource image override. Accepts either a full image string (e.g. `myregistry/myapp:v1.0.0`) or a map that inherits from the top-level `image` config. |
 | deployment.image.registry | string | `nil` | Override image registry for Deployment when using map form. |
 | deployment.image.repository | string | `nil` | Override image repository for Deployment when using map form. |
 | deployment.image.tag | string | `nil` | Override image tag for Deployment when using map form. Set to "" to clear inherited tags. |
@@ -114,7 +114,7 @@ A Helm chart template for applications
 | statefulSet.envSecrets | string | `nil` | List of secret environment variables variable   - name of env variable inside container secretName - name of kubernetes secret object secretKey  - name of the key in secret object which holds the value |
 | statefulSet.envVariables | string | `nil` | List of environment variables |
 | statefulSet.hostAliases | string | `nil` | Host aliases for the pods |
-| statefulSet.image | object | `{"registry":null,"repository":null,"tag":null}` | Per-resource image override. Accepts either a full image string (e.g. `myregistry/myapp:v1.0.0`) or a map that inherits from the top-level `image` config. |
+| statefulSet.image | string\|object | `{"registry":null,"repository":null,"tag":null}` | Per-resource image override. Accepts either a full image string (e.g. `myregistry/myapp:v1.0.0`) or a map that inherits from the top-level `image` config. |
 | statefulSet.image.registry | string | `nil` | Override image registry for StatefulSet when using map form. |
 | statefulSet.image.repository | string | `nil` | Override image repository for StatefulSet when using map form. |
 | statefulSet.image.tag | string | `nil` | Override image tag for StatefulSet when using map form. Set to "" to clear inherited tags. |
