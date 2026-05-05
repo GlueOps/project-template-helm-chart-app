@@ -236,6 +236,10 @@ are valid repository names and are allowed. */}}
 {{- $isLocalRegistry := eq $repositoryFirstPart "localhost" }}
 {{- $isIPv4Host := regexMatch "^[0-9]{1,3}(\\.[0-9]{1,3}){3}$" $repositoryFirstPart }}
 {{- $firstPartDNSLabels := splitList "." $repositoryFirstPart }}
+{{- /* FQDN+deep-path: require BOTH 3+ DNS labels in the first segment AND 3+ total path segments.
+     This catches real registry FQDNs like harbor.company.io/team/app (3 DNS labels, 3 segments),
+     but allows dotted org names like org.example/platform/service (2 DNS labels, 3 segments) and
+     a.b.c/service (3 DNS labels, only 2 segments). */}}
 {{- $isFQDNWithDeepPath := and (ge (len $firstPartDNSLabels) 3) (ge (len $repositoryParts) 3) }}
 {{- if and (ge (len $repositoryParts) 2) (or
   $hasRegistryPort
