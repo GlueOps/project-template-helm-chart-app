@@ -146,6 +146,26 @@ tests:
       - failedTemplate:
           errorMessage: "image.repository must not include a registry hostname in map form — set image.registry separately (got: ghcr.io/myapp)"
 
+  - it: should fail when image.repository includes an IPv4 registry host in map form
+    set:
+      deployment.enabled: true
+      image.registry: docker.io
+      image.repository: 127.0.0.1/myapp
+      image.tag: v1.0.0
+    asserts:
+      - failedTemplate:
+          errorMessage: "image.repository must not include a registry hostname in map form — set image.registry separately (got: 127.0.0.1/myapp)"
+
+  - it: should fail when image.repository includes an embedded tag in map form
+    set:
+      deployment.enabled: true
+      image.registry: docker.io
+      image.repository: nginx:1.2.3
+      image.tag: v1.0.0
+    asserts:
+      - failedTemplate:
+          errorMessage: "image.repository must not include a tag in map form — set image.tag separately (got: nginx:1.2.3)"
+
   - it: should allow two-segment dotted repository names as valid Docker Hub org/repo paths
     set:
       deployment.enabled: true

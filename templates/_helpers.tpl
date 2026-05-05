@@ -202,19 +202,27 @@ Move the digest to image.tag (e.g. tag: "1.29.5@sha256:...") or use a full image
 {{- if contains "@" $repository }}
 {{- fail "image.repository must not contain a digest — move the digest to image.tag (e.g. tag: \"1.29.5@sha256:...\") or use a full image string" }}
 {{- end }}
-{{/* Validate: repository should not include a registry host in map form.
-Catches known public registries, localhost, and port-based hosts (host:port).
-For custom/private registries, set image.registry separately. */}}
+{{/* Validate: repository must not include a tag in map mode.
+Set image.tag separately, or use a full image string for combined forms. */}}
 {{- $repositoryParts := splitList "/" $repository }}
+{{- $repositoryLastPart := index $repositoryParts (sub (len $repositoryParts) 1) }}
+{{- if contains ":" $repositoryLastPart }}
+{{- fail (printf "image.repository must not include a tag in map form — set image.tag separately (got: %s)" $repository) }}
+{{- end }}
+{{/* Validate: repository should not include a registry host in map form.
+Catches known public registries, localhost, IP-literal hosts, and port-based hosts (host:port).
+For custom/private registries, set image.registry separately. */}}
 {{- $repositoryFirstPart := index $repositoryParts 0 }}
 {{- $knownRegistryHosts := list "docker.io" "ghcr.io" "quay.io" "gcr.io" "k8s.gcr.io" "registry.k8s.io" "mcr.microsoft.com" "public.ecr.aws" "index.docker.io" }}
 {{- $hasRegistryPort := contains ":" $repositoryFirstPart }}
 {{- $isKnownRegistryHost := has $repositoryFirstPart $knownRegistryHosts }}
 {{- $isLocalRegistry := eq $repositoryFirstPart "localhost" }}
+{{- $isIPv4Host := regexMatch "^[0-9]{1,3}(\\.[0-9]{1,3}){3}$" $repositoryFirstPart }}
 {{- if and (ge (len $repositoryParts) 2) (or
   $hasRegistryPort
   $isLocalRegistry
   $isKnownRegistryHost
+  $isIPv4Host
 ) }}
 {{- fail (printf "image.repository must not include a registry hostname in map form — set image.registry separately (got: %s)" $repository) }}
 {{- end }}
