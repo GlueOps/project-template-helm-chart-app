@@ -61,6 +61,13 @@ deployment:
   # -- Number of replicas (ignored if .keda.enabled is true)
   replicas: 1
 
+  # -- Per-resource image override. Accepts either a full image string
+  # (e.g. `myregistry/myapp:v1.0.0`) or a map that inherits from the top-level
+  # `image` config (e.g. `{repository: my-service}` or `{repository: my-service, tag: ""}`).
+  # image:
+  #   repository: my-service
+  #   # tag: "" # Explicit empty tag clears inherited tags for this resource.
+
   # -- Deployment strategy
   strategy: RollingUpdate
   # maxSurge: "25%"
@@ -324,6 +331,13 @@ statefulSet:
 
   # -- Number of replicas for the StatefulSet
   # replicas: 1
+
+  # -- Per-resource image override. Accepts either a full image string
+  # (e.g. `myregistry/myapp:v1.0.0`) or a map that inherits from the top-level
+  # `image` config (e.g. `{repository: my-service}` or `{repository: my-service, tag: ""}`).
+  # image:
+  #   repository: my-service
+  #   # tag: "" # Explicit empty tag clears inherited tags for this resource.
 
   # -- Update strategy for the StatefulSet
   updateStrategy: RollingUpdate #RollingUpdate, OnDelete
@@ -646,6 +660,12 @@ cronJob:
     #     #     secretKeyRef:
     #     #       name: secret-name
     #     #       key: secretKey
+    #   # -- Per-cronjob image override. Accepts either a full image string
+    #   # (e.g. `myregistry/myapp:v1.0.0`) or a map inheriting from top-level `image`
+    #   # (e.g. `{repository: my-cronjob}` or `{repository: my-cronjob, tag: ""}`).
+    #   # image:
+    #   #   repository: my-cronjob
+    #   #   # tag: "" # Explicit empty tag clears inherited tags for this cronjob.
     #   # image: docker.io/nginx:v1.2.3
     #   # imagePullPolicy: IfNotPresent
     #   # command: ["/bin/bash"]
@@ -725,6 +745,12 @@ job:
     #     enabled: false
     #   # Set to false to prevent pods from seeing environment variables of other services in the namespace
     #   # enableServiceLinks: false
+    #   # -- Per-job image override. Accepts either a full image string
+    #   # (e.g. `myregistry/myapp:v1.0.0`) or a map inheriting from top-level `image`
+    #   # (e.g. `{repository: my-job}` or `{repository: my-job, tag: ""}`).
+    #   # image:
+    #   #   repository: my-job
+    #   #   # tag: "" # Explicit empty tag clears inherited tags for this job.
     #   # image: docker.io/nginx:v1.2.3
     #   # imagePullPolicy: IfNotPresent
     #   # command: ["/bin/bash"]
