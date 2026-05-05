@@ -168,7 +168,7 @@ Inputs: .root (template context), .image (per-resource: string or map), .default
 Output: registry/repository[:tag] string
 Fallback chain (tag): resource image.tag → defaultImage.tag → .root.Values.appVersion → (no tag)
 If a resource-level image map explicitly sets tag to empty (tag: ""), it clears inherited tags.
-String form (.image: "reg/repo:tag") is returned as-is (backward compat, required for digest-pinned images).
+String form (.image: "reg/repo:tag") is returned as-is for backward compatibility.
 */}}
 {{- define "chart.imageReference" -}}
 {{- $root := .root }}
@@ -197,9 +197,11 @@ String form (.image: "reg/repo:tag") is returned as-is (backward compat, require
 {{- if contains "@" $repository }}
 {{- fail "image.repository must not contain a digest in map form — use a full image string instead (e.g. <resource>.image: \"registry/repo@sha256:...\")" }}
 {{- end }}
-{{/* Validate: repository must not include a registry host in map mode */}}
-{{- $repositoryFirstPart := index (splitList "/" $repository) 0 }}
-{{- if or (contains "." $repositoryFirstPart) (contains ":" $repositoryFirstPart) (eq $repositoryFirstPart "localhost") }}
+{{/* Validate: repository should not include a registry host in map mode. Use a conservative check
+to avoid false positives for valid two-segment names like my.team/service on Docker Hub. */}}
+{{- $repositoryParts := splitList "/" $repository }}
+{{- $repositoryFirstPart := index $repositoryParts 0 }}
+{{- if and (ge (len $repositoryParts) 3) (or (contains "." $repositoryFirstPart) (contains ":" $repositoryFirstPart) (eq $repositoryFirstPart "localhost")) }}
 {{- fail (printf "image.repository must not include a registry hostname in map form — set image.registry separately (got: %s)" $repository) }}
 {{- end }}
 {{- $tag := "" }}

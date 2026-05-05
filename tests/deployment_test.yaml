@@ -103,6 +103,17 @@ tests:
       - failedTemplate:
           errorMessage: "image.repository must not include a registry hostname in map form — set image.registry separately (got: ghcr.io/myorg/myapp)"
 
+  - it: should allow dotted two-segment repository names in map form
+    set:
+      deployment.enabled: true
+      image.registry: docker.io
+      image.repository: my.team/service
+      image.tag: v1.0.0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/my.team/service:v1.0.0
+
   - it: should use the correct port
     set:
       image.port: 9999
