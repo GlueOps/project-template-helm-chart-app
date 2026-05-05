@@ -694,3 +694,20 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "must not contain a digest"
+
+  - it: should fail when job image repository includes embedded tag in map form
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: batch-worker
+        tag: v1.0
+      job:
+        enabled: true
+        jobs:
+          run-once:
+            image:
+              repository: "my-worker:2.0.0"
+    asserts:
+      - failedTemplate:
+          errorPattern: "must not include a tag in map form"

@@ -223,6 +223,24 @@ tests:
       - failedTemplate:
           errorPattern: "image override must be a string or map"
 
+  - it: should fail when top-level image is not a map
+    set:
+      deployment.enabled: true
+      image: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "top-level image must be a map"
+
+  - it: should fail when image.repository contains whitespace
+    set:
+      deployment.enabled: true
+      image.registry: docker.io
+      image.repository: "my repo"
+      image.tag: v1.0.0
+    asserts:
+      - failedTemplate:
+          errorMessage: "image.repository must not contain whitespace (got: my repo)"
+
   - it: should fall back to top-level image when deployment image override is empty string
     set:
       deployment.enabled: true

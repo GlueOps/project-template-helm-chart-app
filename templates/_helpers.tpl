@@ -174,9 +174,17 @@ String form (.image: "reg/repo:tag") is returned as-is for backward compatibilit
 {{- $root := .root }}
 {{- $image := .image }}
 {{- $defaultImage := .defaultImage | default (dict) }}
+{{- if not (kindIs "map" $defaultImage) }}
+{{- fail (printf "top-level image must be a map, got %s" (kindOf $defaultImage)) }}
+{{- end }}
+{{- $imageIsEmptyString := and (kindIs "string" $image) (eq $image "") }}
+{{- $imageIsWhitespaceOnly := and (kindIs "string" $image) (ne $image "") (eq (trim $image) "") }}
 {{/* If image is explicitly set (non-nil, non-empty-string) and not a map, validate it is a string */}}
-{{- if not (or (kindIs "map" $image) (kindIs "invalid" $image) (and (kindIs "string" $image) (eq $image ""))) }}
+{{- if not (or (kindIs "map" $image) (kindIs "invalid" $image) $imageIsEmptyString) }}
 {{- if kindIs "string" $image }}
+{{- if $imageIsWhitespaceOnly }}
+{{- fail "image override string must not be whitespace-only" }}
+{{- end }}
 {{- toString $image }}
 {{- else }}
 {{- fail (printf "image override must be a string or map, got %s" (kindOf $image)) }}
@@ -191,11 +199,14 @@ String form (.image: "reg/repo:tag") is returned as-is for backward compatibilit
 {{- end }}
 {{- if $effectiveImage }}
 {{- $registryRaw := $effectiveImage.registry | default $defaultImage.registry | default "docker.io" }}
-{{- $registry := trimSuffix "/" $registryRaw }}
-{{- $repository := $effectiveImage.repository | default $defaultImage.repository | default "" }}
+{{- $registry := trimSuffix "/" (trim $registryRaw) }}
+{{- $repository := trim ($effectiveImage.repository | default $defaultImage.repository | default "") }}
 {{/* Validate: repository is required to form a valid image reference */}}
 {{- if not $repository }}
 {{- fail "image.repository is required after inheritance (set at top-level image.repository or resource-level image.repository)" }}
+{{- end }}
+{{- if regexMatch "\\s" $repository }}
+{{- fail (printf "image.repository must not contain whitespace (got: %s)" $repository) }}
 {{- end }}
 {{/* Validate: digests in repository are not supported in map mode.
 Move the digest to image.tag (e.g. tag: "1.29.5@sha256:...") or use a full image string. */}}
@@ -211,7 +222,7 @@ Set image.tag separately, or use a full image string for combined forms. */}}
 {{- end }}
 {{/* Validate: repository should not include a registry host in map form.
 Catches known public registries, localhost, IP-literal hosts, and port-based hosts (host:port).
-For custom/private registries, set image.registry separately. */}}
+Other dotted paths are treated as repository namespaces for backward compatibility. */}}
 {{- $repositoryFirstPart := index $repositoryParts 0 }}
 {{- $knownRegistryHosts := list "docker.io" "ghcr.io" "quay.io" "gcr.io" "k8s.gcr.io" "registry.k8s.io" "mcr.microsoft.com" "public.ecr.aws" "index.docker.io" }}
 {{- $hasRegistryPort := contains ":" $repositoryFirstPart }}

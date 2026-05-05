@@ -773,3 +773,21 @@ tests:
           path: spec.jobTemplate.spec.template.spec.containers[0].image
           value: docker.io/shared-service:latest
 
+  - it: should fail when cronjob image repository includes IPv4 host in map form
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: default-repo
+        tag: v1.0.0
+      cronJob:
+        enabled: true
+        jobs:
+          backup-job:
+            schedule: "0 2 * * *"
+            image:
+              repository: 127.0.0.1/custom-job
+    asserts:
+      - failedTemplate:
+          errorPattern: "must not include a registry hostname in map form"
+
