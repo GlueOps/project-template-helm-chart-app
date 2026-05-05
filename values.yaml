@@ -1,7 +1,7 @@
 # -- Name of the application
 # appName: "example-app"
 # -- Version label value for app.kubernetes.io/version (not automatically tied to image.tag)
-# Also used as image tag fallback when no image tag is set.
+# Also used as image tag fallback when tags are unset, except when a resource-level image.tag is explicitly set to "".
 appVersion: "0.0.1"
 # -- Environment of the application
 appEnv: "dev"

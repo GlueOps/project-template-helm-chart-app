@@ -9,7 +9,7 @@ A Helm chart template for applications
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | appEnv | string | `"dev"` | Environment of the application |
-| appVersion | string | `"0.0.1"` | Version label value for app.kubernetes.io/version (not automatically tied to image.tag) Also used as image tag fallback when no image tag is set. |
+| appVersion | string | `"0.0.1"` | Version label value for app.kubernetes.io/version (not automatically tied to image.tag) Also used as image tag fallback when tags are unset, except when a resource-level image.tag is explicitly set to `""`. |
 | commonAnnotations | string | `nil` | Common annotations for all Kubernetes objects |
 | commonLabels | string | `nil` | Common labels for all Kubernetes objects |
 | configMap | object | `{"annotations":null,"configs":null,"enabled":false,"labels":null}` | ConfigMap configuration |
