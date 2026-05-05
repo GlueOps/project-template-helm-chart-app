@@ -203,6 +203,20 @@ tests:
       - failedTemplate:
           errorPattern: "image override must be a string or map"
 
+  - it: should fall back to top-level image when deployment image override is empty string
+    set:
+      deployment.enabled: true
+      deployment.image: ""
+      image.registry: docker.io
+      image.repository: nginx
+      image.tag: "1.25.0"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/nginx:1.25.0
+
   - it: should use the correct port
     set:
       image.port: 9999
