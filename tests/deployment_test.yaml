@@ -187,6 +187,22 @@ tests:
       - failedTemplate:
           errorPattern: "image override must be a string or map"
 
+  - it: should fail when deployment image override is an integer
+    set:
+      deployment.enabled: true
+      deployment.image: 123
+    asserts:
+      - failedTemplate:
+          errorPattern: "image override must be a string or map"
+
+  - it: should fail when deployment image override is false
+    set:
+      deployment.enabled: true
+      deployment.image: false
+    asserts:
+      - failedTemplate:
+          errorPattern: "image override must be a string or map"
+
   - it: should use the correct port
     set:
       image.port: 9999

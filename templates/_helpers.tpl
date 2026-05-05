@@ -174,12 +174,12 @@ String form (.image: "reg/repo:tag") is returned as-is for backward compatibilit
 {{- $root := .root }}
 {{- $image := .image }}
 {{- $defaultImage := .defaultImage | default (dict) }}
-{{/* If image is a string (not a map), use it directly for backward compatibility */}}
-{{- if and $image (not (kindIs "map" $image)) }}
+{{/* If image is explicitly set (non-nil) and not a map, validate it is a string */}}
+{{- if not (or (kindIs "map" $image) (kindIs "invalid" $image)) }}
 {{- if kindIs "string" $image }}
 {{- toString $image }}
 {{- else }}
-{{- fail (printf "image override must be a string or map, got %T" $image) }}
+{{- fail (printf "image override must be a string or map, got %s" (kindOf $image)) }}
 {{- end }}
 {{- else }}
 {{/* Normalize inputs: derive effective registry/repository/tag once */}}
