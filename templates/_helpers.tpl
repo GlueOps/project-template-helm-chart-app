@@ -212,11 +212,12 @@ while allowing valid dotted two-segment namespaces like my.team/service. */}}
 {{- $isLocalRegistry := eq $repositoryFirstPart "localhost" }}
 {{- $isDomainLikeHost := regexMatch "^[a-zA-Z0-9][a-zA-Z0-9-]*(?:\\.[a-zA-Z0-9-]+)+$" $repositoryFirstPart }}
 {{- $hasLikelyRegistryTld := regexMatch "(?i)\\.(com|io|org|net|dev|app|cloud|ai|co|edu|gov|mil|info|biz|xyz|me)$" $repositoryFirstPart }}
+{{- $isLikelyExplicitRegistryHost := and $isDomainLikeHost $hasLikelyRegistryTld (or (eq (len $repositoryParts) 2) (hasPrefix "registry." $repositoryFirstPart)) }}
 {{- if and (ge (len $repositoryParts) 2) (or
   $hasRegistryPort
   $isLocalRegistry
   $isKnownRegistryHost
-  (and (eq (len $repositoryParts) 2) $isDomainLikeHost $hasLikelyRegistryTld)
+  $isLikelyExplicitRegistryHost
 ) }}
 {{- fail (printf "image.repository must not include a registry hostname in map form — set image.registry separately (got: %s)" $repository) }}
 {{- end }}

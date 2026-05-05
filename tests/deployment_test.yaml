@@ -156,6 +156,16 @@ tests:
       - failedTemplate:
           errorMessage: "image.repository must not include a registry hostname in map form — set image.registry separately (got: registry.example.com/myapp)"
 
+  - it: should fail when image.repository includes custom domain registry host with longer path
+    set:
+      deployment.enabled: true
+      image.registry: docker.io
+      image.repository: registry.example.com/team/app
+      image.tag: v1.0.0
+    asserts:
+      - failedTemplate:
+          errorMessage: "image.repository must not include a registry hostname in map form — set image.registry separately (got: registry.example.com/team/app)"
+
   - it: should fail when deployment image override is not string or map
     set:
       deployment.enabled: true
