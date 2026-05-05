@@ -226,20 +226,18 @@ Set image.tag separately, or use a full image string for combined forms. */}}
 {{- fail (printf "image.repository must not include a tag in map form — set image.tag separately (got: %s)" $repository) }}
 {{- end }}
 {{/* Validate: repository should not include a registry host in map form.
-Catches known public registries, IP-literal hosts, and port-based hosts
-(e.g. docker.io/myapp, 127.0.0.1/myapp, myregistry:5000/myapp).
+Catches unambiguous registry hosts, such as IP-literal hosts and
+port-based hosts (e.g. 127.0.0.1/myapp, myregistry:5000/myapp).
 Dotted namespaces like example.com/team/app, team.internal/api,
-harbor.company.io/team/app, foo.bar.baz/team/app, and localhost/myapp
-are valid repository paths and are allowed. */}}
+harbor.company.io/team/app, foo.bar.baz/team/app, localhost/myapp,
+and namespaces that happen to match public registry hostnames are
+valid repository paths and are allowed. */}}
 {{- $repositoryFirstPart := index $repositoryParts 0 }}
-{{- $knownRegistryHosts := list "docker.io" "ghcr.io" "quay.io" "gcr.io" "k8s.gcr.io" "registry.k8s.io" "mcr.microsoft.com" "public.ecr.aws" "index.docker.io" }}
 {{- $repositoryFirstPartLower := lower $repositoryFirstPart }}
 {{- $hasRegistryPort := contains ":" $repositoryFirstPart }}
-{{- $isKnownRegistryHost := has $repositoryFirstPartLower $knownRegistryHosts }}
 {{- $isIPv4Host := regexMatch "^[0-9]{1,3}(\\.[0-9]{1,3}){3}$" $repositoryFirstPartLower }}
 {{- if and (ge (len $repositoryParts) 2) (or
   $hasRegistryPort
-  $isKnownRegistryHost
   $isIPv4Host
 ) }}
 {{- fail (printf "image.repository must not include a registry hostname in map form — set image.registry separately (got: %s)" $repository) }}
