@@ -197,9 +197,10 @@ String form (.image: "reg/repo:tag") is returned as-is for backward compatibilit
 {{- if not $repository }}
 {{- fail "image.repository is required after inheritance (set at top-level image.repository or resource-level image.repository)" }}
 {{- end }}
-{{/* Validate: digests in repository are not supported in map mode — use string form instead */}}
+{{/* Validate: digests in repository are not supported in map mode.
+Move the digest to image.tag (e.g. tag: "1.29.5@sha256:...") or use a full image string (e.g. deployment.image: "registry/repo@sha256:..."). */}}
 {{- if contains "@" $repository }}
-{{- fail "image.repository must not contain a digest in map form — use a full image string instead (e.g. <resource>.image: \"registry/repo@sha256:...\")" }}
+{{- fail "image.repository must not contain a digest — move the digest to image.tag (e.g. tag: \"1.29.5@sha256:...\") or use a full image string (e.g. deployment.image: \"registry/repo@sha256:...\")" }}
 {{- end }}
 {{/* Validate: repository should not include a registry host in map form.
 Catches known public registries, localhost (with or without port), port-based hosts,
