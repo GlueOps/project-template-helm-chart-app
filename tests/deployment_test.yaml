@@ -157,25 +157,27 @@ tests:
           path: spec.template.spec.containers[0].image
           value: docker.io/registry.tools/myapp:v1.0.0
 
-  - it: should fail when image.repository includes custom domain registry host with longer path
+  - it: should allow custom domain repository paths in map form (not a known registry)
     set:
       deployment.enabled: true
       image.registry: docker.io
       image.repository: registry.example.com/team/app
       image.tag: v1.0.0
     asserts:
-      - failedTemplate:
-          errorMessage: "image.repository must not include a registry hostname in map form — set image.registry separately (got: registry.example.com/team/app)"
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/registry.example.com/team/app:v1.0.0
 
-  - it: should fail when image.repository includes harbor-style custom registry with org and repo
+  - it: should allow harbor-style repository paths in map form (not a known registry)
     set:
       deployment.enabled: true
       image.registry: docker.io
       image.repository: harbor.company.io/team/app
       image.tag: v1.0.0
     asserts:
-      - failedTemplate:
-          errorMessage: "image.repository must not include a registry hostname in map form — set image.registry separately (got: harbor.company.io/team/app)"
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/harbor.company.io/team/app:v1.0.0
 
   - it: should fail when deployment image override is not string or map
     set:

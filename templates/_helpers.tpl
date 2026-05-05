@@ -198,29 +198,23 @@ String form (.image: "reg/repo:tag") is returned as-is for backward compatibilit
 {{- fail "image.repository is required after inheritance (set at top-level image.repository or resource-level image.repository)" }}
 {{- end }}
 {{/* Validate: digests in repository are not supported in map mode.
-Move the digest to image.tag (e.g. tag: "1.29.5@sha256:...") or use a full image string (e.g. deployment.image: "registry/repo@sha256:..."). */}}
+Move the digest to image.tag (e.g. tag: "1.29.5@sha256:...") or use a full image string. */}}
 {{- if contains "@" $repository }}
-{{- fail "image.repository must not contain a digest — move the digest to image.tag (e.g. tag: \"1.29.5@sha256:...\") or use a full image string (e.g. deployment.image: \"registry/repo@sha256:...\")" }}
+{{- fail "image.repository must not contain a digest — move the digest to image.tag (e.g. tag: \"1.29.5@sha256:...\") or use a full image string" }}
 {{- end }}
 {{/* Validate: repository should not include a registry host in map form.
-Rules applied when repository has two or more path segments:
-- Always reject: known public registries, localhost, port-based hosts (host:port).
-- Also reject: a first segment whose DNS label count is three or more
-  (sub.domain.tld structure), which reliably catches custom/private registries
-  such as harbor.company.io or registry.example.com without false-positives on
-  valid two-DNS-label org/namespace names like registry.tools or org.example. */}}
+Catches known public registries, localhost, and port-based hosts (host:port).
+For custom/private registries, set image.registry separately. */}}
 {{- $repositoryParts := splitList "/" $repository }}
 {{- $repositoryFirstPart := index $repositoryParts 0 }}
 {{- $knownRegistryHosts := list "docker.io" "ghcr.io" "quay.io" "gcr.io" "k8s.gcr.io" "registry.k8s.io" "mcr.microsoft.com" "public.ecr.aws" "index.docker.io" }}
 {{- $hasRegistryPort := contains ":" $repositoryFirstPart }}
 {{- $isKnownRegistryHost := has $repositoryFirstPart $knownRegistryHosts }}
 {{- $isLocalRegistry := eq $repositoryFirstPart "localhost" }}
-{{- $isHostnameLike := ge (len (splitList "." $repositoryFirstPart)) 3 }}
 {{- if and (ge (len $repositoryParts) 2) (or
   $hasRegistryPort
   $isLocalRegistry
   $isKnownRegistryHost
-  $isHostnameLike
 ) }}
 {{- fail (printf "image.repository must not include a registry hostname in map form — set image.registry separately (got: %s)" $repository) }}
 {{- end }}
