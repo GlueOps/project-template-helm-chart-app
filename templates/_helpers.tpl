@@ -198,7 +198,17 @@ String form (.image: "reg/repo:tag") is returned as-is (backward compat, require
 {{- $tag := $effectiveImage.tag | default $defaultImage.tag | default $root.Values.appVersion | default "" }}
 {{- $useChartVersionFallback := true }}
 {{- if and $root.Values.image (hasKey $root.Values.image "useChartVersionAsTagFallback") }}
-{{- $useChartVersionFallback = $root.Values.image.useChartVersionAsTagFallback }}
+{{- $rawUseChartVersionFallback := $root.Values.image.useChartVersionAsTagFallback }}
+{{- if kindIs "bool" $rawUseChartVersionFallback }}
+{{- $useChartVersionFallback = $rawUseChartVersionFallback }}
+{{- else if kindIs "string" $rawUseChartVersionFallback }}
+{{- $normalizedUseChartVersionFallback := (lower (trim $rawUseChartVersionFallback)) }}
+{{- if eq $normalizedUseChartVersionFallback "false" }}
+{{- $useChartVersionFallback = false }}
+{{- else if eq $normalizedUseChartVersionFallback "true" }}
+{{- $useChartVersionFallback = true }}
+{{- end }}
+{{- end }}
 {{- end }}
 {{- if and (not $tag) $useChartVersionFallback }}
 {{- $tag = ($root.Chart.Version | default "") }}

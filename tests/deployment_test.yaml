@@ -747,19 +747,20 @@ tests:
           path: spec.template.spec.containers[0].image
           value: docker.io/custom-service:v1.2.3
 
-  - it: should use docker.io when registry is missing and fallback flag is enabled
+  - it: should disable chart version fallback when useChartVersionAsTagFallback is quoted false
     set:
       appName: example-app
+      appVersion: ""
       image:
-        registry: ""
-        allowDefaultRegistry: true
-        repository: my-app
-        tag: v1.2.3
+        registry: docker.io
+        repository: default-repo
+        tag: ""
+        useChartVersionAsTagFallback: "false"
       deployment:
         enabled: true
         image:
-          repository: custom-service
+          repository: frontend-service
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: docker.io/custom-service:v1.2.3
+          value: docker.io/frontend-service
