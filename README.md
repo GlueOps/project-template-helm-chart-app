@@ -64,7 +64,7 @@ A Helm chart template for applications
 | image.registry | string | `"docker.io"` | Docker registry |
 | image.repository | string | `"nginx"` | Docker image repository |
 | image.tag | string | `"1.29.5@sha256:341bf0f3ce6c5277d6002cf6e1fb0319fa4252add24ab6a0e262e0056d313208"` | Docker image tag |
-| image.useChartVersionAsTagFallback | bool | `true` | Keep .Chart.Version as final tag fallback when image.tag and appVersion are unset |
+| image.useChartVersionAsTagFallback | bool | `true` | Keep .Chart.Version as final tag fallback when image.tag and appVersion are unset. WARNING: setting this to false causes chart rendering to fail if image.tag and appVersion are both unset. You must provide an explicit tag or appVersion when disabling this fallback. |
 | ingress | object | `{"annotations":null,"enabled":false,"entries":null}` | Ingress configuration |
 | ingress.annotations | string | `nil` | Annotations for the Ingress |
 | ingress.enabled | bool | `false` | Whether to create an Ingress |
