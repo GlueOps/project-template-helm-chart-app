@@ -782,3 +782,20 @@ tests:
       - equal:
           path: spec.template.spec.containers[0].image
           value: docker.io/frontend-service:2.0.0
+
+  - it: should fail when useChartVersionAsTagFallback is an integer (unsupported type)
+    set:
+      appName: example-app
+      appVersion: ""
+      image:
+        registry: docker.io
+        repository: default-repo
+        tag: ""
+        useChartVersionAsTagFallback: 1
+      deployment:
+        enabled: true
+        image:
+          repository: frontend-service
+    asserts:
+      - failedTemplate:
+          errorPattern: "unsupported type for value"
