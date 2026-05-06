@@ -698,14 +698,14 @@ tests:
           path: spec.template.spec.containers[0].image
           value: docker.io/frontend-service:0.11.0
 
-  - it: should not fallback to chart version when explicitly disabled
+  - it: should use explicit tag when useChartVersionAsTagFallback is false
     set:
       appName: example-app
       appVersion: ""
       image:
         registry: docker.io
         repository: default-repo
-        tag: ""
+        tag: v1.5.0
         useChartVersionAsTagFallback: false
       deployment:
         enabled: true
@@ -714,7 +714,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: docker.io/frontend-service
+          value: docker.io/frontend-service:v1.5.0
 
   - it: should support string image override (backward compatibility)
     set:
@@ -747,10 +747,10 @@ tests:
           path: spec.template.spec.containers[0].image
           value: docker.io/custom-service:v1.2.3
 
-  - it: should disable chart version fallback when useChartVersionAsTagFallback is quoted false
+  - it: should use appVersion when useChartVersionAsTagFallback is quoted false (string form)
     set:
       appName: example-app
-      appVersion: ""
+      appVersion: 2.5.0
       image:
         registry: docker.io
         repository: default-repo
@@ -763,4 +763,22 @@ tests:
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: docker.io/frontend-service
+          value: docker.io/frontend-service:2.5.0
+
+  - it: should use appVersion when useChartVersionAsTagFallback is quoted false but appVersion is set
+    set:
+      appName: example-app
+      appVersion: 2.0.0
+      image:
+        registry: docker.io
+        repository: default-repo
+        tag: ""
+        useChartVersionAsTagFallback: "false"
+      deployment:
+        enabled: true
+        image:
+          repository: frontend-service
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/frontend-service:2.0.0

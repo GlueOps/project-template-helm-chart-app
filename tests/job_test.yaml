@@ -632,10 +632,10 @@ tests:
           path: spec.template.spec.containers[0].image
           value: docker.io/batch-worker:0.11.0
 
-  - it: should not fallback to chart version for job image when explicitly disabled
+  - it: should use appVersion for job image when fallback is disabled but appVersion is set
     set:
       appName: example-app
-      appVersion: ""
+      appVersion: 2.0.0
       image:
         registry: docker.io
         repository: batch-worker
@@ -648,7 +648,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: docker.io/batch-worker
+          value: docker.io/batch-worker:2.0.0
 
   # Image edge-case and failure tests for shared chart.imageReference helper
 
