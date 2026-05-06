@@ -922,8 +922,9 @@ externalSecret:
     #     mongo-password:
     #       envName: MONGO_PASSWORD
     #       remoteRef:
-    #         key: monodb
+    #         key: mongodb
     #         property: password
+    #         version: 'AWSCURRENT'
     #   secretStore:
     #     name: secret-store-name-2    # specify if value is other than default secretstore
     #   labels:
