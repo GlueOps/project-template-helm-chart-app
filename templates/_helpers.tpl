@@ -166,7 +166,7 @@ Object fields: structured YAML (maps/lists). Add new K8s fields to $objectFields
 Build a container image reference with per-resource override and inheritance support.
 Inputs: .root (template context), .image (per-resource: string or map), .defaultImage (top-level image map)
 Output: registry/repository[:tag] string
-Fallback chain (tag): resource image.tag → defaultImage.tag → .root.Values.appVersion → (no tag)
+Fallback chain (tag): resource image.tag → defaultImage.tag → .root.Values.appVersion → optionally .root.Chart.Version → (no tag)
 String form (.image: "reg/repo:tag") is returned as-is (backward compat, required for digest-pinned images).
 */}}
 {{- define "chart.imageReference" -}}
@@ -196,6 +196,13 @@ String form (.image: "reg/repo:tag") is returned as-is (backward compat, require
 {{- fail "image.repository must not contain a digest in map form — use a full image string (e.g. deployment.image: \"registry/repo@sha256:...\")" }}
 {{- end }}
 {{- $tag := $effectiveImage.tag | default $defaultImage.tag | default $root.Values.appVersion | default "" }}
+{{- $useChartVersionFallback := true }}
+{{- if and $root.Values.image (hasKey $root.Values.image "useChartVersionAsTagFallback") }}
+{{- $useChartVersionFallback = $root.Values.image.useChartVersionAsTagFallback }}
+{{- end }}
+{{- if and (not $tag) $useChartVersionFallback }}
+{{- $tag = ($root.Chart.Version | default "") }}
+{{- end }}
 {{- $imageRef := printf "%s/%s" $registry $repository }}
 {{- if $tag }}
 {{- printf "%s:%s" $imageRef (toString $tag) }}

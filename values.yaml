@@ -11,6 +11,8 @@ namespaceOverride:
 image:
   # -- Docker registry
   registry: docker.io
+  # -- Keep .Chart.Version as final tag fallback when image.tag and appVersion are unset
+  useChartVersionAsTagFallback: true
   # -- Docker image repository
   repository: nginx
   # -- Docker image tag
@@ -34,13 +36,11 @@ image:
   #       image:
   #         repository: cleanup-worker
   #
-  # NOTE - registry default: if registry is omitted, "docker.io" is used. On air-gapped clusters
-  # that cannot reach Docker Hub, always set image.registry explicitly to avoid silent pull failures.
+  # NOTE - registry fallback: if registry is omitted, docker.io is used.
   #
   # NOTE - empty string tag: tag: "" is treated as unset, so per-resource tag: "" inherits the
-  # top-level tag. Omitting the tag field alone may still fall back to appVersion; because this
-  # chart defaults appVersion to "0.0.1", set both image.tag and appVersion to "" or null in your
-  # values override to intentionally produce an untagged image reference.
+  # top-level tag. Omitting the tag field alone may still fall back to appVersion and then, when
+  # image.useChartVersionAsTagFallback=true, to Chart.version.
   #
   # NOTE - digest-pinned images: repository must not contain "@sha256:..." in map/object form.
   # Use the full string form instead: deployment.image: "registry/repo@sha256:abc123"

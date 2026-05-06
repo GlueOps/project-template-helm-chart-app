@@ -681,7 +681,7 @@ tests:
           path: spec.template.spec.containers[0].image
           value: docker.io/backend-service:1.5.0
 
-  - it: should construct image without tag if none is available (tag fallback empty)
+  - it: should fallback to chart version when appVersion and image tag are unset
     set:
       appName: example-app
       appVersion: ""
@@ -689,6 +689,24 @@ tests:
         registry: docker.io
         repository: default-repo
         tag: ""
+      deployment:
+        enabled: true
+        image:
+          repository: frontend-service
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/frontend-service:0.11.0
+
+  - it: should not fallback to chart version when explicitly disabled
+    set:
+      appName: example-app
+      appVersion: ""
+      image:
+        registry: docker.io
+        repository: default-repo
+        tag: ""
+        useChartVersionAsTagFallback: false
       deployment:
         enabled: true
         image:
@@ -713,10 +731,28 @@ tests:
           path: spec.template.spec.containers[0].image
           value: myregistry.com/custom-image:v5.0.0
 
-  - it: should use default registry when deployment-level registry not specified
+  - it: should use docker.io when registry is missing
     set:
       appName: example-app
       image:
+        registry: ""
+        repository: my-app
+        tag: v1.2.3
+      deployment:
+        enabled: true
+        image:
+          repository: custom-service
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/custom-service:v1.2.3
+
+  - it: should use docker.io when registry is missing and fallback flag is enabled
+    set:
+      appName: example-app
+      image:
+        registry: ""
+        allowDefaultRegistry: true
         repository: my-app
         tag: v1.2.3
       deployment:

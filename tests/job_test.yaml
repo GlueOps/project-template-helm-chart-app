@@ -615,7 +615,7 @@ tests:
           path: spec.template.spec.containers[0].image
           value: docker.io/batch-worker:1.9.0
 
-  - it: should not fallback to chart version for job image tag when appVersion and image tag are unset
+  - it: should fallback to chart version for job image tag when appVersion and image tag are unset
     set:
       appName: example-app
       appVersion: ""
@@ -623,6 +623,24 @@ tests:
         registry: docker.io
         repository: batch-worker
         tag: ""
+      job:
+        enabled: true
+        jobs:
+          run-once: {}
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/batch-worker:0.11.0
+
+  - it: should not fallback to chart version for job image when explicitly disabled
+    set:
+      appName: example-app
+      appVersion: ""
+      image:
+        registry: docker.io
+        repository: batch-worker
+        tag: ""
+        useChartVersionAsTagFallback: false
       job:
         enabled: true
         jobs:
