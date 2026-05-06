@@ -187,6 +187,13 @@ String form (.image: "reg/repo:tag") is returned as-is (backward compat, require
 {{- if $effectiveImage }}
 {{- $registry := $effectiveImage.registry | default $defaultImage.registry | default "docker.io" }}
 {{- $repository := $effectiveImage.repository | default $defaultImage.repository | default "" }}
+{{/* Validate: registry and repository must be strings */}}
+{{- if not (kindIs "string" $registry) }}
+{{- fail (printf "image.registry must be a string, got unsupported type: %v" $registry) }}
+{{- end }}
+{{- if not (kindIs "string" $repository) }}
+{{- fail (printf "image.repository must be a string, got unsupported type: %v" $repository) }}
+{{- end }}
 {{/* Validate: repository is required to form a valid image reference */}}
 {{- if not $repository }}
 {{- fail "image.repository is required after inheritance (set at top-level image.repository or resource-level image.repository)" }}
@@ -218,7 +225,7 @@ String form (.image: "reg/repo:tag") is returned as-is (backward compat, require
 {{- $tag = ($root.Chart.Version | default "") }}
 {{- end }}
 {{- if and (not $tag) (not $useChartVersionFallback) }}
-{{- fail (printf "image.tag and appVersion are both unset, and image.useChartVersionAsTagFallback is false. This would produce an untagged image reference (%s/%s), which is non-deterministic and unsafe. Set image.tag or appVersion explicitly, or set image.useChartVersionAsTagFallback to true." (toString $registry) (toString $repository)) }}
+{{- fail (printf "image.tag and appVersion are both unset, and image.useChartVersionAsTagFallback is false. Chart rendering is blocked to prevent an untagged image reference (%s/%s), which is non-deterministic and unsafe. Set image.tag or appVersion explicitly, or set image.useChartVersionAsTagFallback to true." (toString $registry) (toString $repository)) }}
 {{- end }}
 {{- $imageRef := printf "%s/%s" $registry $repository }}
 {{- if $tag }}

@@ -799,3 +799,29 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "unsupported type for value"
+
+  - it: should fail when image.registry is an integer (unsupported type)
+    set:
+      appName: example-app
+      image:
+        registry: 123
+        repository: my-app
+        tag: v1.0.0
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.registry must be a string"
+
+  - it: should fail when image.repository is an integer (unsupported type)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: 123
+        tag: v1.0.0
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.repository must be a string"
