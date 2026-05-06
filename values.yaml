@@ -669,11 +669,12 @@ cronJob:
     #     #       name: secret-name
     #     #       key: secretKey
     #   # -- Per-cronjob image override. Accepts either a full image string
-    #   # (e.g. `myregistry/myapp:v1.0.0`) or a map inheriting from top-level `image`
-    #   # (e.g. `{repository: my-cronjob}` or `{repository: my-cronjob, tag: ""}`).
-    #   # image:
-    #   #   repository: my-cronjob
-    #   #   # tag: "" # Explicit empty tag clears inherited tags for this cronjob.
+    #   # -- (e.g. `myregistry/myapp:v1.0.0`) or a map inheriting from top-level `image`
+    #   # -- (e.g. `{repository: my-cronjob}` or `{repository: my-cronjob, tag: ""}`).
+    #   image:
+    #     repository: my-cronjob
+    #     # -- Explicit empty tag clears inherited tags for this cronjob.
+    #     # tag: ""
     #   # image: docker.io/nginx:v1.2.3
     #   # imagePullPolicy: IfNotPresent
     #   # command: ["/bin/bash"]
