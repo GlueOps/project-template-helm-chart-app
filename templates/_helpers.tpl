@@ -207,6 +207,8 @@ String form (.image: "reg/repo:tag") is returned as-is (backward compat, require
 {{- $useChartVersionFallback = false }}
 {{- else if eq $normalizedUseChartVersionFallback "true" }}
 {{- $useChartVersionFallback = true }}
+{{- else }}
+{{- fail (printf "image.useChartVersionAsTagFallback must be 'true' or 'false' (or omitted for default), got: %q" $rawUseChartVersionFallback) }}
 {{- end }}
 {{- end }}
 {{- end }}

@@ -40,7 +40,7 @@ image:
   #
   # NOTE - empty string tag: tag: "" is treated as unset, so per-resource tag: "" inherits the
   # top-level tag. Omitting the tag field alone may still fall back to appVersion and then, when
-  # image.useChartVersionAsTagFallback=true, to Chart.version.
+  # image.useChartVersionAsTagFallback=true, to .Chart.Version.
   #
   # NOTE - digest-pinned images: repository must not contain "@sha256:..." in map/object form.
   # Use the full string form instead: deployment.image: "registry/repo@sha256:abc123"
