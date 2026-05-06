@@ -166,7 +166,7 @@ Object fields: structured YAML (maps/lists). Add new K8s fields to $objectFields
 Build a container image reference with per-resource override and inheritance support.
 Inputs: .root (template context), .image (per-resource: string or map), .defaultImage (top-level image map)
 Output: registry/repository[:tag] string
-Fallback chain (tag): resource image.tag → defaultImage.tag → .root.Values.appVersion → optionally .root.Chart.Version → (no tag)
+Fallback chain (tag): resource image.tag → defaultImage.tag → .root.Values.appVersion → optionally .root.Chart.Version → fail if useChartVersionAsTagFallback=false and all prior sources unset
 String form (.image: "reg/repo:tag") is returned as-is (backward compat, required for digest-pinned images).
 */}}
 {{- define "chart.imageReference" -}}

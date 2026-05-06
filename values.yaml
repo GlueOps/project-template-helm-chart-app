@@ -11,7 +11,9 @@ namespaceOverride:
 image:
   # -- Docker registry
   registry: docker.io
-  # -- Keep .Chart.Version as final tag fallback when image.tag and appVersion are unset
+  # -- Keep .Chart.Version as final tag fallback when image.tag and appVersion are unset.
+  # WARNING: setting this to false causes chart rendering to fail if image.tag and appVersion are
+  # both unset. You must provide an explicit tag or appVersion when disabling this fallback.
   useChartVersionAsTagFallback: true
   # -- Docker image repository
   repository: nginx
