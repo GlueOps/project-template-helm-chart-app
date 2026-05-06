@@ -577,3 +577,120 @@ tests:
           path: spec.template.metadata.labels.job
           value: example-app-my-job
 
+
+  # Image rendering tests for shared chart.imageReference helper
+
+  - it: should support per-job image repository override with inherited registry and tag
+    set:
+      appName: example-app
+      image:
+        registry: ghcr.io
+        repository: default-worker
+        tag: v3.2.1
+      job:
+        enabled: true
+        jobs:
+          import-data:
+            image:
+              repository: data-importer
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/data-importer:v3.2.1
+
+  - it: should fallback to appVersion for job image tag when no image tag is set
+    set:
+      appName: example-app
+      appVersion: 1.9.0
+      image:
+        registry: docker.io
+        repository: batch-worker
+        tag: ""
+      job:
+        enabled: true
+        jobs:
+          run-once: {}
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/batch-worker:1.9.0
+
+  - it: should not fallback to chart version for job image tag when appVersion and image tag are unset
+    set:
+      appName: example-app
+      appVersion: ""
+      image:
+        registry: docker.io
+        repository: batch-worker
+        tag: ""
+      job:
+        enabled: true
+        jobs:
+          run-once: {}
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/batch-worker
+
+  # Image edge-case and failure tests for shared chart.imageReference helper
+
+  - it: should inherit top-level tag when per-job image tag is empty string
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: base-repo
+        tag: v2.0
+      job:
+        enabled: true
+        jobs:
+          run-once:
+            image:
+              repository: override-repo
+              tag: ""
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/override-repo:v2.0
+
+  - it: should fail when top-level image is null and no per-job image is set
+    set:
+      appName: example-app
+      image: null
+      job:
+        enabled: true
+        jobs:
+          run-once: {}
+    asserts:
+      - failedTemplate:
+          errorPattern: "could not resolve image"
+
+  - it: should fail when digest is set in repository in map form
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: "nginx@sha256:abc123def456"
+        tag: v1.0
+      job:
+        enabled: true
+        jobs:
+          run-once: {}
+    asserts:
+      - failedTemplate:
+          errorPattern: "must not contain a digest"
+
+  - it: should fail when non-sha256 digest is set in repository in map form
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: "nginx@sha512:abc123def456"
+        tag: v1.0
+      job:
+        enabled: true
+        jobs:
+          run-once: {}
+    asserts:
+      - failedTemplate:
+          errorPattern: "must not contain a digest"
