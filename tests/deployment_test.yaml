@@ -896,6 +896,16 @@ tests:
       - failedTemplate:
           errorPattern: "image override must be a string .* or a map .* got unsupported type"
 
+  - it: should fail with actionable error when top-level image is a scalar (parameter contract guard)
+    set:
+      appName: example-app
+      image: "ghcr.io/foo:v1"
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "\\.Values\\.image must be a map .* got string \\(value: ghcr.io/foo:v1\\)"
+
   - it: should fail when deployment image override is a boolean (unsupported scalar type)
     set:
       appName: example-app

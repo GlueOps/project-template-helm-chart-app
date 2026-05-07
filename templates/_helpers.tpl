@@ -181,6 +181,18 @@ Notes:
 {{- $image := .image }}
 {{- $defaultImage := .defaultImage | default (dict) }}
 {{/*
+Validate the helper's own parameter contract: $defaultImage must be a map (or unset).
+A user misconfiguring the top-level value as a scalar (e.g. `--set image=ghcr.io/foo:v1`,
+forgetting that string-form overrides belong on per-resource <resource>.image, not the
+top-level image map) would otherwise crash deep inside the helper with a low-level
+`can't evaluate field registry in type string` error. Fail loudly with an actionable
+message at the helper boundary instead. `default (dict)` above only handles the unset
+case; a wrong-type value still slips through.
+*/}}
+{{- if not (kindIs "map" $defaultImage) }}
+{{- fail (printf ".Values.image must be a map (with registry/repository/tag fields), got %s (value: %v). If you intended a per-resource string override, set <resource>.image instead (e.g. deployment.image: \"ghcr.io/foo:v1\")." (kindOf $defaultImage) $defaultImage) }}
+{{- end }}
+{{/*
 Dispatch on the *kind* of $image (not its truthiness) so that falsey scalars
 (0, false, 0.0, empty list) are rejected loudly instead of being silently
 treated as "unset" and inheriting. nil/unset is the only non-string,
