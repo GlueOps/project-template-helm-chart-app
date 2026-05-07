@@ -853,3 +853,106 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "image override must be a string .* or a map .* got unsupported type"
+
+  - it: should fail when deployment image override is the integer 0 (falsey scalar must not silently inherit)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: v1.0.0
+      deployment:
+        enabled: true
+        image: 0
+    asserts:
+      - failedTemplate:
+          errorPattern: "image override must be a string .* or a map .* got unsupported type"
+
+  - it: should fail when deployment image override is the boolean false (falsey scalar must not silently inherit)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: v1.0.0
+      deployment:
+        enabled: true
+        image: false
+    asserts:
+      - failedTemplate:
+          errorPattern: "image override must be a string .* or a map .* got unsupported type"
+
+  - it: should fail when deployment image override is an empty list (falsey non-map must not silently inherit)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: v1.0.0
+      deployment:
+        enabled: true
+        image: []
+    asserts:
+      - failedTemplate:
+          errorPattern: "image override must be a string .* or a map .* got unsupported type"
+
+  - it: should fail when useChartVersionAsTagFallback is set under a per-resource image map
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: default-repo
+        tag: v1.0.0
+      deployment:
+        enabled: true
+        image:
+          repository: frontend-service
+          useChartVersionAsTagFallback: false
+    asserts:
+      - failedTemplate:
+          errorPattern: "useChartVersionAsTagFallback is only supported under the top-level"
+
+  - it: should treat empty string image override as unset and inherit from top-level
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: nginx
+        tag: v1.2.3
+      deployment:
+        enabled: true
+        image: ""
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/nginx:v1.2.3
+
+  - it: should treat whitespace-only image override as unset and inherit from top-level
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: nginx
+        tag: v1.2.3
+      deployment:
+        enabled: true
+        image: "   "
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/nginx:v1.2.3
+
+  - it: should treat empty map image override as no override and inherit from top-level
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: nginx
+        tag: v1.2.3
+      deployment:
+        enabled: true
+        image: {}
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/nginx:v1.2.3

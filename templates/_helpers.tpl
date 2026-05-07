@@ -168,17 +168,39 @@ Inputs: .root (template context), .image (per-resource: string or map), .default
 Output: registry/repository[:tag] string
 Fallback chain (tag): resource image.tag → defaultImage.tag → .root.Values.appVersion → optionally .root.Chart.Version → fail if useChartVersionAsTagFallback=false and all prior sources unset
 String form (.image: "reg/repo:tag" or "reg/repo@sha256:...") is returned verbatim for backward compatibility and to allow references that cannot be expressed in map form. Map form supports digest pinning via tag (e.g. tag: "v1@sha256:...").
+Notes:
+- .image: {} (explicit empty map) is treated as "no override" and inherits from defaultImage, matching the behavior of an unset .image.
+- .root.Values.appVersion is consumed by sprig's `default` and is therefore only honored when truthy under Go-template rules; non-string or falsey values (e.g. 0, false) are silently treated as unset. Set appVersion as a string per Helm convention.
 */}}
 {{- define "chart.imageReference" -}}
 {{- $root := .root }}
 {{- $image := .image }}
 {{- $defaultImage := .defaultImage | default (dict) }}
-{{/* If image is a string, use it directly for backward compatibility. Reject other scalar types (int/bool/float/etc.) loudly so that mis-typed values do not silently render as image references. */}}
-{{- if kindIs "string" $image }}
-{{- $image }}
-{{- else if and $image (not (kindIs "map" $image)) }}
-{{- fail (printf "image override must be a string (e.g. \"registry/repo:tag\") or a map with registry/repository/tag fields, got unsupported type %s for value: %v" (kindOf $image) $image) }}
+{{/*
+Dispatch on the *kind* of $image (not its truthiness) so that falsey scalars
+(0, false, 0.0, empty list) are rejected loudly instead of being silently
+treated as "unset" and inheriting. nil/unset is the only non-string,
+non-map value allowed — it explicitly means "inherit from defaultImage".
+Reject every other type with an actionable error.
+*/}}
+{{- $imageKind := kindOf $image }}
+{{- if eq $imageKind "string" }}
+{{/* String form (.image: "reg/repo:tag") returned verbatim for backward compat. Empty/whitespace string is treated as unset and inherits from defaultImage. */}}
+{{- $trimmedImage := trim $image }}
+{{- if ne $trimmedImage "" }}
+{{- $trimmedImage }}
+{{- else if $defaultImage }}
+{{- include "chart.imageReference" (dict "root" $root "image" nil "defaultImage" $defaultImage) }}
 {{- else }}
+{{- fail "image override is empty/whitespace-only and no top-level image map is set to inherit from — set .Values.image.repository or provide a non-empty image override" }}
+{{- end }}
+{{- else if and (ne $imageKind "map") (ne $imageKind "invalid") }}
+{{- fail (printf "image override must be a string (e.g. \"registry/repo:tag\") or a map with registry/repository/tag fields, got unsupported type %s for value: %v" $imageKind $image) }}
+{{- else }}
+{{/* Reject per-resource useChartVersionAsTagFallback: only the top-level flag is honored. Failing fast prevents users from silently relying on a per-resource setting that has no effect. */}}
+{{- if and (kindIs "map" $image) (hasKey $image "useChartVersionAsTagFallback") }}
+{{- fail "image.useChartVersionAsTagFallback is only supported under the top-level `image:` map (e.g. `image.useChartVersionAsTagFallback: false`), not per-resource." }}
+{{- end }}
 {{/* Normalize inputs: derive effective registry/repository/tag once */}}
 {{- $effectiveImage := dict }}
 {{- if and (kindIs "map" $image) $image }}
@@ -227,7 +249,7 @@ String form (.image: "reg/repo:tag" or "reg/repo@sha256:...") is returned verbat
 {{- $tag = ($root.Chart.Version | default "") }}
 {{- end }}
 {{- if and (not $tag) (not $useChartVersionFallback) }}
-{{- fail (printf "image.tag and appVersion are both unset, and image.useChartVersionAsTagFallback is false. Chart rendering is blocked to prevent an untagged image reference (%s/%s), which is non-deterministic and unsafe. Set image.tag or appVersion explicitly, or set image.useChartVersionAsTagFallback to true." (toString $registry) (toString $repository)) }}
+{{- fail (printf "image.tag and appVersion are both unset, and image.useChartVersionAsTagFallback is false. Chart rendering is blocked to prevent an untagged image reference (%s/%s), which is non-deterministic and unsafe. Set image.tag or appVersion explicitly, or set image.useChartVersionAsTagFallback to true." $registry $repository) }}
 {{- end }}
 {{- $imageRef := printf "%s/%s" $registry $repository }}
 {{- if $tag }}
