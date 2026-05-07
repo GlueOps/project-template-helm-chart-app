@@ -798,7 +798,7 @@ tests:
           repository: frontend-service
     asserts:
       - failedTemplate:
-          errorPattern: "unsupported type for value"
+          errorPattern: "image.useChartVersionAsTagFallback must be a bool or string \\('true'/'false'\\), got float64 \\(value: 1\\)"
 
   - it: should fail when image.registry is an integer (unsupported type)
     set:
@@ -837,7 +837,7 @@ tests:
         enabled: true
     asserts:
       - failedTemplate:
-          errorPattern: "image.tag \\(top-level\\) must be a string, got float64 \\(value: 0\\)"
+          errorPattern: "image.tag \\(top-level\\) is a falsey non-string value which would be silently treated as unset; got float64 \\(value: 0\\)"
 
   - it: should fail when image.tag is a bool (silent-coercion guard)
     set:
@@ -850,7 +850,7 @@ tests:
         enabled: true
     asserts:
       - failedTemplate:
-          errorPattern: "image.tag \\(top-level\\) must be a string, got bool \\(value: false\\)"
+          errorPattern: "image.tag \\(top-level\\) is a falsey non-string value which would be silently treated as unset; got bool \\(value: false\\)"
 
   - it: should fail when per-resource image.tag is a non-string scalar
     set:
@@ -866,7 +866,21 @@ tests:
           tag: 0
     asserts:
       - failedTemplate:
-          errorPattern: "image.tag \\(resource\\) must be a string, got float64 \\(value: 0\\)"
+          errorPattern: "image.tag \\(resource\\) is a falsey non-string value which would be silently treated as unset; got float64 \\(value: 0\\)"
+
+  - it: should accept truthy non-string tag (unquoted YAML number) via toString coercion
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: 5.6
+      deployment:
+        enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: "docker.io/my-app:5.6"
 
   - it: should fail when deployment image override is an integer (unsupported scalar type)
     set:

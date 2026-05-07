@@ -43,6 +43,10 @@ image:
   # NOTE - empty string tag: tag: "" and omitting the tag field behave identically — both are
   # treated as unset and fall through the chain (top-level tag → appVersion → optionally
   # .Chart.Version when image.useChartVersionAsTagFallback=true).
+  # Truthy non-string scalars (e.g. unquoted YAML numbers like `tag: 5.6`) are accepted and
+  # coerced to string. FALSEY non-string scalars (tag: 0, tag: false, tag: []) are rejected
+  # because sprig `default` would silently swallow them and inherit appVersion / chart version.
+  # Quote tags that could look like bools or that you want preserved exactly as written.
   #
   # NOTE - digest-pinned images: repository must not contain "@sha256:..." in map/object form.
   # Use the full string form instead: deployment.image: "registry/repo@sha256:abc123"

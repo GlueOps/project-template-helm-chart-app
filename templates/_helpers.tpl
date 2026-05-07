@@ -172,7 +172,9 @@ Notes:
 - .image: {} (explicit empty map) is treated as "no override" and inherits from defaultImage, matching the behavior of an unset .image.
 - .root.Values.appVersion is consumed by sprig's `default` and is therefore only honored when truthy under Go-template rules; non-string or falsey values (e.g. 0, false) are silently treated as unset. Set appVersion as a string per Helm convention.
 - useChartVersionAsTagFallback is only honored under the top-level `image:` map. Setting it on a per-resource `image:` map is rejected with an explicit fail (not silently ignored).
-- registry, repository, and tag must be strings when present. Non-string scalars (numbers, bools, lists, maps) are rejected with a kind-level error rather than coerced via toString.
+- useChartVersionAsTagFallback accepts a bool, or a string (case-insensitive, surrounding whitespace tolerated): `"true"`, `"True"`, `" FALSE "`, etc. are all valid. Any other string is rejected.
+- registry and repository must be strings when present. Non-string scalars (numbers, bools, lists, maps) are rejected with a kind-level error rather than coerced via toString.
+- tag is permissive: truthy non-string scalars (e.g. unquoted YAML numbers like `tag: 5.6`) are coerced via toString. Only FALSEY non-string scalars (`tag: 0`, `tag: false`, `tag: []`) are rejected, because sprig `default` would silently swallow them and inherit appVersion / chart version.
 */}}
 {{- define "chart.imageReference" -}}
 {{- $root := .root }}
@@ -202,8 +204,7 @@ Reject every other type with an actionable error.
 {{/* Reject per-resource useChartVersionAsTagFallback: only the top-level flag is honored. Failing fast prevents users from silently relying on a per-resource setting that has no effect. */}}
 {{- if and (kindIs "map" $image) (hasKey $image "useChartVersionAsTagFallback") }}
 {{- fail "image.useChartVersionAsTagFallback is only supported under the top-level `image:` map (e.g. `image.useChartVersionAsTagFallback: false`), not per-resource." }}
-{{- end }}
-{{/* Normalize inputs: derive effective registry/repository/tag once */}}
+{{- end }}{{/* Normalize inputs: derive effective registry/repository/tag once */}}
 {{- $effectiveImage := dict }}
 {{- if and (kindIs "map" $image) $image }}
 {{- $effectiveImage = $image }}
@@ -229,28 +230,29 @@ Reject every other type with an actionable error.
 {{- fail "image.repository must not contain a digest in map form — use a full image string (e.g. deployment.image: \"registry/repo@sha256:...\")" }}
 {{- end }}
 {{/*
-Validate raw tag inputs *before* sprig `default` (below) swallows falsey values. A user-provided
-`tag: 0` or `tag: false` would otherwise be silently treated as unset and fall through to
-appVersion / chart version. Check the per-resource and top-level tag explicitly. Per-resource is
-only checked when an override is actually present (i.e. $image is a non-empty map) — otherwise
-$effectiveImage IS $defaultImage and we would double-report. An empty string is permitted because
-it is the documented "unset" sentinel.
+Validate raw tag inputs *before* sprig `default` (below) swallows falsey values. Only FALSEY
+non-string scalars (`tag: 0`, `tag: false`, `tag: []`) are rejected: those are silently
+treated as unset by sprig `default` and would inherit appVersion / chart version, hiding the
+user's typo. Truthy non-string scalars (e.g. unquoted YAML numbers like `tag: 5.6`) are
+permitted because they are not swallowed and round-trip cleanly through toString. An empty
+string is permitted because it is the documented "unset" sentinel.
+Per-resource is checked only when an override is actually present so we don't double-report.
 */}}
-{{- if and (kindIs "map" $image) $image (hasKey $image "tag") }}
+{{- if and (kindIs "map" $image) (hasKey $image "tag") }}
 {{- $resourceTag := get $image "tag" }}
-{{- if and (ne (kindOf $resourceTag) "invalid") (not (kindIs "string" $resourceTag)) }}
-{{- fail (printf "image.tag (resource) must be a string, got %s (value: %v)" (kindOf $resourceTag) $resourceTag) }}
+{{- if and (ne (kindOf $resourceTag) "invalid") (not (kindIs "string" $resourceTag)) (not $resourceTag) }}
+{{- fail (printf "image.tag (resource) is a falsey non-string value which would be silently treated as unset; got %s (value: %v). Quote the tag or remove it." (kindOf $resourceTag) $resourceTag) }}
 {{- end }}
 {{- end }}
 {{- if hasKey $defaultImage "tag" }}
 {{- $topTag := get $defaultImage "tag" }}
-{{- if and (ne (kindOf $topTag) "invalid") (not (kindIs "string" $topTag)) }}
-{{- fail (printf "image.tag (top-level) must be a string, got %s (value: %v)" (kindOf $topTag) $topTag) }}
+{{- if and (ne (kindOf $topTag) "invalid") (not (kindIs "string" $topTag)) (not $topTag) }}
+{{- fail (printf "image.tag (top-level) is a falsey non-string value which would be silently treated as unset; got %s (value: %v). Quote the tag or remove it." (kindOf $topTag) $topTag) }}
 {{- end }}
 {{- end }}
 {{- $tag := $effectiveImage.tag | default $defaultImage.tag | default $root.Values.appVersion | default "" }}
 {{- $useChartVersionFallback := true }}
-{{- if and $root.Values.image (hasKey $root.Values.image "useChartVersionAsTagFallback") }}
+{{- if and (hasKey $root.Values "image") (kindIs "map" $root.Values.image) (hasKey $root.Values.image "useChartVersionAsTagFallback") }}
 {{- $rawUseChartVersionFallback := $root.Values.image.useChartVersionAsTagFallback }}
 {{- if kindIs "bool" $rawUseChartVersionFallback }}
 {{- $useChartVersionFallback = $rawUseChartVersionFallback }}
@@ -264,7 +266,7 @@ it is the documented "unset" sentinel.
 {{- fail (printf "image.useChartVersionAsTagFallback must be 'true' or 'false' (or omitted for default), got: %q" $rawUseChartVersionFallback) }}
 {{- end }}
 {{- else }}
-{{- fail (printf "image.useChartVersionAsTagFallback must be a bool or string ('true'/'false'), got unsupported type for value: %v" $rawUseChartVersionFallback) }}
+{{- fail (printf "image.useChartVersionAsTagFallback must be a bool or string ('true'/'false'), got %s (value: %v)" (kindOf $rawUseChartVersionFallback) $rawUseChartVersionFallback) }}
 {{- end }}
 {{- end }}
 {{- if and (not $tag) $useChartVersionFallback }}
