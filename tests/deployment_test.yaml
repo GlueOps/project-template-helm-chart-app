@@ -1076,6 +1076,35 @@ tests:
           path: spec.template.spec.containers[0].image
           value: "docker.io/podinfo:9.9.9"
 
+  - it: should trim surrounding whitespace from appVersion when it serves as the tag fallback
+    set:
+      appName: example-app
+      appVersion: "  9.9.9  "
+      image:
+        registry: docker.io
+        repository: podinfo
+        tag: ""
+      deployment:
+        enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: "docker.io/podinfo:9.9.9"
+
+  - it: should fail with appVersion-named error when appVersion contains interior whitespace
+    set:
+      appName: example-app
+      appVersion: "v 1"
+      image:
+        registry: docker.io
+        repository: podinfo
+        tag: ""
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "\\.Values\\.appVersion must not contain interior whitespace"
+
   - it: should fail when image.tag is whitespace-only and all fallbacks are unavailable
     set:
       appName: example-app

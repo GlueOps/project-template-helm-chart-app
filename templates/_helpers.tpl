@@ -327,8 +327,10 @@ Per-resource is checked only when an override is actually present so we don't do
 Resolve the effective tag from the documented chain (resource → top-level → appVersion →
 Chart.Version when fallback enabled). String tags are trimmed at input so a whitespace-only
 value (`tag: "   "`) is treated identically to the documented `tag: ""` sentinel and falls
-through the chain instead of shadowing appVersion. Truthy non-string scalars (e.g. `tag: 5.6`)
-are passed through unchanged — toString below handles coercion before rendering.
+through the chain instead of shadowing appVersion. appVersion and Chart.Version are also
+trimmed at input for the same reason — a stray-space `appVersion` would otherwise be blamed
+on image.tag by the final-stage whitespace rejection. Truthy non-string scalars (e.g.
+`tag: 5.6`) are passed through unchanged — toString below handles coercion before rendering.
 */}}
 {{- $resourceTagSrc := "" }}
 {{- if and (kindIs "map" $image) (hasKey $image "tag") }}
@@ -348,7 +350,19 @@ are passed through unchanged — toString below handles coercion before renderin
 {{- $topTagSrc = $tt }}
 {{- end }}
 {{- end }}
-{{- $tag := $resourceTagSrc | default $topTagSrc | default $root.Values.appVersion | default "" }}
+{{- $appVersionSrc := "" }}
+{{- if hasKey $root.Values "appVersion" }}
+{{- $av := $root.Values.appVersion }}
+{{- if kindIs "string" $av }}
+{{- $appVersionSrc = (trim $av) }}
+{{- if and (ne $appVersionSrc "") (regexMatch "\\s" $appVersionSrc) }}
+{{- fail (printf ".Values.appVersion must not contain interior whitespace, got %q" $av) }}
+{{- end }}
+{{- else }}
+{{- $appVersionSrc = $av }}
+{{- end }}
+{{- end }}
+{{- $tag := $resourceTagSrc | default $topTagSrc | default $appVersionSrc | default "" }}
 {{- $useChartVersionFallback := true }}
 {{- if and (hasKey $root.Values "image") (kindIs "map" $root.Values.image) (hasKey $root.Values.image "useChartVersionAsTagFallback") }}
 {{- $rawUseChartVersionFallback := $root.Values.image.useChartVersionAsTagFallback }}
@@ -368,7 +382,16 @@ are passed through unchanged — toString below handles coercion before renderin
 {{- end }}
 {{- end }}
 {{- if and (not $tag) $useChartVersionFallback }}
-{{- $tag = ($root.Chart.Version | default "") }}
+{{- $cv := ($root.Chart.Version | default "") }}
+{{- if kindIs "string" $cv }}
+{{- $cvTrimmed := trim $cv }}
+{{- if and (ne $cvTrimmed "") (regexMatch "\\s" $cvTrimmed) }}
+{{- fail (printf ".Chart.Version must not contain interior whitespace, got %q" $cv) }}
+{{- end }}
+{{- $tag = $cvTrimmed }}
+{{- else }}
+{{- $tag = $cv }}
+{{- end }}
 {{- end }}
 {{- if and (not $tag) (not $useChartVersionFallback) }}
 {{- fail (printf "image.tag and appVersion are both unset, and image.useChartVersionAsTagFallback is false. Chart rendering is blocked to prevent an untagged image reference (%s/%s), which is non-deterministic and unsafe. Set image.tag or appVersion explicitly, or set image.useChartVersionAsTagFallback to true." $registry $repository) }}
