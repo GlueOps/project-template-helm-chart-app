@@ -224,7 +224,24 @@ Reject every other type with an actionable error.
 {{/* Reject per-resource useChartVersionAsTagFallback: only the top-level flag is honored. Failing fast prevents users from silently relying on a per-resource setting that has no effect. */}}
 {{- if and (kindIs "map" $image) (hasKey $image "useChartVersionAsTagFallback") }}
 {{- fail "image.useChartVersionAsTagFallback is only supported under the top-level `image:` map (e.g. `image.useChartVersionAsTagFallback: false`), not per-resource." }}
-{{- end }}{{/* Normalize inputs: derive effective registry/repository/tag once */}}
+{{- end }}
+{{/*
+Reject unknown keys under a per-resource `image:` map. Only registry/repository/tag are
+inherited; sibling pod fields (command, args, lifecycle, protocol, ...) live at the
+resource root (e.g. `deployment.command`), not under `deployment.image`. Without this
+allowlist a typo like `deployment.image.command: [...]` would be silently dropped and
+the user would spend hours debugging why their override has no effect. The error names
+the field and points at the correct location.
+*/}}
+{{- if kindIs "map" $image }}
+{{- $allowedImageKeys := list "registry" "repository" "tag" "useChartVersionAsTagFallback" }}
+{{- range $k, $_ := $image }}
+{{- if not (has $k $allowedImageKeys) }}
+{{- fail (printf "image.%s is not supported under a per-resource `image:` map (only registry/repository/tag are inherited). To override this field, set it at the resource root (e.g. `<resource>.%s`) instead." $k $k) }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{/* Normalize inputs: derive effective registry/repository/tag once */}}
 {{- $effectiveImage := dict }}
 {{- if and (kindIs "map" $image) $image }}
 {{- $effectiveImage = $image }}

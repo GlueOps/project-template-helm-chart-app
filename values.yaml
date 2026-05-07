@@ -24,6 +24,10 @@ image:
   # Per-workload image can be either:
   # 1) Full string: deployment.image: my-registry/my-repo:v1.0.0
   # 2) Object override: deployment.image.repository: my-repo (inherits registry/tag from top-level image)
+  #    Only `registry`, `repository`, and `tag` are honored under a per-resource `image:` map.
+  #    To override `command` / `args` / `lifecycle` / `protocol`, set them at the resource root
+  #    (e.g. `deployment.command`, `deployment.args`) — those are not inherited from `image:`.
+  #    Unknown keys under a per-resource `image:` map are rejected with an actionable error.
   #
   # Multi-resource example:
   # image:

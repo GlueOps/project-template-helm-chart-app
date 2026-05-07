@@ -1192,6 +1192,38 @@ tests:
       - failedTemplate:
           errorPattern: "useChartVersionAsTagFallback is only supported under the top-level"
 
+  - it: should fail with actionable error when an unknown key is set under a per-resource image map
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: default-repo
+        tag: v1.0.0
+      deployment:
+        enabled: true
+        image:
+          repository: frontend-service
+          command: ["/bin/sh"]
+    asserts:
+      - failedTemplate:
+          errorPattern: "image\\.command is not supported under a per-resource"
+
+  - it: should fail when an unknown image key is set per-resource even with no other overrides
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: default-repo
+        tag: v1.0.0
+      deployment:
+        enabled: true
+        image:
+          lifecycle:
+            postStart: {}
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.lifecycle is not supported under a per-resource"
+
   - it: should treat empty string image override as unset and inherit from top-level
     set:
       appName: example-app
