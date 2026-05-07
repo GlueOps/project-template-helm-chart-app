@@ -884,6 +884,62 @@ tests:
           path: spec.template.spec.containers[0].image
           value: "docker.io/my-app:5.6"
 
+  - it: should fail when top-level image.tag is a list (would render as malformed image reference)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: ["v1"]
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.tag \\(top-level\\) must be a string or numeric scalar, got slice"
+
+  - it: should fail when top-level image.tag is a map (would render as malformed image reference)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag:
+          k: v
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.tag \\(top-level\\) must be a string or numeric scalar, got map"
+
+  - it: should fail when top-level image.tag is an unquoted YAML bool (almost always a typo for the string)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: true
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.tag \\(top-level\\) must be a string or numeric scalar, got bool"
+
+  - it: should fail when per-resource image.tag is a list
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: "v1.0.0"
+      deployment:
+        enabled: true
+        image:
+          repository: override-app
+          tag: ["v1"]
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.tag \\(resource\\) must be a string or numeric scalar, got slice"
+
   - it: should fail when deployment image override is an integer (unsupported scalar type)
     set:
       appName: example-app

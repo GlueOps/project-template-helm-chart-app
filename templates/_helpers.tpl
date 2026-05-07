@@ -320,24 +320,38 @@ because they cannot form a valid OCI image reference.
 {{- fail "image.repository must not contain a digest in map form — use a full image string (e.g. deployment.image: \"registry/repo@sha256:...\")" }}
 {{- end }}
 {{/*
-Validate raw tag inputs *before* sprig `default` (below) swallows falsey values. Only falsy
-non-string scalars (`tag: 0`, `tag: false`, `tag: []`) are rejected: those are silently
-treated as unset by sprig `default` and would inherit appVersion / chart version, hiding the
-user's typo. Truthy non-string scalars (e.g. unquoted YAML numbers like `tag: 5.6`) are
-permitted because they are not swallowed and round-trip cleanly through toString. An empty
-string is permitted because it is the documented "unset" sentinel.
+Validate raw tag inputs *before* sprig `default` (below) swallows falsey values.
+Two rejection classes:
+  1. Falsy non-string scalars (`tag: 0`, `tag: false`, `tag: []`): silently treated as
+     unset by sprig `default` and would inherit appVersion / chart version, hiding the
+     user's typo.
+  2. Truthy non-scalar / bool values (`tag: ["v1"]`, `tag: {k: v}`, `tag: true`):
+     toString-coerce to garbage like `[v1]` / `map[k:v]` (kubelet rejects) or to `true`
+     which is almost always a YAML 1.1 unquoted-bool typo for the string "true".
+String and numeric scalars (int / float64) are permitted; numerics round-trip cleanly
+through toString (e.g. `tag: 5.6` → `"5.6"`). Empty string is permitted because it is
+the documented "unset" sentinel.
 Per-resource is checked only when an override is actually present so we don't double-report.
 */}}
+{{- $rejectedTagKinds := list "slice" "map" "bool" }}
 {{- if and (kindIs "map" $image) (hasKey $image "tag") }}
 {{- $resourceTag := get $image "tag" }}
-{{- if and (ne (kindOf $resourceTag) "invalid") (not (kindIs "string" $resourceTag)) (not $resourceTag) }}
-{{- fail (printf "image.tag (resource) is a falsey non-string value which would be silently treated as unset; got %s (value: %v). Quote the tag or remove it." (kindOf $resourceTag) $resourceTag) }}
+{{- $resourceTagKind := kindOf $resourceTag }}
+{{- if and (ne $resourceTagKind "invalid") (not (kindIs "string" $resourceTag)) (not $resourceTag) }}
+{{- fail (printf "image.tag (resource) is a falsey non-string value which would be silently treated as unset; got %s (value: %v). Quote the tag or remove it." $resourceTagKind $resourceTag) }}
+{{- end }}
+{{- if has $resourceTagKind $rejectedTagKinds }}
+{{- fail (printf "image.tag (resource) must be a string or numeric scalar, got %s (value: %v). Quote the tag (e.g. tag: \"v1\") — list/map/bool tags would render as a malformed image reference." $resourceTagKind $resourceTag) }}
 {{- end }}
 {{- end }}
 {{- if hasKey $defaultImage "tag" }}
 {{- $topTag := get $defaultImage "tag" }}
-{{- if and (ne (kindOf $topTag) "invalid") (not (kindIs "string" $topTag)) (not $topTag) }}
-{{- fail (printf "image.tag (top-level) is a falsey non-string value which would be silently treated as unset; got %s (value: %v). Quote the tag or remove it." (kindOf $topTag) $topTag) }}
+{{- $topTagKind := kindOf $topTag }}
+{{- if and (ne $topTagKind "invalid") (not (kindIs "string" $topTag)) (not $topTag) }}
+{{- fail (printf "image.tag (top-level) is a falsey non-string value which would be silently treated as unset; got %s (value: %v). Quote the tag or remove it." $topTagKind $topTag) }}
+{{- end }}
+{{- if has $topTagKind $rejectedTagKinds }}
+{{- fail (printf "image.tag (top-level) must be a string or numeric scalar, got %s (value: %v). Quote the tag (e.g. tag: \"v1\") — list/map/bool tags would render as a malformed image reference." $topTagKind $topTag) }}
 {{- end }}
 {{- end }}
 {{/*
@@ -346,8 +360,9 @@ Chart.Version when fallback enabled). String tags are trimmed at input so a whit
 value (`tag: "   "`) is treated identically to the documented `tag: ""` sentinel and falls
 through the chain instead of shadowing appVersion. appVersion and Chart.Version are also
 trimmed at input for the same reason — a stray-space `appVersion` would otherwise be blamed
-on image.tag by the final-stage whitespace rejection. Truthy non-string scalars (e.g.
+on image.tag by the final-stage whitespace rejection. Truthy numeric scalars (e.g.
 `tag: 5.6`) are passed through unchanged — toString below handles coercion before rendering.
+Slice/map/bool tags are already rejected upstream; they cannot reach this point.
 */}}
 {{- $resourceTagSrc := "" }}
 {{- if and (kindIs "map" $image) (hasKey $image "tag") }}
