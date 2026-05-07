@@ -173,8 +173,8 @@ Notes:
 - .root.Values.appVersion is consumed by sprig's `default` and is therefore only honored when truthy under Go-template rules; non-string or falsey values (e.g. 0, false) are silently treated as unset. Set appVersion as a string per Helm convention.
 - useChartVersionAsTagFallback is only honored under the top-level `image:` map. Setting it on a per-resource `image:` map is rejected with an explicit fail (not silently ignored).
 - useChartVersionAsTagFallback accepts a bool, or a string (case-insensitive, surrounding whitespace tolerated): `"true"`, `"True"`, `" FALSE "`, etc. are all valid. Any other string is rejected.
-- registry and repository must be strings when present. Non-string scalars (numbers, bools, lists, maps) are rejected with a kind-level error rather than coerced via toString.
-- tag is permissive: truthy non-string scalars (e.g. unquoted YAML numbers like `tag: 5.6`) are coerced via toString. Only FALSEY non-string scalars (`tag: 0`, `tag: false`, `tag: []`) are rejected, because sprig `default` would silently swallow them and inherit appVersion / chart version.
+- registry and repository must be strings when present. Non-string scalars (numbers, bools, lists, maps) are rejected with a kind-level error rather than coerced via toString. Surrounding whitespace is trimmed; an interior space (e.g. `repository: "my app"`) is rejected because it produces an invalid image reference.
+- tag is permissive: truthy non-string scalars (e.g. unquoted YAML numbers like `tag: 5.6`) are coerced via toString. Only falsy non-string scalars (`tag: 0`, `tag: false`, `tag: []`) are rejected, because sprig `default` would silently swallow them and inherit appVersion / chart version.
 */}}
 {{- define "chart.imageReference" -}}
 {{/* $root must be the helm template root context (typically $ or .Root). Not validated; misuse will surface as a low-level field-not-found error on $root.Values / $root.Chart. */}}
@@ -270,12 +270,33 @@ Per-resource is checked only when an override is actually present so we don't do
 {{- if not $repository }}
 {{- fail "image.repository is required after inheritance (set at top-level image.repository or resource-level image.repository)" }}
 {{- end }}
+{{/*
+Normalize: trim surrounding whitespace from registry/repository. Users routinely paste
+registry URLs from web UIs which carry stray spaces; without this, the chart silently
+renders an invalid image reference (e.g. `docker.io/  podinfo  :v1`) that K8s rejects far
+from the source of the typo. After trimming, reject interior spaces and empty values
+because they cannot form a valid OCI image reference.
+*/}}
+{{- $registry = trim $registry }}
+{{- $repository = trim $repository }}
+{{- if eq $registry "" }}
+{{- fail "image.registry is empty/whitespace-only after trimming; set a non-empty value or omit it to use the docker.io default" }}
+{{- end }}
+{{- if eq $repository "" }}
+{{- fail "image.repository is empty/whitespace-only after trimming; set a non-empty value" }}
+{{- end }}
+{{- if regexMatch "\\s" $registry }}
+{{- fail (printf "image.registry must not contain interior whitespace, got %q" $registry) }}
+{{- end }}
+{{- if regexMatch "\\s" $repository }}
+{{- fail (printf "image.repository must not contain interior whitespace, got %q" $repository) }}
+{{- end }}
 {{/* Validate: digests in repository are not supported in map mode — use string form instead */}}
 {{- if contains "@" $repository }}
 {{- fail "image.repository must not contain a digest in map form — use a full image string (e.g. deployment.image: \"registry/repo@sha256:...\")" }}
 {{- end }}
 {{/*
-Validate raw tag inputs *before* sprig `default` (below) swallows falsey values. Only FALSEY
+Validate raw tag inputs *before* sprig `default` (below) swallows falsey values. Only falsy
 non-string scalars (`tag: 0`, `tag: false`, `tag: []`) are rejected: those are silently
 treated as unset by sprig `default` and would inherit appVersion / chart version, hiding the
 user's typo. Truthy non-string scalars (e.g. unquoted YAML numbers like `tag: 5.6`) are
