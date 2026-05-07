@@ -174,7 +174,7 @@ Notes:
 - useChartVersionAsTagFallback is only honored under the top-level `image:` map. Setting it on a per-resource `image:` map is rejected with an explicit fail (not silently ignored).
 - useChartVersionAsTagFallback accepts a bool, or a string (case-insensitive, surrounding whitespace tolerated): `"true"`, `"True"`, `" FALSE "`, etc. are all valid. Any other string is rejected.
 - registry and repository must be strings when present. Non-string scalars (numbers, bools, lists, maps) are rejected with a kind-level error rather than coerced via toString. Surrounding whitespace is trimmed; an interior space (e.g. `repository: "my app"`) is rejected because it produces an invalid image reference.
-- tag is permissive on type: truthy non-string scalars (e.g. unquoted YAML numbers like `tag: 5.6`) are coerced via toString. Only falsy non-string scalars (`tag: 0`, `tag: false`, `tag: []`) are rejected, because sprig `default` would silently swallow them and inherit appVersion / chart version. After resolution, the effective tag is trimmed of surrounding whitespace; interior whitespace (e.g. `tag: "v 1"`) is rejected because it produces a malformed image reference (and breaks YAML rendering when surrounding-only).
+- tag is permissive on type: truthy non-string scalars (e.g. unquoted YAML numbers like `tag: 5.6`) are coerced via toString. Only falsy non-string scalars (`tag: 0`, `tag: false`, `tag: []`) are rejected, because sprig `default` would silently swallow them and inherit appVersion / chart version. String tags are trimmed of surrounding whitespace at input: `tag: "   "` is sentinel-equivalent to `tag: ""` (treated as unset, falls through to appVersion / Chart.Version). Interior whitespace (e.g. `tag: "v 1"`) is rejected because it produces a malformed image reference.
 */}}
 {{- define "chart.imageReference" -}}
 {{/* $root must be the helm template root context (typically $ or .Root). Not validated; misuse will surface as a low-level field-not-found error on $root.Values / $root.Chart. */}}
@@ -323,7 +323,32 @@ Per-resource is checked only when an override is actually present so we don't do
 {{- fail (printf "image.tag (top-level) is a falsey non-string value which would be silently treated as unset; got %s (value: %v). Quote the tag or remove it." (kindOf $topTag) $topTag) }}
 {{- end }}
 {{- end }}
-{{- $tag := $effectiveImage.tag | default $defaultImage.tag | default $root.Values.appVersion | default "" }}
+{{/*
+Resolve the effective tag from the documented chain (resource → top-level → appVersion →
+Chart.Version when fallback enabled). String tags are trimmed at input so a whitespace-only
+value (`tag: "   "`) is treated identically to the documented `tag: ""` sentinel and falls
+through the chain instead of shadowing appVersion. Truthy non-string scalars (e.g. `tag: 5.6`)
+are passed through unchanged — toString below handles coercion before rendering.
+*/}}
+{{- $resourceTagSrc := "" }}
+{{- if and (kindIs "map" $image) (hasKey $image "tag") }}
+{{- $rt := get $image "tag" }}
+{{- if kindIs "string" $rt }}
+{{- $resourceTagSrc = (trim $rt) }}
+{{- else }}
+{{- $resourceTagSrc = $rt }}
+{{- end }}
+{{- end }}
+{{- $topTagSrc := "" }}
+{{- if hasKey $defaultImage "tag" }}
+{{- $tt := get $defaultImage "tag" }}
+{{- if kindIs "string" $tt }}
+{{- $topTagSrc = (trim $tt) }}
+{{- else }}
+{{- $topTagSrc = $tt }}
+{{- end }}
+{{- end }}
+{{- $tag := $resourceTagSrc | default $topTagSrc | default $root.Values.appVersion | default "" }}
 {{- $useChartVersionFallback := true }}
 {{- if and (hasKey $root.Values "image") (kindIs "map" $root.Values.image) (hasKey $root.Values.image "useChartVersionAsTagFallback") }}
 {{- $rawUseChartVersionFallback := $root.Values.image.useChartVersionAsTagFallback }}
@@ -349,19 +374,15 @@ Per-resource is checked only when an override is actually present so we don't do
 {{- fail (printf "image.tag and appVersion are both unset, and image.useChartVersionAsTagFallback is false. Chart rendering is blocked to prevent an untagged image reference (%s/%s), which is non-deterministic and unsafe. Set image.tag or appVersion explicitly, or set image.useChartVersionAsTagFallback to true." $registry $repository) }}
 {{- end }}
 {{/*
-Normalize the resolved tag (mirrors registry/repository): coerce to string (truthy
-non-string scalars like `tag: 5.6` are permitted upstream and need toString here),
-then trim surrounding whitespace and reject interior whitespace. Without this,
-`tag: " v1 "` produces broken YAML and `tag: "v 1"` renders an invalid OCI reference
-(`registry/repo:v 1`) that K8s rejects far from the source of the typo.
+Final-stage tag normalization: truthy non-string scalars (e.g. `tag: 5.6`) are permitted
+upstream and need toString; interior whitespace (only reachable from non-string toString
+or a Chart.Version that contains spaces) is rejected because it produces a malformed OCI
+reference. Surrounding whitespace is already trimmed at input for string sources.
 */}}
 {{- if $tag }}
-{{- $tagStr := trim (toString $tag) }}
-{{- if eq $tagStr "" }}
-{{- fail "image.tag is empty/whitespace-only after trimming; quote a non-empty tag or remove the field to use the fallback chain (appVersion / Chart.Version)" }}
-{{- end }}
+{{- $tagStr := toString $tag }}
 {{- if regexMatch "\\s" $tagStr }}
-{{- fail (printf "image.tag must not contain interior whitespace, got %q" $tagStr) }}
+{{- fail (printf "image.tag must not contain whitespace, got %q" $tagStr) }}
 {{- end }}
 {{- $tag = $tagStr }}
 {{- end }}

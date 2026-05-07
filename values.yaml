@@ -40,9 +40,9 @@ image:
   #
   # NOTE - registry fallback: if registry is omitted, docker.io is used.
   #
-  # NOTE - empty string tag: tag: "" and omitting the tag field behave identically — both are
-  # treated as unset and fall through the chain (top-level tag → appVersion → optionally
-  # .Chart.Version when image.useChartVersionAsTagFallback=true).
+  # NOTE - empty string tag: tag: "", tag: "   " (whitespace-only), and omitting the tag field
+  # all behave identically — they are treated as unset and fall through the chain (top-level
+  # tag → appVersion → optionally .Chart.Version when image.useChartVersionAsTagFallback=true).
   # Truthy non-string scalars (e.g. unquoted YAML numbers like `tag: 5.6`) are accepted and
   # coerced to string. Falsy non-string scalars (tag: 0, tag: false, tag: []) are rejected
   # because sprig `default` would silently swallow them and inherit appVersion / chart version.

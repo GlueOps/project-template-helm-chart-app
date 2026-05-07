@@ -1059,9 +1059,24 @@ tests:
         enabled: true
     asserts:
       - failedTemplate:
-          errorPattern: "image.tag must not contain interior whitespace"
+          errorPattern: "image.tag must not contain whitespace"
 
-  - it: should fail when image.tag is whitespace-only
+  - it: should treat whitespace-only image.tag as unset and fall through to appVersion
+    set:
+      appName: example-app
+      appVersion: "9.9.9"
+      image:
+        registry: docker.io
+        repository: podinfo
+        tag: "   "
+      deployment:
+        enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: "docker.io/podinfo:9.9.9"
+
+  - it: should fail when image.tag is whitespace-only and all fallbacks are unavailable
     set:
       appName: example-app
       appVersion: ""
@@ -1074,7 +1089,7 @@ tests:
         enabled: true
     asserts:
       - failedTemplate:
-          errorPattern: "image.tag is empty/whitespace-only after trimming"
+          errorPattern: "image.tag and appVersion are both unset"
 
   - it: should fail when deployment image override is a boolean (unsupported scalar type)
     set:
