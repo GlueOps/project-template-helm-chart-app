@@ -171,6 +171,8 @@ String form (.image: "reg/repo:tag" or "reg/repo@sha256:...") is returned verbat
 Notes:
 - .image: {} (explicit empty map) is treated as "no override" and inherits from defaultImage, matching the behavior of an unset .image.
 - .root.Values.appVersion is consumed by sprig's `default` and is therefore only honored when truthy under Go-template rules; non-string or falsey values (e.g. 0, false) are silently treated as unset. Set appVersion as a string per Helm convention.
+- useChartVersionAsTagFallback is only honored under the top-level `image:` map. Setting it on a per-resource `image:` map is rejected with an explicit fail (not silently ignored).
+- registry, repository, and tag must be strings when present. Non-string scalars (numbers, bools, lists, maps) are rejected with a kind-level error rather than coerced via toString.
 */}}
 {{- define "chart.imageReference" -}}
 {{- $root := .root }}
@@ -211,12 +213,12 @@ Reject every other type with an actionable error.
 {{- if $effectiveImage }}
 {{- $registry := $effectiveImage.registry | default $defaultImage.registry | default "docker.io" }}
 {{- $repository := $effectiveImage.repository | default $defaultImage.repository | default "" }}
-{{/* Validate: registry and repository must be strings */}}
+{{/* Validate: registry and repository must be strings. Report the *kind* (not the value) so users see what's wrong, not just the literal they typed. */}}
 {{- if not (kindIs "string" $registry) }}
-{{- fail (printf "image.registry must be a string, got unsupported type: %v" $registry) }}
+{{- fail (printf "image.registry must be a string, got %s (value: %v)" (kindOf $registry) $registry) }}
 {{- end }}
 {{- if not (kindIs "string" $repository) }}
-{{- fail (printf "image.repository must be a string, got unsupported type: %v" $repository) }}
+{{- fail (printf "image.repository must be a string, got %s (value: %v)" (kindOf $repository) $repository) }}
 {{- end }}
 {{/* Validate: repository is required to form a valid image reference */}}
 {{- if not $repository }}
@@ -225,6 +227,26 @@ Reject every other type with an actionable error.
 {{/* Validate: digests in repository are not supported in map mode — use string form instead */}}
 {{- if contains "@" $repository }}
 {{- fail "image.repository must not contain a digest in map form — use a full image string (e.g. deployment.image: \"registry/repo@sha256:...\")" }}
+{{- end }}
+{{/*
+Validate raw tag inputs *before* sprig `default` (below) swallows falsey values. A user-provided
+`tag: 0` or `tag: false` would otherwise be silently treated as unset and fall through to
+appVersion / chart version. Check the per-resource and top-level tag explicitly. Per-resource is
+only checked when an override is actually present (i.e. $image is a non-empty map) — otherwise
+$effectiveImage IS $defaultImage and we would double-report. An empty string is permitted because
+it is the documented "unset" sentinel.
+*/}}
+{{- if and (kindIs "map" $image) $image (hasKey $image "tag") }}
+{{- $resourceTag := get $image "tag" }}
+{{- if and (ne (kindOf $resourceTag) "invalid") (not (kindIs "string" $resourceTag)) }}
+{{- fail (printf "image.tag (resource) must be a string, got %s (value: %v)" (kindOf $resourceTag) $resourceTag) }}
+{{- end }}
+{{- end }}
+{{- if hasKey $defaultImage "tag" }}
+{{- $topTag := get $defaultImage "tag" }}
+{{- if and (ne (kindOf $topTag) "invalid") (not (kindIs "string" $topTag)) }}
+{{- fail (printf "image.tag (top-level) must be a string, got %s (value: %v)" (kindOf $topTag) $topTag) }}
+{{- end }}
 {{- end }}
 {{- $tag := $effectiveImage.tag | default $defaultImage.tag | default $root.Values.appVersion | default "" }}
 {{- $useChartVersionFallback := true }}

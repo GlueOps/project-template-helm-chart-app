@@ -811,7 +811,7 @@ tests:
         enabled: true
     asserts:
       - failedTemplate:
-          errorPattern: "image.registry must be a string"
+          errorPattern: "image.registry must be a string, got float64 \\(value: 123\\)"
 
   - it: should fail when image.repository is an integer (unsupported type)
     set:
@@ -824,7 +824,49 @@ tests:
         enabled: true
     asserts:
       - failedTemplate:
-          errorPattern: "image.repository must be a string"
+          errorPattern: "image.repository must be a string, got float64 \\(value: 123\\)"
+
+  - it: should fail when image.tag is a non-string scalar (silent-coercion guard)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: 0
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.tag \\(top-level\\) must be a string, got float64 \\(value: 0\\)"
+
+  - it: should fail when image.tag is a bool (silent-coercion guard)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: false
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.tag \\(top-level\\) must be a string, got bool \\(value: false\\)"
+
+  - it: should fail when per-resource image.tag is a non-string scalar
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: "v1.0.0"
+      deployment:
+        enabled: true
+        image:
+          repository: override-app
+          tag: 0
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.tag \\(resource\\) must be a string, got float64 \\(value: 0\\)"
 
   - it: should fail when deployment image override is an integer (unsupported scalar type)
     set:
