@@ -628,9 +628,11 @@ tests:
         jobs:
           run-once: {}
     asserts:
-      - equal:
+      # Asserts a semver-like tag rather than the literal Chart.yaml version so that
+      # routine chart-version bumps do not red-line this test.
+      - matchRegex:
           path: spec.template.spec.containers[0].image
-          value: docker.io/batch-worker:0.11.0
+          pattern: "^docker\\.io/batch-worker:[0-9]+\\.[0-9]+\\.[0-9]+.*$"
 
   - it: should use appVersion for job image when fallback is disabled but appVersion is set
     set:

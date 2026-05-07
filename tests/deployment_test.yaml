@@ -694,9 +694,11 @@ tests:
         image:
           repository: frontend-service
     asserts:
-      - equal:
+      # Asserts a semver-like tag rather than the literal Chart.yaml version so that
+      # routine chart-version bumps do not red-line this test.
+      - matchRegex:
           path: spec.template.spec.containers[0].image
-          value: docker.io/frontend-service:0.11.0
+          pattern: "^docker\\.io/frontend-service:[0-9]+\\.[0-9]+\\.[0-9]+.*$"
 
   - it: should use explicit tag when useChartVersionAsTagFallback is false
     set:
@@ -1001,6 +1003,78 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "image.registry is empty/whitespace-only after trimming"
+
+  - it: should fail when top-level image is a boolean (silent-coercion guard via default dict)
+    set:
+      appName: example-app
+      image: false
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "\\.Values\\.image must be a map .* got bool"
+
+  - it: should fail when top-level image is the integer 0 (silent-coercion guard via default dict)
+    set:
+      appName: example-app
+      image: 0
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "\\.Values\\.image must be a map .* got (int|float64)"
+
+  - it: should fail when top-level image is an empty list (silent-coercion guard via default dict)
+    set:
+      appName: example-app
+      image: []
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "\\.Values\\.image must be a map .* got slice"
+
+  - it: should trim surrounding whitespace from image.tag
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: podinfo
+        tag: "  v1.2.3  "
+      deployment:
+        enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: "docker.io/podinfo:v1.2.3"
+
+  - it: should fail when image.tag contains interior whitespace
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: podinfo
+        tag: "v 1"
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.tag must not contain interior whitespace"
+
+  - it: should fail when image.tag is whitespace-only
+    set:
+      appName: example-app
+      appVersion: ""
+      image:
+        registry: docker.io
+        repository: podinfo
+        tag: "   "
+        useChartVersionAsTagFallback: false
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.tag is empty/whitespace-only after trimming"
 
   - it: should fail when deployment image override is a boolean (unsupported scalar type)
     set:

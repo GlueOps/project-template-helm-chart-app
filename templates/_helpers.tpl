@@ -174,24 +174,31 @@ Notes:
 - useChartVersionAsTagFallback is only honored under the top-level `image:` map. Setting it on a per-resource `image:` map is rejected with an explicit fail (not silently ignored).
 - useChartVersionAsTagFallback accepts a bool, or a string (case-insensitive, surrounding whitespace tolerated): `"true"`, `"True"`, `" FALSE "`, etc. are all valid. Any other string is rejected.
 - registry and repository must be strings when present. Non-string scalars (numbers, bools, lists, maps) are rejected with a kind-level error rather than coerced via toString. Surrounding whitespace is trimmed; an interior space (e.g. `repository: "my app"`) is rejected because it produces an invalid image reference.
-- tag is permissive: truthy non-string scalars (e.g. unquoted YAML numbers like `tag: 5.6`) are coerced via toString. Only falsy non-string scalars (`tag: 0`, `tag: false`, `tag: []`) are rejected, because sprig `default` would silently swallow them and inherit appVersion / chart version.
+- tag is permissive on type: truthy non-string scalars (e.g. unquoted YAML numbers like `tag: 5.6`) are coerced via toString. Only falsy non-string scalars (`tag: 0`, `tag: false`, `tag: []`) are rejected, because sprig `default` would silently swallow them and inherit appVersion / chart version. After resolution, the effective tag is trimmed of surrounding whitespace; interior whitespace (e.g. `tag: "v 1"`) is rejected because it produces a malformed image reference (and breaks YAML rendering when surrounding-only).
 */}}
 {{- define "chart.imageReference" -}}
 {{/* $root must be the helm template root context (typically $ or .Root). Not validated; misuse will surface as a low-level field-not-found error on $root.Values / $root.Chart. */}}
 {{- $root := .root }}
 {{- $image := .image }}
-{{- $defaultImage := .defaultImage | default (dict) }}
+{{- $defaultImage := .defaultImage }}
 {{/*
-Validate the helper's own parameter contract: $defaultImage must be a map (or unset).
+Validate the helper's own parameter contract: $defaultImage must be a map when set.
 A user misconfiguring the top-level value as a scalar (e.g. `--set image=ghcr.io/foo:v1`,
 forgetting that string-form overrides belong on per-resource <resource>.image, not the
 top-level image map) would otherwise crash deep inside the helper with a low-level
 `can't evaluate field registry in type string` error. Fail loudly with an actionable
-message at the helper boundary instead. `default (dict)` above only handles the unset
-case; a wrong-type value still slips through.
+message at the helper boundary instead.
+
+We must validate kind *before* defaulting to an empty dict, because sprig `default (dict)`
+swallows every Go-template-falsey value (false, 0, 0.0, [], "") and would substitute an
+empty map — masking the wrong-type input from the kind check below. Only the truly-unset
+(nil) case should fall through to the empty-dict default.
 */}}
-{{- if not (kindIs "map" $defaultImage) }}
-{{- fail (printf ".Values.image must be a map (with registry/repository/tag fields), got %s (value: %v). If you intended a per-resource string override, set <resource>.image instead (e.g. deployment.image: \"ghcr.io/foo:v1\")." (kindOf $defaultImage) $defaultImage) }}
+{{- $defaultImageKind := kindOf $defaultImage }}
+{{- if eq $defaultImageKind "invalid" }}
+{{- $defaultImage = (dict) }}
+{{- else if not (kindIs "map" $defaultImage) }}
+{{- fail (printf ".Values.image must be a map (with registry/repository/tag fields), got %s (value: %v). If you intended a per-resource string override, set <resource>.image instead (e.g. deployment.image: \"ghcr.io/foo:v1\")." $defaultImageKind $defaultImage) }}
 {{- end }}
 {{/*
 Dispatch on the *kind* of $image (not its truthiness) so that falsey scalars
@@ -341,9 +348,26 @@ Per-resource is checked only when an override is actually present so we don't do
 {{- if and (not $tag) (not $useChartVersionFallback) }}
 {{- fail (printf "image.tag and appVersion are both unset, and image.useChartVersionAsTagFallback is false. Chart rendering is blocked to prevent an untagged image reference (%s/%s), which is non-deterministic and unsafe. Set image.tag or appVersion explicitly, or set image.useChartVersionAsTagFallback to true." $registry $repository) }}
 {{- end }}
+{{/*
+Normalize the resolved tag (mirrors registry/repository): coerce to string (truthy
+non-string scalars like `tag: 5.6` are permitted upstream and need toString here),
+then trim surrounding whitespace and reject interior whitespace. Without this,
+`tag: " v1 "` produces broken YAML and `tag: "v 1"` renders an invalid OCI reference
+(`registry/repo:v 1`) that K8s rejects far from the source of the typo.
+*/}}
+{{- if $tag }}
+{{- $tagStr := trim (toString $tag) }}
+{{- if eq $tagStr "" }}
+{{- fail "image.tag is empty/whitespace-only after trimming; quote a non-empty tag or remove the field to use the fallback chain (appVersion / Chart.Version)" }}
+{{- end }}
+{{- if regexMatch "\\s" $tagStr }}
+{{- fail (printf "image.tag must not contain interior whitespace, got %q" $tagStr) }}
+{{- end }}
+{{- $tag = $tagStr }}
+{{- end }}
 {{- $imageRef := printf "%s/%s" $registry $repository }}
 {{- if $tag }}
-{{- printf "%s:%s" $imageRef (toString $tag) }}
+{{- printf "%s:%s" $imageRef $tag }}
 {{- else }}
 {{- $imageRef }}
 {{- end }}
