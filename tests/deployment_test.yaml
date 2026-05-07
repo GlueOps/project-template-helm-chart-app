@@ -825,3 +825,31 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "image.repository must be a string"
+
+  - it: should fail when deployment image override is an integer (unsupported scalar type)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: v1.0.0
+      deployment:
+        enabled: true
+        image: 12345
+    asserts:
+      - failedTemplate:
+          errorPattern: "image override must be a string .* or a map .* got unsupported type"
+
+  - it: should fail when deployment image override is a boolean (unsupported scalar type)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: v1.0.0
+      deployment:
+        enabled: true
+        image: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image override must be a string .* or a map .* got unsupported type"

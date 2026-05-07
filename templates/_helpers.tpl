@@ -167,15 +167,17 @@ Build a container image reference with per-resource override and inheritance sup
 Inputs: .root (template context), .image (per-resource: string or map), .defaultImage (top-level image map)
 Output: registry/repository[:tag] string
 Fallback chain (tag): resource image.tag → defaultImage.tag → .root.Values.appVersion → optionally .root.Chart.Version → fail if useChartVersionAsTagFallback=false and all prior sources unset
-String form (.image: "reg/repo:tag") is returned as-is (backward compat, required for digest-pinned images).
+String form (.image: "reg/repo:tag" or "reg/repo@sha256:...") is returned verbatim for backward compatibility and to allow references that cannot be expressed in map form. Map form supports digest pinning via tag (e.g. tag: "v1@sha256:...").
 */}}
 {{- define "chart.imageReference" -}}
 {{- $root := .root }}
 {{- $image := .image }}
 {{- $defaultImage := .defaultImage | default (dict) }}
-{{/* If image is a string (not a map), use it directly for backward compatibility */}}
-{{- if and $image (not (kindIs "map" $image)) }}
-{{- toString $image }}
+{{/* If image is a string, use it directly for backward compatibility. Reject other scalar types (int/bool/float/etc.) loudly so that mis-typed values do not silently render as image references. */}}
+{{- if kindIs "string" $image }}
+{{- $image }}
+{{- else if and $image (not (kindIs "map" $image)) }}
+{{- fail (printf "image override must be a string (e.g. \"registry/repo:tag\") or a map with registry/repository/tag fields, got unsupported type %s for value: %v" (kindOf $image) $image) }}
 {{- else }}
 {{/* Normalize inputs: derive effective registry/repository/tag once */}}
 {{- $effectiveImage := dict }}
