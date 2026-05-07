@@ -906,6 +906,48 @@ tests:
       - failedTemplate:
           errorPattern: "\\.Values\\.image must be a map .* got string \\(value: ghcr.io/foo:v1\\)"
 
+  - it: should fail when top-level image.registry is a falsey non-string (silent-coercion guard)
+    set:
+      appName: example-app
+      image:
+        registry: 0
+        repository: my-app
+        tag: "v1.0.0"
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.registry \\(top-level\\) is a falsey non-string value which would be silently swallowed; got float64 \\(value: 0\\)"
+
+  - it: should fail when per-resource image.registry is a falsey non-string
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: "v1.0.0"
+      deployment:
+        enabled: true
+        image:
+          registry: 0
+          repository: api
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.registry \\(resource\\) is a falsey non-string value which would be silently swallowed; got float64 \\(value: 0\\)"
+
+  - it: should fail when top-level image.repository is a falsey non-string (silent-coercion guard)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: false
+        tag: "v1.0.0"
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.repository \\(top-level\\) is a falsey non-string value which would be silently swallowed; got bool \\(value: false\\)"
+
   - it: should fail when deployment image override is a boolean (unsupported scalar type)
     set:
       appName: example-app

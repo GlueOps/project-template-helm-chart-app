@@ -177,6 +177,7 @@ Notes:
 - tag is permissive: truthy non-string scalars (e.g. unquoted YAML numbers like `tag: 5.6`) are coerced via toString. Only FALSEY non-string scalars (`tag: 0`, `tag: false`, `tag: []`) are rejected, because sprig `default` would silently swallow them and inherit appVersion / chart version.
 */}}
 {{- define "chart.imageReference" -}}
+{{/* $root must be the helm template root context (typically $ or .Root). Not validated; misuse will surface as a low-level field-not-found error on $root.Values / $root.Chart. */}}
 {{- $root := .root }}
 {{- $image := .image }}
 {{- $defaultImage := .defaultImage | default (dict) }}
@@ -224,6 +225,38 @@ Reject every other type with an actionable error.
 {{- $effectiveImage = $defaultImage }}
 {{- end }}
 {{- if $effectiveImage }}
+{{/*
+Validate raw registry/repository inputs *before* sprig `default` (below) swallows falsey
+scalars (0, false, []). Same falsey-non-string silent-coercion class as image.tag: a typo
+like `registry: 0` would otherwise be silently dropped and inherit "docker.io", hiding
+the bug. Truthy non-string scalars are intentionally NOT rejected here — the post-default
+`kindIs "string"` checks below catch those and report them with the actual kind.
+Per-resource is checked only when an override is actually present so we don't double-report.
+*/}}
+{{- if and (kindIs "map" $image) (hasKey $image "registry") }}
+{{- $r := get $image "registry" }}
+{{- if and (ne (kindOf $r) "invalid") (not (kindIs "string" $r)) (not $r) }}
+{{- fail (printf "image.registry (resource) is a falsey non-string value which would be silently swallowed; got %s (value: %v). Quote it or remove it." (kindOf $r) $r) }}
+{{- end }}
+{{- end }}
+{{- if hasKey $defaultImage "registry" }}
+{{- $r := get $defaultImage "registry" }}
+{{- if and (ne (kindOf $r) "invalid") (not (kindIs "string" $r)) (not $r) }}
+{{- fail (printf "image.registry (top-level) is a falsey non-string value which would be silently swallowed; got %s (value: %v). Quote it or remove it." (kindOf $r) $r) }}
+{{- end }}
+{{- end }}
+{{- if and (kindIs "map" $image) (hasKey $image "repository") }}
+{{- $r := get $image "repository" }}
+{{- if and (ne (kindOf $r) "invalid") (not (kindIs "string" $r)) (not $r) }}
+{{- fail (printf "image.repository (resource) is a falsey non-string value which would be silently swallowed; got %s (value: %v). Quote it or remove it." (kindOf $r) $r) }}
+{{- end }}
+{{- end }}
+{{- if hasKey $defaultImage "repository" }}
+{{- $r := get $defaultImage "repository" }}
+{{- if and (ne (kindOf $r) "invalid") (not (kindIs "string" $r)) (not $r) }}
+{{- fail (printf "image.repository (top-level) is a falsey non-string value which would be silently swallowed; got %s (value: %v). Quote it or remove it." (kindOf $r) $r) }}
+{{- end }}
+{{- end }}
 {{- $registry := $effectiveImage.registry | default $defaultImage.registry | default "docker.io" }}
 {{- $repository := $effectiveImage.repository | default $defaultImage.repository | default "" }}
 {{/* Validate: registry and repository must be strings. Report the *kind* (not the value) so users see what's wrong, not just the literal they typed. */}}
