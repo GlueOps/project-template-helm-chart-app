@@ -94,3 +94,36 @@ tests:
       - equal:
           path: spec.template.spec.enableServiceLinks
           value: true
+
+  - it: should support per-statefulset image repository override with inherited registry and tag
+    set:
+      deployment.enabled: false
+      appName: example-app
+      image:
+        registry: ghcr.io
+        repository: shared-repo
+        tag: v4.1.0
+      statefulSet:
+        enabled: true
+        image:
+          repository: data-service
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/data-service:v4.1.0
+
+  - it: should support statefulset image string override for backward compatibility
+    set:
+      deployment.enabled: false
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: nginx
+        tag: latest
+      statefulSet:
+        enabled: true
+        image: quay.io/example/stateful:v9.0.0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: quay.io/example/stateful:v9.0.0

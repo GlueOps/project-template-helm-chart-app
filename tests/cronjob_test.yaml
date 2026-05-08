@@ -686,3 +686,90 @@ tests:
           path: spec.jobTemplate.spec.template.metadata.labels.cronjob
           value: example-app-my-cron
 
+  - it: should support per-cronjob image repository override with inherited registry and tag
+    set:
+      appName: example-app
+      image:
+        registry: myregistry.io
+        repository: default-repo
+        tag: v2.0.0
+      cronJob:
+        enabled: true
+        jobs:
+          backup-job:
+            schedule: "0 2 * * *"
+            image:
+              repository: backup-service
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].image
+          value: myregistry.io/backup-service:v2.0.0
+
+  - it: should support multiple cronjobs with different repositories sharing registry and tag
+    set:
+      appName: example-app
+      image:
+        registry: gcr.io
+        tag: v1.0.0
+      cronJob:
+        enabled: true
+        jobs:
+          backup:
+            schedule: "0 2 * * *"
+            image:
+              repository: backup-job
+          cleanup:
+            schedule: "0 3 * * *"
+            image:
+              repository: cleanup-job
+    asserts:
+      - hasDocuments:
+          count: 2
+      - documentSelector:
+          path: spec.schedule
+          value: "0 2 * * *"
+        equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].image
+          value: gcr.io/backup-job:v1.0.0
+      - documentSelector:
+          path: spec.schedule
+          value: "0 3 * * *"
+        equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].image
+          value: gcr.io/cleanup-job:v1.0.0
+
+  - it: should allow full image override per cronjob
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: default-repo
+        tag: v1.0.0
+      cronJob:
+        enabled: true
+        jobs:
+          custom-job:
+            schedule: "0 4 * * *"
+            image: quay.io/custom-org/special-image:v5.0.0
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].image
+          value: quay.io/custom-org/special-image:v5.0.0
+
+  - it: should inherit top-level image when cronjob image not specified
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: shared-service
+        tag: latest
+      cronJob:
+        enabled: true
+        jobs:
+          my-job:
+            schedule: "0 5 * * *"
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.containers[0].image
+          value: docker.io/shared-service:latest
+

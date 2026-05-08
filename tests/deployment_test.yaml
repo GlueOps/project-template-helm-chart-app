@@ -615,3 +615,712 @@ tests:
       - equal:
           path: spec.template.metadata.labels["app.kubernetes.io/name"]
           value: example-app
+
+  - it: should support per-resource image repository override with inherited registry and tag
+    set:
+      appName: example-app
+      image:
+        registry: myregistry.io
+        repository: default-repo
+        tag: v2.0.0
+      deployment:
+        enabled: true
+        image:
+          repository: api-service
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: myregistry.io/api-service:v2.0.0
+
+  - it: should inherit all image fields when no deployment-level override is provided
+    set:
+      appName: example-app
+      image:
+        registry: gcr.io
+        repository: my-project/app
+        tag: latest
+      deployment:
+        enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: gcr.io/my-project/app:latest
+
+  - it: should support per-resource image override with all fields specified
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: default-repo
+        tag: v1.0.0
+      deployment:
+        enabled: true
+        image:
+          registry: quay.io
+          repository: my-org/service
+          tag: v3.0.0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: quay.io/my-org/service:v3.0.0
+
+  - it: should use appVersion as tag fallback when deployment image has no tag
+    set:
+      appName: example-app
+      appVersion: 1.5.0
+      image:
+        registry: docker.io
+        repository: default-repo
+        tag: ""
+      deployment:
+        enabled: true
+        image:
+          repository: backend-service
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/backend-service:1.5.0
+
+  - it: should fallback to chart version when appVersion and image tag are unset
+    set:
+      appName: example-app
+      appVersion: ""
+      image:
+        registry: docker.io
+        repository: default-repo
+        tag: ""
+      deployment:
+        enabled: true
+        image:
+          repository: frontend-service
+    asserts:
+      # Asserts a semver-like tag rather than the literal Chart.yaml version so that
+      # routine chart-version bumps do not red-line this test.
+      - matchRegex:
+          path: spec.template.spec.containers[0].image
+          pattern: "^docker\\.io/frontend-service:[0-9]+\\.[0-9]+\\.[0-9]+.*$"
+
+  - it: should use explicit tag when useChartVersionAsTagFallback is false
+    set:
+      appName: example-app
+      appVersion: ""
+      image:
+        registry: docker.io
+        repository: default-repo
+        tag: v1.5.0
+        useChartVersionAsTagFallback: false
+      deployment:
+        enabled: true
+        image:
+          repository: frontend-service
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/frontend-service:v1.5.0
+
+  - it: should support string image override (backward compatibility)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: nginx
+        tag: latest
+      deployment:
+        enabled: true
+        image: myregistry.com/custom-image:v5.0.0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: myregistry.com/custom-image:v5.0.0
+
+  - it: should use docker.io when registry is missing
+    set:
+      appName: example-app
+      image:
+        registry: ""
+        repository: my-app
+        tag: v1.2.3
+      deployment:
+        enabled: true
+        image:
+          repository: custom-service
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/custom-service:v1.2.3
+
+  - it: should use appVersion when useChartVersionAsTagFallback is quoted false (string form)
+    set:
+      appName: example-app
+      appVersion: 2.5.0
+      image:
+        registry: docker.io
+        repository: default-repo
+        tag: ""
+        useChartVersionAsTagFallback: "false"
+      deployment:
+        enabled: true
+        image:
+          repository: frontend-service
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/frontend-service:2.5.0
+
+  - it: should use appVersion when useChartVersionAsTagFallback is quoted false but appVersion is set
+    set:
+      appName: example-app
+      appVersion: 2.0.0
+      image:
+        registry: docker.io
+        repository: default-repo
+        tag: ""
+        useChartVersionAsTagFallback: "false"
+      deployment:
+        enabled: true
+        image:
+          repository: frontend-service
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/frontend-service:2.0.0
+
+  - it: should fail when useChartVersionAsTagFallback is an integer (unsupported type)
+    set:
+      appName: example-app
+      appVersion: ""
+      image:
+        registry: docker.io
+        repository: default-repo
+        tag: ""
+        useChartVersionAsTagFallback: 1
+      deployment:
+        enabled: true
+        image:
+          repository: frontend-service
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.useChartVersionAsTagFallback must be a bool or string \\('true'/'false'\\), got float64 \\(value: 1\\)"
+
+  - it: should fail when image.registry is an integer (unsupported type)
+    set:
+      appName: example-app
+      image:
+        registry: 123
+        repository: my-app
+        tag: v1.0.0
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.registry must be a string, got float64 \\(value: 123\\)"
+
+  - it: should fail when image.repository is an integer (unsupported type)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: 123
+        tag: v1.0.0
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.repository must be a string, got float64 \\(value: 123\\)"
+
+  - it: should fail when image.tag is a non-string scalar (silent-coercion guard)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: 0
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.tag \\(top-level\\) is a falsey non-string value which would be silently treated as unset; got float64 \\(value: 0\\)"
+
+  - it: should fail when image.tag is a bool (silent-coercion guard)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: false
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.tag \\(top-level\\) is a falsey non-string value which would be silently treated as unset; got bool \\(value: false\\)"
+
+  - it: should fail when per-resource image.tag is a non-string scalar
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: "v1.0.0"
+      deployment:
+        enabled: true
+        image:
+          repository: override-app
+          tag: 0
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.tag \\(resource\\) is a falsey non-string value which would be silently treated as unset; got float64 \\(value: 0\\)"
+
+  - it: should accept truthy non-string tag (unquoted YAML number) via toString coercion
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: 5.6
+      deployment:
+        enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: "docker.io/my-app:5.6"
+
+  - it: should fail when top-level image.tag is a list (would render as malformed image reference)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: ["v1"]
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.tag \\(top-level\\) must be a string or numeric scalar, got slice"
+
+  - it: should fail when top-level image.tag is a map (would render as malformed image reference)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag:
+          k: v
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.tag \\(top-level\\) must be a string or numeric scalar, got map"
+
+  - it: should fail when top-level image.tag is an unquoted YAML bool (almost always a typo for the string)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: true
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.tag \\(top-level\\) must be a string or numeric scalar, got bool"
+
+  - it: should fail when per-resource image.tag is a list
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: "v1.0.0"
+      deployment:
+        enabled: true
+        image:
+          repository: override-app
+          tag: ["v1"]
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.tag \\(resource\\) must be a string or numeric scalar, got slice"
+
+  - it: should fail when deployment image override is an integer (unsupported scalar type)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: v1.0.0
+      deployment:
+        enabled: true
+        image: 12345
+    asserts:
+      - failedTemplate:
+          errorPattern: "image override must be a string .* or a map .* got unsupported type"
+
+  - it: should fail with actionable error when top-level image is a scalar (parameter contract guard)
+    set:
+      appName: example-app
+      image: "ghcr.io/foo:v1"
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "\\.Values\\.image must be a map .* got string \\(value: ghcr.io/foo:v1\\)"
+
+  - it: should fail when top-level image.registry is a falsey non-string (silent-coercion guard)
+    set:
+      appName: example-app
+      image:
+        registry: 0
+        repository: my-app
+        tag: "v1.0.0"
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.registry \\(top-level\\) is a falsey non-string value which would be silently swallowed; got float64 \\(value: 0\\)"
+
+  - it: should fail when per-resource image.registry is a falsey non-string
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: "v1.0.0"
+      deployment:
+        enabled: true
+        image:
+          registry: 0
+          repository: api
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.registry \\(resource\\) is a falsey non-string value which would be silently swallowed; got float64 \\(value: 0\\)"
+
+  - it: should fail when top-level image.repository is a falsey non-string (silent-coercion guard)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: false
+        tag: "v1.0.0"
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.repository \\(top-level\\) is a falsey non-string value which would be silently swallowed; got bool \\(value: false\\)"
+
+  - it: should trim surrounding whitespace from image.repository
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: "  podinfo  "
+        tag: "v1"
+      deployment:
+        enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: "docker.io/podinfo:v1"
+
+  - it: should trim surrounding whitespace from image.registry
+    set:
+      appName: example-app
+      image:
+        registry: "  ghcr.io  "
+        repository: podinfo
+        tag: "v1"
+      deployment:
+        enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: "ghcr.io/podinfo:v1"
+
+  - it: should fail when image.repository contains interior whitespace
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: "my app"
+        tag: "v1"
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.repository must not contain interior whitespace"
+
+  - it: should fail when image.registry is whitespace-only
+    set:
+      appName: example-app
+      image:
+        registry: "   "
+        repository: podinfo
+        tag: "v1"
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.registry is empty/whitespace-only after trimming"
+
+  - it: should fail when top-level image is a boolean (silent-coercion guard via default dict)
+    set:
+      appName: example-app
+      image: false
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "\\.Values\\.image must be a map .* got bool"
+
+  - it: should fail when top-level image is the integer 0 (silent-coercion guard via default dict)
+    set:
+      appName: example-app
+      image: 0
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "\\.Values\\.image must be a map .* got (int|float64)"
+
+  - it: should fail when top-level image is an empty list (silent-coercion guard via default dict)
+    set:
+      appName: example-app
+      image: []
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "\\.Values\\.image must be a map .* got slice"
+
+  - it: should trim surrounding whitespace from image.tag
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: podinfo
+        tag: "  v1.2.3  "
+      deployment:
+        enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: "docker.io/podinfo:v1.2.3"
+
+  - it: should fail when image.tag contains interior whitespace
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: podinfo
+        tag: "v 1"
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.tag must not contain whitespace"
+
+  - it: should treat whitespace-only image.tag as unset and fall through to appVersion
+    set:
+      appName: example-app
+      appVersion: "9.9.9"
+      image:
+        registry: docker.io
+        repository: podinfo
+        tag: "   "
+      deployment:
+        enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: "docker.io/podinfo:9.9.9"
+
+  - it: should trim surrounding whitespace from appVersion when it serves as the tag fallback
+    set:
+      appName: example-app
+      appVersion: "  9.9.9  "
+      image:
+        registry: docker.io
+        repository: podinfo
+        tag: ""
+      deployment:
+        enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: "docker.io/podinfo:9.9.9"
+
+  - it: should fail with appVersion-named error when appVersion contains interior whitespace
+    set:
+      appName: example-app
+      appVersion: "v 1"
+      image:
+        registry: docker.io
+        repository: podinfo
+        tag: ""
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "\\.Values\\.appVersion must not contain interior whitespace"
+
+  - it: should fail when image.tag is whitespace-only and all fallbacks are unavailable
+    set:
+      appName: example-app
+      appVersion: ""
+      image:
+        registry: docker.io
+        repository: podinfo
+        tag: "   "
+        useChartVersionAsTagFallback: false
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.tag and appVersion are both unset"
+
+  - it: should fail when deployment image override is a boolean (unsupported scalar type)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: v1.0.0
+      deployment:
+        enabled: true
+        image: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image override must be a string .* or a map .* got unsupported type"
+
+  - it: should fail when deployment image override is the integer 0 (falsey scalar must not silently inherit)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: v1.0.0
+      deployment:
+        enabled: true
+        image: 0
+    asserts:
+      - failedTemplate:
+          errorPattern: "image override must be a string .* or a map .* got unsupported type"
+
+  - it: should fail when deployment image override is the boolean false (falsey scalar must not silently inherit)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: v1.0.0
+      deployment:
+        enabled: true
+        image: false
+    asserts:
+      - failedTemplate:
+          errorPattern: "image override must be a string .* or a map .* got unsupported type"
+
+  - it: should fail when deployment image override is an empty list (falsey non-map must not silently inherit)
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: my-app
+        tag: v1.0.0
+      deployment:
+        enabled: true
+        image: []
+    asserts:
+      - failedTemplate:
+          errorPattern: "image override must be a string .* or a map .* got unsupported type"
+
+  - it: should fail when useChartVersionAsTagFallback is set under a per-resource image map
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: default-repo
+        tag: v1.0.0
+      deployment:
+        enabled: true
+        image:
+          repository: frontend-service
+          useChartVersionAsTagFallback: false
+    asserts:
+      - failedTemplate:
+          errorPattern: "useChartVersionAsTagFallback is only supported under the top-level"
+
+  - it: should fail with actionable error when an unknown key is set under a per-resource image map
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: default-repo
+        tag: v1.0.0
+      deployment:
+        enabled: true
+        image:
+          repository: frontend-service
+          command: ["/bin/sh"]
+    asserts:
+      - failedTemplate:
+          errorPattern: "image\\.command is not supported under a per-resource"
+
+  - it: should fail when an unknown image key is set per-resource even with no other overrides
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: default-repo
+        tag: v1.0.0
+      deployment:
+        enabled: true
+        image:
+          lifecycle:
+            postStart: {}
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.lifecycle is not supported under a per-resource"
+
+  - it: should treat empty string image override as unset and inherit from top-level
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: nginx
+        tag: v1.2.3
+      deployment:
+        enabled: true
+        image: ""
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/nginx:v1.2.3
+
+  - it: should treat whitespace-only image override as unset and inherit from top-level
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: nginx
+        tag: v1.2.3
+      deployment:
+        enabled: true
+        image: "   "
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/nginx:v1.2.3
+
+  - it: should treat empty map image override as no override and inherit from top-level
+    set:
+      appName: example-app
+      image:
+        registry: docker.io
+        repository: nginx
+        tag: v1.2.3
+      deployment:
+        enabled: true
+        image: {}
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: docker.io/nginx:v1.2.3
