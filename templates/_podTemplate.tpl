@@ -75,9 +75,10 @@ spec:
       topologyKey: topology.kubernetes.io/zone
       whenUnsatisfiable: ScheduleAnyway
   {{- end }}
-  {{- if .imagePullSecrets }}
+  {{- $imagePullSecret := include "chart.imagePullSecretName" . | trim }}
+  {{- if $imagePullSecret }}
   imagePullSecrets:
-  - name: {{ .imagePullSecrets }}
+  - name: {{ $imagePullSecret | quote }}
   {{- end }}
   {{- if .securityContext }}
   securityContext:

@@ -1,5 +1,6 @@
 {{ if .Values.job.enabled }}
 {{- range $name, $job := .Values.job.jobs }}
+{{- if eq (include "chart.jobEntryEnabled" (dict "job" $job "name" $name)) "true" }}
 ---
 apiVersion: batch/v1
 kind: Job
@@ -30,9 +31,11 @@ metadata:
 spec:
   suspend: {{ $job.suspend | default false }}
   {{- include "chart.jobSpec" (dict "global" $.Values.job "job" $job) | indent 2 }}
-  {{- $context :=  merge (dict "resourceType" "job" "name" $name "Chart" $.Chart "Root" $newContext) $job }}
+  {{- $podGlobals := fromYaml (include "chart.jobPodGlobals" (omit $.Values.job "jobs" "enabled")) | default dict -}}
+  {{- $context :=  merge (dict "resourceType" "job" "name" $name "Chart" $.Chart "Root" $newContext) $podGlobals $job }}
   template:
   {{- include "chart.podTemplate" $context | nindent 4 }}
 
+{{- end }}
 {{- end }}
 {{- end }}

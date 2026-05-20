@@ -163,6 +163,71 @@ Object fields: structured YAML (maps/lists). Add new K8s fields to $objectFields
 {{- end -}}
 
 {{/*
+Pod-template fields allowed to inherit from cronJob/job global config (excludes labels, annotations, JobSpec, schedule).
+*/}}
+{{- define "chart.jobPodGlobals" -}}
+{{- toYaml (pick . "imagePullSecrets" "tolerations" "affinity" "nodeSelector" "topologySpreadConstraints" "topologySpreadConstraintsMaxSkew" "image" "imagePullPolicy" "command" "args" "resources" "securityContext" "containerSecurityContext" "envMap" "envSecrets" "envFrom" "envVariables" "envConfigMaps" "volumes" "volumeMounts" "initContainers" "sidecar" "serviceAccount" "enableServiceLinks" "hostNetwork" "hostAliases" "dnsPolicy" "dnsConfig" "terminationGracePeriodSeconds" "priorityClassName" "shareProcessNamespace" "restartPolicy" "matchLabels" "startupProbe" "livenessProbe" "readinessProbe") -}}
+{{- end -}}
+
+{{/*
+Whether a cronJob.jobs.<name> or job.jobs.<name> entry should render. .enabled must be boolean when set.
+*/}}
+{{- define "chart.jobEntryEnabled" -}}
+{{- $job := .job -}}
+{{- $name := .name -}}
+{{- if hasKey $job "enabled" -}}
+{{- if not (kindIs "bool" $job.enabled) -}}
+{{- fail (printf "jobs.%s.enabled must be a boolean, got %s (value: %v). Use true or false, not a string." $name (kindOf $job.enabled) $job.enabled) -}}
+{{- end -}}
+{{- ternary "true" "false" $job.enabled -}}
+{{- else -}}
+true
+{{- end -}}
+{{- end -}}
+
+{{/*
+Resolve the Kubernetes imagePullSecrets secret name for a pod template context.
+Precedence (highest wins):
+  1. cronJob.jobs.<name>.imagePullSecrets / job.jobs.<name>.imagePullSecrets when the key is present (only this path: empty string opts out)
+  2. .imagePullSecrets on the merged workload context when truthy (deployment/statefulSet empty string is falsy and inherits step 3)
+  3. .Root.Values.image.pullSecrets (when .Values.image is a map)
+  4. .Root.Values.image.imagePullSecrets (alias; only when pullSecrets is unset)
+Per-job lookup uses Values.jobs directly because shallow merge does not reliably override globals.
+*/}}
+{{- define "chart.imagePullSecretName" -}}
+{{- $secret := "" -}}
+{{- $explicitPerJob := false -}}
+{{- if and .name (or (eq .resourceType "cronJob") (eq .resourceType "job")) -}}
+{{- $jobsMap := ternary .Root.Values.cronJob.jobs .Root.Values.job.jobs (eq .resourceType "cronJob") -}}
+{{- with index $jobsMap .name -}}
+{{- if hasKey . "imagePullSecrets" -}}
+{{- $explicitPerJob = true -}}
+{{- $secret = .imagePullSecrets -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- if not $explicitPerJob -}}
+{{- if .imagePullSecrets -}}
+{{- $secret = .imagePullSecrets -}}
+{{- else if and (kindIs "map" .Root.Values.image) .Root.Values.image.pullSecrets -}}
+{{- $secret = .Root.Values.image.pullSecrets -}}
+{{- else if and (kindIs "map" .Root.Values.image) (not .Root.Values.image.pullSecrets) .Root.Values.image.imagePullSecrets -}}
+{{- $secret = .Root.Values.image.imagePullSecrets -}}
+{{- end -}}
+{{- end -}}
+{{- if $secret -}}
+{{- if not (kindIs "string" $secret) -}}
+{{- fail (printf "imagePullSecrets must be a string secret name, got %s (value: %v)" (kindOf $secret) $secret) -}}
+{{- end -}}
+{{- $secret = trim $secret -}}
+{{- if regexMatch "\\s" $secret -}}
+{{- fail (printf "imagePullSecrets must not contain whitespace, got %q" $secret) -}}
+{{- end -}}
+{{- end -}}
+{{- $secret -}}
+{{- end -}}
+
+{{/*
 Build a container image reference with per-resource override and inheritance support.
 Inputs: .root (template context), .image (per-resource: string or map), .defaultImage (top-level image map)
 Output: registry/repository[:tag] string
