@@ -714,3 +714,95 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "must not contain a digest"
+
+  - it: should inherit image.pullSecrets on job pods
+    set:
+      image:
+        pullSecrets: global-reg-cred
+      job:
+        enabled: true
+        jobs:
+          run-once:
+            image: nginx
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: global-reg-cred
+
+  - it: should inherit job.imagePullSecrets on all jobs
+    set:
+      job:
+        enabled: true
+        imagePullSecrets: job-global-cred
+        jobs:
+          run-once:
+            image: nginx
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: job-global-cred
+
+  - it: should prefer per-job imagePullSecrets over job global
+    set:
+      job:
+        enabled: true
+        imagePullSecrets: job-global-cred
+        jobs:
+          run-once:
+            image: nginx
+            imagePullSecrets: job-specific-cred
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: job-specific-cred
+
+  - it: should skip job when jobs entry has enabled false
+    set:
+      job:
+        enabled: true
+        jobs:
+          wanted:
+            image: nginx
+          unwanted:
+            enabled: false
+            image: nginx
+    documentSelector:
+      path: metadata.name
+      value: example-app-wanted
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Job
+
+  - it: should fail when top-level image is null with values file
+    values:
+      - fixtures/values-image-null-job.yaml
+    asserts:
+      - failedTemplate:
+          errorPattern: "could not resolve image"
+
+  - it: should fail when jobs entry enabled is a string
+    set:
+      job:
+        enabled: true
+        jobs:
+          run-once:
+            enabled: "false"
+            image: nginx
+    asserts:
+      - failedTemplate:
+          errorPattern: "enabled must be a boolean"
+
+  - it: should opt out of pull secrets when per-job imagePullSecrets is empty string
+    set:
+      job:
+        enabled: true
+        imagePullSecrets: job-global-cred
+        jobs:
+          run-once:
+            image: nginx
+            imagePullSecrets: ""
+    asserts:
+      - isNull:
+          path: spec.template.spec.imagePullSecrets

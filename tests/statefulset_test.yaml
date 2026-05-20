@@ -127,3 +127,41 @@ tests:
       - equal:
           path: spec.template.spec.containers[0].image
           value: quay.io/example/stateful:v9.0.0
+
+  - it: should inherit image.pullSecrets on statefulset pods
+    set:
+      deployment.enabled: false
+      image:
+        pullSecrets: global-reg-cred
+      statefulSet:
+        enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: global-reg-cred
+
+  - it: should prefer statefulSet.imagePullSecrets over image.pullSecrets
+    set:
+      deployment.enabled: false
+      image:
+        pullSecrets: global-reg-cred
+      statefulSet:
+        enabled: true
+        imagePullSecrets: sts-specific-cred
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: sts-specific-cred
+
+  - it: should inherit image.pullSecrets when statefulSet.imagePullSecrets is empty string
+    set:
+      deployment.enabled: false
+      image:
+        pullSecrets: global-reg-cred
+      statefulSet:
+        enabled: true
+        imagePullSecrets: ""
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: global-reg-cred
