@@ -52,3 +52,412 @@ tests:
       - equal:
           path: .spec.triggers
           value: []
+
+  # Test Case 5: Nested spec values should render as valid YAML objects
+  - it: should render nested fallback and advanced spec fields
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.fallback.failureThreshold: 3
+      keda.scaledObject.spec.fallback.replicas: 6
+      keda.scaledObject.spec.advanced.restoreToOriginalReplicaCount: true
+      keda.scaledObject.spec.advanced.horizontalPodAutoscalerConfig.behavior.scaleDown.stabilizationWindowSeconds: 300
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ScaledObject
+      - equal:
+          path: .spec.fallback.failureThreshold
+          value: 3
+      - equal:
+          path: .spec.fallback.replicas
+          value: 6
+      - equal:
+          path: .spec.advanced.restoreToOriginalReplicaCount
+          value: true
+      - equal:
+          path: .spec.advanced.horizontalPodAutoscalerConfig.behavior.scaleDown.stabilizationWindowSeconds
+          value: 300
+
+  # Test Case 6: Scalar spec values should continue rendering correctly
+  - it: should render scalar spec fields
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.pollingInterval: 30
+      keda.scaledObject.spec.minReplicaCount: 1
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ScaledObject
+      - equal:
+          path: .spec.pollingInterval
+          value: 30
+      - equal:
+          path: .spec.minReplicaCount
+          value: 1
+
+  # Test Case 6b: Quoted numeric scalar should preserve previous rendering behavior
+  - it: should render quoted numeric scalar input without string typing in output
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.pollingInterval: "30"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ScaledObject
+      - equal:
+          path: .spec.pollingInterval
+          value: 30
+
+  # Test Case 6c: Multi-line top-level scalar spec fields should render as valid YAML
+  - it: should render multi-line scalar spec fields as block scalars
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.cooldownNote: |-
+        cool down
+        gradually
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ScaledObject
+      - equal:
+          path: .spec.cooldownNote
+          value: "cool down\ngradually"
+
+  # Test Case 6d: Single-line scalar strings with YAML metacharacters should be quoted safely
+  - it: should render YAML-special scalar strings as strings
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.someField: "my: value"
+      keda.scaledObject.spec.commentLike: "# a comment"
+      keda.scaledObject.spec.boolLike: "yes"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ScaledObject
+      - equal:
+          path: .spec.someField
+          value: "my: value"
+      - equal:
+          path: .spec.commentLike
+          value: "# a comment"
+      - equal:
+          path: .spec.boolLike
+          value: "yes"
+
+  # Test Case 7: User-provided scaleTargetRef should not be overridden by default
+  - it: should use user-provided scaleTargetRef and not insert the default
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.scaleTargetRef.name: custom-deployment
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ScaledObject
+      - equal:
+          path: .spec.scaleTargetRef.name
+          value: custom-deployment
+
+  # Test Case 8: advanced.scalingModifiers (KEDA 2.15+ GA) should render as nested YAML
+  - it: should render advanced.scalingModifiers as nested YAML
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.advanced.scalingModifiers.formula: "workload1 + workload2"
+      keda.scaledObject.spec.advanced.scalingModifiers.target: "10"
+      keda.scaledObject.spec.advanced.scalingModifiers.activationTarget: "2"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ScaledObject
+      - equal:
+          path: .spec.advanced.scalingModifiers.formula
+          value: "workload1 + workload2"
+      - equal:
+          path: .spec.advanced.scalingModifiers.target
+          value: "10"
+
+      - equal:
+          path: .spec.advanced.scalingModifiers.activationTarget
+          value: "2"
+
+# --- KEDA Trigger Type Coverage ---
+
+  # Test Case 9: CPU trigger
+  - it: should render cpu trigger
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.triggers:
+        - type: cpu
+          metadata:
+            type: Utilization
+            value: "80"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ScaledObject
+      - equal:
+          path: .spec.triggers[0].type
+          value: cpu
+      - equal:
+          path: .spec.triggers[0].metadata.type
+          value: Utilization
+      - equal:
+          path: .spec.triggers[0].metadata.value
+          value: "80"
+
+  # Test Case 10: Memory trigger
+  - it: should render memory trigger
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.triggers:
+        - type: memory
+          metadata:
+            type: Utilization
+            value: "75"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ScaledObject
+      - equal:
+          path: .spec.triggers[0].type
+          value: memory
+      - equal:
+          path: .spec.triggers[0].metadata.type
+          value: Utilization
+      - equal:
+          path: .spec.triggers[0].metadata.value
+          value: "75"
+
+  # Test Case 11: RabbitMQ trigger
+  - it: should render rabbitmq trigger
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.triggers:
+        - type: rabbitmq
+          metadata:
+            host: amqp://guest:guest@rabbitmq:5672/
+            queueName: my-queue
+            vhost: "/"
+            mode: QueueLength
+            value: "5"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ScaledObject
+      - equal:
+          path: .spec.triggers[0].type
+          value: rabbitmq
+      - equal:
+          path: .spec.triggers[0].metadata.host
+          value: amqp://guest:guest@rabbitmq:5672/
+      - equal:
+          path: .spec.triggers[0].metadata.queueName
+          value: my-queue
+      - equal:
+          path: .spec.triggers[0].metadata.vhost
+          value: "/"
+      - equal:
+          path: .spec.triggers[0].metadata.mode
+          value: QueueLength
+      - equal:
+          path: .spec.triggers[0].metadata.value
+          value: "5"
+
+  # Test Case 12: Cron trigger
+  - it: should render cron trigger
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.triggers:
+        - type: cron
+          metadata:
+            timezone: UTC
+            start: "0 0 * * *"
+            end: "0 6 * * *"
+            desiredReplicas: "2"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ScaledObject
+      - equal:
+          path: .spec.triggers[0].type
+          value: cron
+      - equal:
+          path: .spec.triggers[0].metadata.timezone
+          value: UTC
+      - equal:
+          path: .spec.triggers[0].metadata.start
+          value: "0 0 * * *"
+      - equal:
+          path: .spec.triggers[0].metadata.end
+          value: "0 6 * * *"
+      - equal:
+          path: .spec.triggers[0].metadata.desiredReplicas
+          value: "2"
+
+  # Test Case 13: Kafka trigger
+  - it: should render kafka trigger
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.triggers:
+        - type: kafka
+          metadata:
+            bootstrapServers: kafka:9092
+            topic: my-topic
+            consumerGroup: my-group
+            lagThreshold: "10"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ScaledObject
+      - equal:
+          path: .spec.triggers[0].type
+          value: kafka
+      - equal:
+          path: .spec.triggers[0].metadata.bootstrapServers
+          value: kafka:9092
+      - equal:
+          path: .spec.triggers[0].metadata.topic
+          value: my-topic
+      - equal:
+          path: .spec.triggers[0].metadata.consumerGroup
+          value: my-group
+      - equal:
+          path: .spec.triggers[0].metadata.lagThreshold
+          value: "10"
+
+  # Test Case 14: Azure Queue trigger
+  - it: should render azure-queue trigger
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.triggers:
+        - type: azure-queue
+          metadata:
+            queueName: my-queue
+            connection: AzureWebJobsStorage
+            queueLength: "100"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ScaledObject
+      - equal:
+          path: .spec.triggers[0].type
+          value: azure-queue
+      - equal:
+          path: .spec.triggers[0].metadata.queueName
+          value: my-queue
+      - equal:
+          path: .spec.triggers[0].metadata.connection
+          value: AzureWebJobsStorage
+      - equal:
+          path: .spec.triggers[0].metadata.queueLength
+          value: "100"
+
+  # Test Case 15: Prometheus trigger
+  - it: should render prometheus trigger
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.triggers:
+        - type: prometheus
+          metadata:
+            serverAddress: http://prometheus:9090
+            metricName: http_requests_total
+            threshold: "100"
+            query: sum(rate(http_requests_total[2m]))
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ScaledObject
+      - equal:
+          path: .spec.triggers[0].type
+          value: prometheus
+      - equal:
+          path: .spec.triggers[0].metadata.serverAddress
+          value: http://prometheus:9090
+      - equal:
+          path: .spec.triggers[0].metadata.metricName
+          value: http_requests_total
+      - equal:
+          path: .spec.triggers[0].metadata.threshold
+          value: "100"
+      - equal:
+          path: .spec.triggers[0].metadata.query
+          value: sum(rate(http_requests_total[2m]))
+
+  # Test Case 16: AWS SQS trigger
+  - it: should render aws-sqs-queue trigger
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.triggers:
+        - type: aws-sqs-queue
+          metadata:
+            queueURL: https://sqs.us-east-1.amazonaws.com/123456789012/my-queue
+            queueLength: "50"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ScaledObject
+      - equal:
+          path: .spec.triggers[0].type
+          value: aws-sqs-queue
+      - equal:
+          path: .spec.triggers[0].metadata.queueURL
+          value: https://sqs.us-east-1.amazonaws.com/123456789012/my-queue
+      - equal:
+          path: .spec.triggers[0].metadata.queueLength
+          value: "50"
+
+  # Test Case 17: Multiple triggers in one ScaledObject
+  - it: should render multiple triggers
+    set:
+      keda.enabled: true
+      keda.scaledObject.enabled: true
+      keda.scaledObject.spec.triggers:
+        - type: cpu
+          metadata:
+            type: Utilization
+            value: "60"
+        - type: rabbitmq
+          metadata:
+            host: amqp://guest:guest@rabbitmq:5672/
+            queueName: my-queue
+            value: "10"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ScaledObject
+      - equal:
+          path: .spec.triggers[0].type
+          value: cpu
+      - equal:
+          path: .spec.triggers[1].type
+          value: rabbitmq

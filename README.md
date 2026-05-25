@@ -74,7 +74,7 @@ A Helm chart template for applications
 | job.jobs | string | `nil` | List of jobs to run |
 | keda | object | `{"enabled":false,"scaledObject":{"enabled":false,"spec":{"triggers":[],"triggersMap":{}}},"triggerAuthentication":null}` | Keda configuration |
 | keda.enabled | bool | `false` | Whether to enable Keda |
-| keda.scaledObject | object | `{"enabled":false,"spec":{"triggers":[],"triggersMap":{}}}` | ScaledObject's spec |
+| keda.scaledObject | object | `{"enabled":false,"spec":{"triggers":[],"triggersMap":{}}}` | NOTE: String values that look like numbers or booleans (e.g. pollingInterval: "30") will be rendered as their native type in the final manifest. |
 | keda.scaledObject.spec.triggersMap | object | `{}` | TriggersMap spec |
 | keda.triggerAuthentication | string | `nil` | TriggerAuthentication spec |
 | namespaceOverride | string | `nil` | Override the default namespace |

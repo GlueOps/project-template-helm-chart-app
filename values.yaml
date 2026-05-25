@@ -1024,6 +1024,8 @@ keda:
   # -- Whether to enable Keda
   enabled: false
   # -- ScaledObject's spec
+  # --
+  # -- NOTE: String values that look like numbers or booleans (e.g. pollingInterval: "30") will be rendered as their native type in the final manifest.
   scaledObject:
     enabled: false
     spec:
@@ -1045,6 +1047,11 @@ keda:
       #         - type: Percent
       #           value: 100
       #           periodSeconds: 15
+      #   scalingModifiers:                                # Optional. KEDA 2.15+ advanced scaling modifiers
+      #     - type: Percentage
+      #       value: 10
+      #     - type: Value
+      #       value: 2
   # -- TriggersMap spec
       triggersMap: {}
         # cpu:
