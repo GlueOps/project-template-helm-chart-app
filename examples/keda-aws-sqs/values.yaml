@@ -1,0 +1,62 @@
+# KEDA aws-sqs-queue — workload IRSA via TriggerAuthentication.podIdentity.
+# Replace queueURL, awsRegion, and the IRSA role ARN before deploy.
+# See: examples/keda-aws-sqs/README.md (if present) or deployment-config docs/ISSUE324-SQS-KEDA.md
+
+appName: example-keda-aws-sqs
+appVersion: "0.1.0"
+
+image:
+  port: 80
+
+service:
+  enabled: true
+
+serviceAccount:
+  create: true
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::012345678901:role/keda-demo-sqs-irsa
+
+deployment:
+  enabled: true
+  replicas: 1
+  serviceAccount:
+    enabled: true
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+  readinessProbe:
+    httpGet:
+      path: /
+      port: 80
+    initialDelaySeconds: 3
+    periodSeconds: 10
+
+keda:
+  enabled: true
+  triggerAuthentication:
+    aws:
+      enabled: true
+      spec:
+        podIdentity:
+          provider: aws
+  scaledObject:
+    enabled: true
+    spec:
+      minReplicaCount: 1
+      maxReplicaCount: 5
+      pollingInterval: 30
+      cooldownPeriod: 120
+      triggers:
+        - type: aws-sqs-queue
+          metadata:
+            queueURL: https://sqs.eu-west-1.amazonaws.com/012345678901/keda-demo-sqs-test
+            queueLength: "10"
+            awsRegion: eu-west-1
+            scaleOnInFlight: "true"
+          authenticationRef:
+            name: example-keda-aws-sqs-aws
+            kind: TriggerAuthentication
+
+externalSecret:
+  enabled: false

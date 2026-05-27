@@ -410,16 +410,20 @@ tests:
           path: .spec.triggers[0].metadata.query
           value: sum(rate(http_requests_total[2m]))
 
-  # Test Case 16: AWS SQS trigger
-  - it: should render aws-sqs-queue trigger
+  # Test Case 16: AWS SQS trigger (with IRSA authenticationRef — issue #324)
+  - it: should render aws-sqs-queue trigger with authenticationRef
     set:
       keda.enabled: true
       keda.scaledObject.enabled: true
       keda.scaledObject.spec.triggers:
         - type: aws-sqs-queue
           metadata:
-            queueURL: https://sqs.us-east-1.amazonaws.com/123456789012/my-queue
-            queueLength: "50"
+            queueURL: https://sqs.eu-west-1.amazonaws.com/123456789012/demo-queue
+            queueLength: "10"
+            awsRegion: eu-west-1
+          authenticationRef:
+            name: example-app-aws
+            kind: TriggerAuthentication
     asserts:
       - hasDocuments:
           count: 1
@@ -430,10 +434,19 @@ tests:
           value: aws-sqs-queue
       - equal:
           path: .spec.triggers[0].metadata.queueURL
-          value: https://sqs.us-east-1.amazonaws.com/123456789012/my-queue
+          value: https://sqs.eu-west-1.amazonaws.com/123456789012/demo-queue
       - equal:
           path: .spec.triggers[0].metadata.queueLength
-          value: "50"
+          value: "10"
+      - equal:
+          path: .spec.triggers[0].metadata.awsRegion
+          value: eu-west-1
+      - equal:
+          path: .spec.triggers[0].authenticationRef.name
+          value: example-app-aws
+      - equal:
+          path: .spec.triggers[0].authenticationRef.kind
+          value: TriggerAuthentication
 
   # Test Case 17: Multiple triggers in one ScaledObject
   - it: should render multiple triggers

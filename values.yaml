@@ -1064,12 +1064,10 @@ keda:
         #   metadata:
         #     type: Utilization
         #     value: "90"
-        # sqs1:
+        # sqs-cloudwatch (alternative: CloudWatch metric, not direct SQS API):
         #   type: aws-cloudwatch
         #   metadata:
-        #     # Required: namespace
         #     namespace: AWS/SQS
-        #     # Required: Dimension Name
         #     dimensionName: QueueName
         #     dimensionValue: sqs-test
         #     metricName: ApproximateNumberOfMessagesVisible
@@ -1077,17 +1075,19 @@ keda:
         #     metricStatPeriod: "60"
         #     targetMetricValue: "1"
         #     minMetricValue: "0"
-        #     # Required: region
         #     awsRegion: ap-southeast-1
-        #     identityOwner: operator
-        # sqs2:
+        # sqs-queue (preferred): use examples/keda-aws-sqs/values.yaml — IRSA via
+        #   triggerAuthentication.<key>.spec.podIdentity.provider: aws and
+        #   serviceAccount.annotations.eks.amazonaws.com/role-arn (do not use
+        #   deprecated identityOwner in trigger metadata; removed in KEDA 2.13+).
         #   type: aws-sqs-queue
         #   metadata:
         #     queueURL: https://sqs.ap-southeast-1.amazonaws.com/012345678901/sqs-test
         #     queueLength: "2"
-        #     ## Required: region
         #     awsRegion: ap-southeast-1
-        #     identityOwner: operator
+        #   authenticationRef:
+        #     name: <app-name>-aws
+        #     kind: TriggerAuthentication
         # cronScaling:
         #   type: cron
         #   metadata:
@@ -1105,28 +1105,15 @@ keda:
       #   metadata:
       #     type: Utilization
       #     value: "90"
-      # - type: aws-cloudwatch
-      #   metadata:
-      #     # Required: namespace
-      #     namespace: AWS/SQS
-      #     # Required: Dimension Name
-      #     dimensionName: QueueName
-      #     dimensionValue: sqs-test
-      #     metricName: ApproximateNumberOfMessagesVisible
-      #     metricStat: Sum
-      #     metricStatPeriod: "60"
-      #     targetMetricValue: "1"
-      #     minMetricValue: "0"
-      #     # Required: region
-      #     awsRegion: ap-southeast-1
-      #     identityOwner: operator
       # - type: aws-sqs-queue
       #   metadata:
       #     queueURL: https://sqs.ap-southeast-1.amazonaws.com/012345678901/sqs-test
       #     queueLength: "2"
-      #     ## Required: region
       #     awsRegion: ap-southeast-1
-      #     identityOwner: operator
+      #   authenticationRef:
+      #     name: <app-name>-aws
+      #     kind: TriggerAuthentication
+      # IRSA: see examples/keda-aws-sqs/values.yaml (podIdentity + serviceAccount role ARN).
       # - type: cron
       #   metadata:
       #     timezone: Asia/Singapore  ## The acceptable values would be a value from the IANA Time Zone Database. https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
@@ -1136,6 +1123,11 @@ keda:
 
   # -- TriggerAuthentication spec
   triggerAuthentication:
+    # aws (SQS / CloudWatch scalers with EKS IRSA):
+    #   enabled: true
+    #   spec:
+    #     podIdentity:
+    #       provider: aws
     # kafka:
     #   enabled: false
     #   # spec: {}
