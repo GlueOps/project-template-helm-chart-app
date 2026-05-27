@@ -1064,7 +1064,8 @@ keda:
         #   metadata:
         #     type: Utilization
         #     value: "90"
-        # sqs-cloudwatch (alternative: CloudWatch metric, not direct SQS API):
+        # sqsCloudWatch:
+        #   # Alternative: CloudWatch metric trigger (not direct SQS API).
         #   type: aws-cloudwatch
         #   metadata:
         #     namespace: AWS/SQS
@@ -1076,10 +1077,9 @@ keda:
         #     targetMetricValue: "1"
         #     minMetricValue: "0"
         #     awsRegion: ap-southeast-1
-        # sqs-queue (preferred): use examples/keda-aws-sqs/values.yaml — IRSA via
-        #   triggerAuthentication.<key>.spec.podIdentity.provider: aws and
-        #   serviceAccount.annotations.eks.amazonaws.com/role-arn (do not use
-        #   deprecated identityOwner in trigger metadata; removed in KEDA 2.13+).
+        # sqsQueue:
+        #   # Preferred: direct SQS trigger. See examples/keda-aws-sqs/values.yaml
+        #   # for IRSA with triggerAuthentication.<key>.spec.podIdentity.provider: aws.
         #   type: aws-sqs-queue
         #   metadata:
         #     queueURL: https://sqs.ap-southeast-1.amazonaws.com/012345678901/sqs-test

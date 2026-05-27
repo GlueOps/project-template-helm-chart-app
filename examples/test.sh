@@ -41,7 +41,7 @@ for d in */ ; do
     echo "[INFO] kubectl dry-run on directory: $(pwd)" 
     helm template example-app ../../ -f ../../values.yaml -f values.yaml --replace  |  kubectl apply --dry-run='server' -f - 
     helm delete example-app
-  elif [[ $d != "keda/" ]]; then
+  elif [[ $d != "keda/" && $d != "keda-aws-sqs/" ]]; then
     echo "[INFO] kubectl dry-run on directory: $(pwd)" 
 	# The object will be validated by the apiserver
     helm template ../../ -f ../../values.yaml -f values.yaml |  kubectl apply --dry-run='server' -f - 
