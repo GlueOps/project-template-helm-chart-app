@@ -190,8 +190,7 @@ Resolve the Kubernetes imagePullSecrets secret name for a pod template context.
 Precedence (highest wins):
   1. cronJob.jobs.<name>.imagePullSecrets / job.jobs.<name>.imagePullSecrets when the key is present (only this path: empty string opts out)
   2. .imagePullSecrets on the merged workload context when truthy (deployment/statefulSet empty string is falsy and inherits step 3)
-  3. .Root.Values.image.pullSecrets (when .Values.image is a map)
-  4. .Root.Values.image.imagePullSecrets (alias; only when pullSecrets is unset)
+  3. .Root.Values.image.imagePullSecrets (when .Values.image is a map)
 Per-job lookup uses Values.jobs directly because shallow merge does not reliably override globals.
 */}}
 {{- define "chart.imagePullSecretName" -}}
@@ -209,9 +208,7 @@ Per-job lookup uses Values.jobs directly because shallow merge does not reliably
 {{- if not $explicitPerJob -}}
 {{- if .imagePullSecrets -}}
 {{- $secret = .imagePullSecrets -}}
-{{- else if and (kindIs "map" .Root.Values.image) .Root.Values.image.pullSecrets -}}
-{{- $secret = .Root.Values.image.pullSecrets -}}
-{{- else if and (kindIs "map" .Root.Values.image) (not .Root.Values.image.pullSecrets) .Root.Values.image.imagePullSecrets -}}
+{{- else if and (kindIs "map" .Root.Values.image) .Root.Values.image.imagePullSecrets -}}
 {{- $secret = .Root.Values.image.imagePullSecrets -}}
 {{- end -}}
 {{- end -}}
@@ -220,6 +217,9 @@ Per-job lookup uses Values.jobs directly because shallow merge does not reliably
 {{- fail (printf "imagePullSecrets must be a string secret name, got %s (value: %v)" (kindOf $secret) $secret) -}}
 {{- end -}}
 {{- $secret = trim $secret -}}
+{{- if eq $secret "" -}}
+{{- fail "imagePullSecrets must not be empty or whitespace only" -}}
+{{- end -}}
 {{- if regexMatch "\\s" $secret -}}
 {{- fail (printf "imagePullSecrets must not contain whitespace, got %q" $secret) -}}
 {{- end -}}

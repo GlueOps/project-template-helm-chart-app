@@ -3,8 +3,27 @@ templates:
   - job.yaml
 set:
   appName: "example-app"
-
 tests:
+  - it: per-job tolerations should override global tolerations
+    set:
+      job:
+        enabled: true
+        tolerations:
+          - key: global
+            value: should-not-win
+        jobs:
+          run-once:
+            tolerations:
+              - key: per-job
+                value: should-win
+            image: nginx
+    asserts:
+      - equal:
+          path: spec.template.spec.tolerations[0].key
+          value: per-job
+      - equal:
+          path: spec.template.spec.tolerations[0].value
+          value: should-win
   - it: should not create a job by default
     set:
       job.enabled: false
@@ -715,10 +734,11 @@ tests:
       - failedTemplate:
           errorPattern: "must not contain a digest"
 
-  - it: should inherit image.pullSecrets on job pods
+
+  - it: should inherit image.imagePullSecrets on job pods
     set:
       image:
-        pullSecrets: global-reg-cred
+        imagePullSecrets: global-reg-cred
       job:
         enabled: true
         jobs:

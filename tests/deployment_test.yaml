@@ -1325,10 +1325,11 @@ tests:
           path: spec.template.spec.containers[0].image
           value: docker.io/nginx:v1.2.3
 
-  - it: should inherit image.pullSecrets on deployment pods
+
+  - it: should inherit image.imagePullSecrets on deployment pods
     set:
       image:
-        pullSecrets: global-reg-cred
+        imagePullSecrets: global-reg-cred
       deployment:
         enabled: true
     asserts:
@@ -1336,10 +1337,11 @@ tests:
           path: spec.template.spec.imagePullSecrets[0].name
           value: global-reg-cred
 
-  - it: should prefer deployment.imagePullSecrets over image.pullSecrets
+
+  - it: should prefer deployment.imagePullSecrets over image.imagePullSecrets
     set:
       image:
-        pullSecrets: global-reg-cred
+        imagePullSecrets: global-reg-cred
       deployment:
         enabled: true
         imagePullSecrets: deployment-specific-cred
@@ -1356,26 +1358,3 @@ tests:
       - isNull:
           path: spec.template.spec.imagePullSecrets
 
-  - it: should prefer image.pullSecrets when both top-level aliases are set
-    set:
-      image:
-        pullSecrets: primary-cred
-        imagePullSecrets: secondary-cred
-      deployment:
-        enabled: true
-    asserts:
-      - equal:
-          path: spec.template.spec.imagePullSecrets[0].name
-          value: primary-cred
-
-  - it: should inherit image.pullSecrets when deployment.imagePullSecrets is empty string
-    set:
-      image:
-        pullSecrets: global-reg-cred
-      deployment:
-        enabled: true
-        imagePullSecrets: ""
-    asserts:
-      - equal:
-          path: spec.template.spec.imagePullSecrets[0].name
-          value: global-reg-cred

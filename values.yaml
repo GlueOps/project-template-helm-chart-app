@@ -70,9 +70,7 @@ image:
   # -- Registry pull secret name inherited by all pod templates (Deployment, StatefulSet, Job, CronJob).
   # Per-workload `imagePullSecrets` overrides this. Empty or unset workload `imagePullSecrets` inherits from here.
   # Only cronJob.jobs.<name>.imagePullSecrets / job.jobs.<name>.imagePullSecrets: "" opts out (no pull secret).
-  # When both are set, `pullSecrets` wins over `image.imagePullSecrets`.
-  # pullSecrets: my-registry-cred
-  # imagePullSecrets: alias-only-when-pullSecrets-unset
+  # imagePullSecrets: my-registry-cred
 
 # -- Common annotations for all Kubernetes objects
 commonAnnotations:

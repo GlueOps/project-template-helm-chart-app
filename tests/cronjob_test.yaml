@@ -3,8 +3,27 @@ templates:
   - cronjob.yaml
 set:
   appName: "example-app"
-
 tests:
+  - it: per-job tolerations should override global tolerations
+    set:
+      cronJob:
+        enabled: true
+        tolerations:
+          - key: global
+            value: should-not-win
+        jobs:
+          test:
+            schedule: "* * * * *"
+            tolerations:
+              - key: per-job
+                value: should-win
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.tolerations[0].key
+          value: per-job
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.tolerations[0].value
+          value: should-win
   - it: should be disabled by default
     set:
       cronJob.enabled: false
@@ -773,10 +792,11 @@ tests:
           path: spec.jobTemplate.spec.template.spec.containers[0].image
           value: docker.io/shared-service:latest
 
-  - it: should inherit image.pullSecrets on cronjob pods
+
+  - it: should inherit image.imagePullSecrets on cronjob pods
     set:
       image:
-        pullSecrets: global-reg-cred
+        imagePullSecrets: global-reg-cred
       cronJob:
         enabled: true
         jobs:
@@ -861,7 +881,8 @@ tests:
           path: metadata.name
           pattern: '-wanted$'
 
-  - it: should use image.imagePullSecrets alias when pullSecrets unset
+
+  - it: should use image.imagePullSecrets when set
     set:
       image:
         imagePullSecrets: alias-reg-cred
@@ -876,21 +897,6 @@ tests:
           path: spec.jobTemplate.spec.template.spec.imagePullSecrets[0].name
           value: alias-reg-cred
 
-  - it: should prefer image.pullSecrets when both top-level aliases are set
-    set:
-      image:
-        pullSecrets: primary-cred
-        imagePullSecrets: secondary-cred
-      cronJob:
-        enabled: true
-        jobs:
-          backup:
-            schedule: "0 0 * * *"
-            image: nginx
-    asserts:
-      - equal:
-          path: spec.jobTemplate.spec.template.spec.imagePullSecrets[0].name
-          value: primary-cred
 
   - it: should opt out of pull secrets when per-job imagePullSecrets is empty string
     set:

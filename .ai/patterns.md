@@ -3,7 +3,7 @@
 ## Shared Helpers (`_helpers.tpl`)
 
 - **`chart.jobSpec`** — Data-driven helper rendering JobSpec fields for both Job and CronJob. Uses `$intFields`, `$stringFields`, and `$objectFields` lists. To add a new K8s JobSpec field, append to the appropriate list.
-- **`chart.imagePullSecretName`** — Resolves registry pull secret for pod templates. Precedence: per-job key with `hasKey` (`cronJob.jobs.*` / `job.jobs.*` only; `""` opts out) → truthy workload `imagePullSecrets` → `image.pullSecrets` → `image.imagePullSecrets` (alias only if `pullSecrets` unset). Deployment/StatefulSet `imagePullSecrets: ""` is falsy and inherits `image.pullSecrets`. Requires string secret names; guards `image` map access when `.Values.image` is null.
+- **`chart.imagePullSecretName`** — Resolves registry pull secret for pod templates. Precedence: per-job key with `hasKey` (`cronJob.jobs.*` / `job.jobs.*` only; `""` opts out) → truthy workload `imagePullSecrets` → `image.imagePullSecrets`. Deployment/StatefulSet `imagePullSecrets: ""` is falsy and inherits `image.imagePullSecrets`. Requires string secret names; guards `image` map access when `.Values.image` is null.
 - **`chart.jobPodGlobals`** — `pick` allowlist for cronJob/job global → pod context merge.
 - **`chart.jobEntryEnabled`** — Validates `jobs.<name>.enabled` is boolean when set.
 - **`chart.renderLabels`** — Dual-format helper supporting both map (`{key: val}`) and list (`[{key: k, value: v}]`) formats. Used for both labels AND annotations (name is misleading but intentional). Only map format is documented to users; list format exists for backwards compatibility.

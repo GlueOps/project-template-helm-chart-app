@@ -32,7 +32,7 @@ spec:
   suspend: {{ $job.suspend | default false }}
   {{- include "chart.jobSpec" (dict "global" $.Values.job "job" $job) | indent 2 }}
   {{- $podGlobals := fromYaml (include "chart.jobPodGlobals" (omit $.Values.job "jobs" "enabled")) | default dict -}}
-  {{- $context :=  merge (dict "resourceType" "job" "name" $name "Chart" $.Chart "Root" $newContext) $podGlobals $job }}
+  {{- $context :=  merge (dict "resourceType" "job" "name" $name "Chart" $.Chart "Root" $newContext) $job $podGlobals }}
   template:
   {{- include "chart.podTemplate" $context | nindent 4 }}
 
