@@ -1358,3 +1358,37 @@ tests:
       - isNull:
           path: spec.template.spec.imagePullSecrets
 
+  - it: should inherit image.pullSecrets (documented key) on deployment pods
+    set:
+      image:
+        pullSecrets: global-reg-cred
+      deployment:
+        enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: global-reg-cred
+
+  - it: should prefer image.pullSecrets over image.imagePullSecrets alias
+    set:
+      image:
+        pullSecrets: primary-cred
+        imagePullSecrets: alias-cred
+      deployment:
+        enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: primary-cred
+
+  - it: should fall back to image.imagePullSecrets alias when image.pullSecrets is unset
+    set:
+      image:
+        imagePullSecrets: alias-cred
+      deployment:
+        enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: alias-cred
+

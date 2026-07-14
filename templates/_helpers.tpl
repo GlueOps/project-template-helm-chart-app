@@ -163,10 +163,13 @@ Object fields: structured YAML (maps/lists). Add new K8s fields to $objectFields
 {{- end -}}
 
 {{/*
-Pod-template fields allowed to inherit from cronJob/job global config (excludes labels, annotations, JobSpec, schedule).
+Pod-template fields allowed to inherit from cronJob/job global config.
+Scoped to imagePullSecrets only (the customer-requested field). Broadening this
+allowlist changes pod rendering for existing tenants on upgrade and must be a
+deliberate, versioned change — see .ai/patterns.md.
 */}}
 {{- define "chart.jobPodGlobals" -}}
-{{- toYaml (pick . "imagePullSecrets" "tolerations" "affinity" "nodeSelector" "topologySpreadConstraints" "topologySpreadConstraintsMaxSkew" "image" "imagePullPolicy" "command" "args" "resources" "securityContext" "containerSecurityContext" "envMap" "envSecrets" "envFrom" "envVariables" "envConfigMaps" "volumes" "volumeMounts" "initContainers" "sidecar" "serviceAccount" "enableServiceLinks" "hostNetwork" "hostAliases" "dnsPolicy" "dnsConfig" "terminationGracePeriodSeconds" "priorityClassName" "shareProcessNamespace" "restartPolicy" "matchLabels" "startupProbe" "livenessProbe" "readinessProbe") -}}
+{{- toYaml (pick . "imagePullSecrets") -}}
 {{- end -}}
 
 {{/*
@@ -188,18 +191,24 @@ true
 {{/*
 Resolve the Kubernetes imagePullSecrets secret name for a pod template context.
 Precedence (highest wins):
-  1. cronJob.jobs.<name>.imagePullSecrets / job.jobs.<name>.imagePullSecrets when the key is present (only this path: empty string opts out)
-  2. .imagePullSecrets on the merged workload context when truthy (deployment/statefulSet empty string is falsy and inherits step 3)
-  3. .Root.Values.image.imagePullSecrets (when .Values.image is a map)
+  1. cronJob.jobs.<name>.imagePullSecrets / job.jobs.<name>.imagePullSecrets when set to a non-null value (only this path: empty string "" opts out; null is treated as unset and inherits from below)
+  2. .imagePullSecrets on the merged workload context when truthy (deployment/statefulSet empty string is falsy and inherits steps 3-4)
+  3. .Root.Values.image.pullSecrets (when .Values.image is a map) — customer-requested top-level key
+  4. .Root.Values.image.imagePullSecrets (alias, only when image.pullSecrets is unset)
 Per-job lookup uses Values.jobs directly because shallow merge does not reliably override globals.
 */}}
 {{- define "chart.imagePullSecretName" -}}
 {{- $secret := "" -}}
 {{- $explicitPerJob := false -}}
 {{- if and .name (or (eq .resourceType "cronJob") (eq .resourceType "job")) -}}
-{{- $jobsMap := ternary .Root.Values.cronJob.jobs .Root.Values.job.jobs (eq .resourceType "cronJob") -}}
+{{- $jobsMap := dict -}}
+{{- if eq .resourceType "cronJob" -}}
+{{- $jobsMap = .Root.Values.cronJob.jobs -}}
+{{- else -}}
+{{- $jobsMap = .Root.Values.job.jobs -}}
+{{- end -}}
 {{- with index $jobsMap .name -}}
-{{- if hasKey . "imagePullSecrets" -}}
+{{- if and (hasKey . "imagePullSecrets") (not (kindIs "invalid" .imagePullSecrets)) -}}
 {{- $explicitPerJob = true -}}
 {{- $secret = .imagePullSecrets -}}
 {{- end -}}
@@ -208,8 +217,12 @@ Per-job lookup uses Values.jobs directly because shallow merge does not reliably
 {{- if not $explicitPerJob -}}
 {{- if .imagePullSecrets -}}
 {{- $secret = .imagePullSecrets -}}
-{{- else if and (kindIs "map" .Root.Values.image) .Root.Values.image.imagePullSecrets -}}
+{{- else if kindIs "map" .Root.Values.image -}}
+{{- if .Root.Values.image.pullSecrets -}}
+{{- $secret = .Root.Values.image.pullSecrets -}}
+{{- else if .Root.Values.image.imagePullSecrets -}}
 {{- $secret = .Root.Values.image.imagePullSecrets -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 {{- if $secret -}}

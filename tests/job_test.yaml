@@ -826,3 +826,70 @@ tests:
     asserts:
       - isNull:
           path: spec.template.spec.imagePullSecrets
+
+  - it: should inherit image.pullSecrets (documented key) on job pods
+    set:
+      image:
+        pullSecrets: global-reg-cred
+      job:
+        enabled: true
+        jobs:
+          run-once:
+            image: nginx
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: global-reg-cred
+
+  # M1: helper must not reference the OTHER workload's jobs map (guards the ternary->if/else fix).
+  - it: should render a job without panicking when cronJob is null
+    set:
+      cronJob: null
+      job:
+        enabled: true
+        jobs:
+          run-once:
+            image: nginx
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Job
+
+  # M1: line-1 null guard on THIS template (guards `and .Values.job .Values.job.enabled`).
+  - it: should render zero jobs when job itself is null
+    set:
+      job: null
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  # M1 (#1 regression): per-job imagePullSecrets: null is treated as unset and inherits, not name: "".
+  - it: should treat per-job imagePullSecrets null as unset and inherit image.pullSecrets
+    set:
+      image:
+        pullSecrets: global-reg-cred
+      job:
+        enabled: true
+        jobs:
+          run-once:
+            image: nginx
+            imagePullSecrets: null
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: global-reg-cred
+
+  # M2: a global job pod-level field (nodeSelector) must NOT leak into job pods.
+  - it: should not leak global job pod fields (nodeSelector) into job pods
+    set:
+      job:
+        enabled: true
+        nodeSelector:
+          disktype: ssd
+        jobs:
+          run-once:
+            image: nginx
+    asserts:
+      - isNull:
+          path: spec.template.spec.nodeSelector
