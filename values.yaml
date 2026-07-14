@@ -74,7 +74,8 @@ image:
   #   `imagePullSecrets` (not `pullSecrets`). Using `pullSecrets` on a workload is a silent no-op.
   # Only cronJob.jobs.<name>.imagePullSecrets / job.jobs.<name>.imagePullSecrets: "" opts out (no pull
   #   secret); an empty string elsewhere inherits, and a `null` per-job value behaves as unset.
-  # pullSecrets: my-registry-cred
+  # Example: pullSecrets: my-registry-cred
+  pullSecrets: ""
 
 # -- Common annotations for all Kubernetes objects
 commonAnnotations:
@@ -92,7 +93,8 @@ deployment:
   # -- Whether to create a Deployment
   enabled: false
   # -- Registry pull secret for this Deployment (overrides `image.pullSecrets`). Empty string inherits `image.pullSecrets`.
-  # imagePullSecrets: my-registry-cred
+  # Example: imagePullSecrets: my-registry-cred
+  imagePullSecrets: ""
   # -- Annotations for the Deployment
   annotations:
     # deploy.annotations.example.com/name: deploy
@@ -358,7 +360,8 @@ statefulSet:
   # -- Whether to create a StatefulSet
   enabled: false
   # -- Registry pull secret for this StatefulSet (overrides `image.pullSecrets`). Empty string inherits `image.pullSecrets`.
-  # imagePullSecrets: my-registry-cred
+  # Example: imagePullSecrets: my-registry-cred
+  imagePullSecrets: ""
   # -- Annotations for the StatefulSet
   annotations:
     # deploy.annotations.example.com/name: deploy
@@ -632,7 +635,8 @@ cronJob:
 
   # -- Registry pull secret for all CronJob pods (per-job `imagePullSecrets` overrides).
   # Falls back to top-level `image.pullSecrets` when unset.
-  # imagePullSecrets: my-registry-cred
+  # Example: imagePullSecrets: my-registry-cred
+  imagePullSecrets: ""
 
   # -- Global JobSpec defaults for all cronjobs (per-job values override these)
   # backoffLimit: 6
@@ -741,7 +745,8 @@ job:
 
   # -- Registry pull secret for all Job pods (per-job `imagePullSecrets` overrides).
   # Falls back to top-level `image.pullSecrets` when unset.
-  # imagePullSecrets: my-registry-cred
+  # Example: imagePullSecrets: my-registry-cred
+  imagePullSecrets: ""
 
   # -- Global JobSpec defaults for all jobs (per-job values override these)
   # backoffLimit: 6

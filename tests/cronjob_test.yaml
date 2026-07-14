@@ -1104,3 +1104,20 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "cronJob\\.jobs\\.nightly-backup\\.imagePullSecrets must not be empty or whitespace only"
+
+  # null is Helm's canonical "unset" idiom; it must not hard-fail, matching how a null
+  # per-job imagePullSecrets is treated as unset.
+  - it: should treat jobs entry enabled null as unset and render the job
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          backup:
+            enabled: null
+            schedule: "0 0 * * *"
+            image: nginx
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: CronJob
