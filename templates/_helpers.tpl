@@ -193,12 +193,13 @@ Assert that a set imagePullSecrets value is a string, so that an explicitly-set 
 falsey non-string (false, 0, []) is rejected rather than silently treated as "unset".
 An unset (null) value and the empty string "" are both allowed through: "" is a
 legitimate falsey inherit/opt-out signal whose meaning depends on the level.
-Inputs: .value, .key (the values path, used in the error message)
+Inputs: .value, .key (the values path, named in the error), .hint (level-appropriate
+guidance — "" means different things by level, so the caller supplies the wording)
 */}}
 {{- define "chart.assertPullSecretKind" -}}
 {{- if not (kindIs "invalid" .value) -}}
 {{- if not (kindIs "string" .value) -}}
-{{- fail (printf "%s must be a string secret name, got %s (value: %v). Use a secret name, or \"\" to opt out." .key (kindOf .value) .value) -}}
+{{- fail (printf "%s must be a string secret name, got %s (value: %v). %s" .key (kindOf .value) .value .hint) -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
@@ -216,6 +217,7 @@ value fails the render instead of being silently swallowed as "unset" and inheri
 */}}
 {{- define "chart.imagePullSecretName" -}}
 {{- $secret := "" -}}
+{{- $source := "imagePullSecrets" -}}
 {{- $explicitPerJob := false -}}
 {{- if and .name (or (eq .resourceType "cronJob") (eq .resourceType "job")) -}}
 {{- $jobsMap := dict -}}
@@ -224,32 +226,39 @@ value fails the render instead of being silently swallowed as "unset" and inheri
 {{- else -}}
 {{- $jobsMap = .Root.Values.job.jobs -}}
 {{- end -}}
+{{- $jobPath := printf "%s.jobs.%s.imagePullSecrets" .resourceType .name -}}
 {{- with index $jobsMap .name -}}
 {{- if and (hasKey . "imagePullSecrets") (not (kindIs "invalid" .imagePullSecrets)) -}}
+{{- include "chart.assertPullSecretKind" (dict "value" .imagePullSecrets "key" $jobPath "hint" "Use a secret name, or \"\" to opt this job out of pull secrets.") -}}
 {{- $explicitPerJob = true -}}
 {{- $secret = .imagePullSecrets -}}
+{{- $source = $jobPath -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
 {{- if not $explicitPerJob -}}
+{{- $workloadPath := printf "%s.imagePullSecrets" .resourceType -}}
 {{- if hasKey . "imagePullSecrets" -}}
-{{- include "chart.assertPullSecretKind" (dict "value" .imagePullSecrets "key" (printf "%s.imagePullSecrets" .resourceType)) -}}
+{{- include "chart.assertPullSecretKind" (dict "value" .imagePullSecrets "key" $workloadPath "hint" "Use a secret name, or \"\" to inherit image.pullSecrets.") -}}
 {{- end -}}
 {{- if kindIs "map" .Root.Values.image -}}
 {{- if hasKey .Root.Values.image "pullSecrets" -}}
-{{- include "chart.assertPullSecretKind" (dict "value" .Root.Values.image.pullSecrets "key" "image.pullSecrets") -}}
+{{- include "chart.assertPullSecretKind" (dict "value" .Root.Values.image.pullSecrets "key" "image.pullSecrets" "hint" "Use a secret name, or remove the key to render no pull secret.") -}}
 {{- end -}}
 {{- if hasKey .Root.Values.image "imagePullSecrets" -}}
-{{- include "chart.assertPullSecretKind" (dict "value" .Root.Values.image.imagePullSecrets "key" "image.imagePullSecrets") -}}
+{{- include "chart.assertPullSecretKind" (dict "value" .Root.Values.image.imagePullSecrets "key" "image.imagePullSecrets" "hint" "Use a secret name, or remove the key to render no pull secret.") -}}
 {{- end -}}
 {{- end -}}
 {{- if .imagePullSecrets -}}
 {{- $secret = .imagePullSecrets -}}
+{{- $source = $workloadPath -}}
 {{- else if kindIs "map" .Root.Values.image -}}
 {{- if .Root.Values.image.pullSecrets -}}
 {{- $secret = .Root.Values.image.pullSecrets -}}
+{{- $source = "image.pullSecrets" -}}
 {{- else if .Root.Values.image.imagePullSecrets -}}
 {{- $secret = .Root.Values.image.imagePullSecrets -}}
+{{- $source = "image.imagePullSecrets" -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
@@ -258,14 +267,14 @@ value fails the render instead of being silently swallowed as "unset" and inheri
      literal secret name ("false", "0", "[]"). */}}
 {{- if not (and (kindIs "string" $secret) (eq $secret "")) -}}
 {{- if not (kindIs "string" $secret) -}}
-{{- fail (printf "imagePullSecrets must be a string secret name, got %s (value: %v)" (kindOf $secret) $secret) -}}
+{{- fail (printf "%s must be a string secret name, got %s (value: %v)" $source (kindOf $secret) $secret) -}}
 {{- end -}}
 {{- $secret = trim $secret -}}
 {{- if eq $secret "" -}}
-{{- fail "imagePullSecrets must not be empty or whitespace only" -}}
+{{- fail (printf "%s must not be empty or whitespace only" $source) -}}
 {{- end -}}
 {{- if regexMatch "\\s" $secret -}}
-{{- fail (printf "imagePullSecrets must not contain whitespace, got %q" $secret) -}}
+{{- fail (printf "%s must not contain whitespace, got %q" $source $secret) -}}
 {{- end -}}
 {{- end -}}
 {{- $secret -}}

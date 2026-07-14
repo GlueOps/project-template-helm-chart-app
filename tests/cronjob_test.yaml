@@ -1077,3 +1077,30 @@ tests:
       - isNull:
           path: spec.jobTemplate.spec.template.spec.nodeSelector
 
+
+  # Errors must name the offending values path so the bad job entry is identifiable.
+  - it: should name the full job path in per-job imagePullSecrets type errors
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          nightly-backup:
+            schedule: "0 0 * * *"
+            image: nginx
+            imagePullSecrets: false
+    asserts:
+      - failedTemplate:
+          errorPattern: "cronJob\\.jobs\\.nightly-backup\\.imagePullSecrets must be a string secret name"
+
+  - it: should name the full job path in per-job whitespace-only errors
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          nightly-backup:
+            schedule: "0 0 * * *"
+            image: nginx
+            imagePullSecrets: "   "
+    asserts:
+      - failedTemplate:
+          errorPattern: "cronJob\\.jobs\\.nightly-backup\\.imagePullSecrets must not be empty or whitespace only"

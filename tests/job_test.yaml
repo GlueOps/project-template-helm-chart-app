@@ -930,3 +930,16 @@ tests:
     asserts:
       - isNull:
           path: spec.template.spec.nodeSelector
+
+  # Errors must name the offending values path so the bad job entry is identifiable.
+  - it: should name the full job path in per-job imagePullSecrets type errors
+    set:
+      job:
+        enabled: true
+        jobs:
+          run-once:
+            image: nginx
+            imagePullSecrets: []
+    asserts:
+      - failedTemplate:
+          errorPattern: "job\\.jobs\\.run-once\\.imagePullSecrets must be a string secret name"

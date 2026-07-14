@@ -1457,3 +1457,24 @@ tests:
       - equal:
           path: spec.template.spec.imagePullSecrets[0].name
           value: real-cred
+
+  # "" means INHERIT at the workload/top level (it is only an opt-out per-job), so the
+  # error guidance must not tell users to set "" to opt out here.
+  - it: should give level-correct guidance for image.pullSecrets type errors
+    set:
+      image:
+        pullSecrets: false
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image\\.pullSecrets must be a string secret name.*remove the key to render no pull secret"
+
+  - it: should give level-correct guidance for deployment.imagePullSecrets type errors
+    set:
+      deployment:
+        enabled: true
+        imagePullSecrets: false
+    asserts:
+      - failedTemplate:
+          errorPattern: "deployment\\.imagePullSecrets must be a string secret name.*inherit image\\.pullSecrets"
