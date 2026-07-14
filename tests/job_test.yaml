@@ -827,6 +827,43 @@ tests:
       - isNull:
           path: spec.template.spec.imagePullSecrets
 
+  # Falsey non-null per-job values must not bypass validation: only "" is an opt-out.
+  - it: should fail when per-job imagePullSecrets is false (falsey, not an opt-out)
+    set:
+      job:
+        enabled: true
+        jobs:
+          run-once:
+            image: nginx
+            imagePullSecrets: false
+    asserts:
+      - failedTemplate:
+          errorPattern: "must be a string secret name"
+
+  - it: should fail when per-job imagePullSecrets is the number zero
+    set:
+      job:
+        enabled: true
+        jobs:
+          run-once:
+            image: nginx
+            imagePullSecrets: 0
+    asserts:
+      - failedTemplate:
+          errorPattern: "must be a string secret name"
+
+  - it: should fail when per-job imagePullSecrets is an empty list
+    set:
+      job:
+        enabled: true
+        jobs:
+          run-once:
+            image: nginx
+            imagePullSecrets: []
+    asserts:
+      - failedTemplate:
+          errorPattern: "must be a string secret name"
+
   - it: should inherit image.pullSecrets (documented key) on job pods
     set:
       image:
