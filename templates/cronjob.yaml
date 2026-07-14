@@ -1,6 +1,6 @@
 {{ if and .Values.cronJob .Values.cronJob.enabled }}
 {{- range $name, $job := .Values.cronJob.jobs }}
-{{- if eq (include "chart.jobEntryEnabled" (dict "job" $job "name" $name)) "true" }}
+{{- if eq (include "chart.jobEntryEnabled" (dict "job" $job "name" $name "resourceType" "cronJob")) "true" }}
 ---
 apiVersion: batch/v1
 kind: CronJob

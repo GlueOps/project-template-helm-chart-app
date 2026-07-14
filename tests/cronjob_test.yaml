@@ -937,7 +937,7 @@ tests:
             image: nginx
     asserts:
       - failedTemplate:
-          errorPattern: "enabled must be a boolean"
+          errorPattern: "cronJob\\.jobs\\.[a-z-]+\\.enabled must be a boolean"
 
   - it: should fail when imagePullSecrets is not a string
     set:

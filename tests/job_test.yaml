@@ -812,7 +812,7 @@ tests:
             image: nginx
     asserts:
       - failedTemplate:
-          errorPattern: "enabled must be a boolean"
+          errorPattern: "job\\.jobs\\.[a-z-]+\\.enabled must be a boolean"
 
   - it: should opt out of pull secrets when per-job imagePullSecrets is empty string
     set:
@@ -943,3 +943,16 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "job\\.jobs\\.run-once\\.imagePullSecrets must be a string secret name"
+
+  # The enabled error must name the workload, not the ambiguous bare "jobs.<name>.enabled".
+  - it: should name the job workload in enabled type errors
+    set:
+      job:
+        enabled: true
+        jobs:
+          run-once:
+            image: nginx
+            enabled: "false"
+    asserts:
+      - failedTemplate:
+          errorPattern: "job\\.jobs\\.run-once\\.enabled must be a boolean"

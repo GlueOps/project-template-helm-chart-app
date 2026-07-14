@@ -1,6 +1,6 @@
 {{ if and .Values.job .Values.job.enabled }}
 {{- range $name, $job := .Values.job.jobs }}
-{{- if eq (include "chart.jobEntryEnabled" (dict "job" $job "name" $name)) "true" }}
+{{- if eq (include "chart.jobEntryEnabled" (dict "job" $job "name" $name "resourceType" "job")) "true" }}
 ---
 apiVersion: batch/v1
 kind: Job

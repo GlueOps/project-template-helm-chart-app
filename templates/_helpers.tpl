@@ -181,9 +181,15 @@ unset idiom) working rather than failing the render.
 {{- define "chart.jobEntryEnabled" -}}
 {{- $job := .job -}}
 {{- $name := .name -}}
+{{/* resourceType lets the error name the real values path (cronJob.jobs.<n>.enabled vs
+     job.jobs.<n>.enabled), which is otherwise ambiguous when both workloads are enabled. */}}
+{{- $path := printf "jobs.%s.enabled" $name -}}
+{{- if .resourceType -}}
+{{- $path = printf "%s.jobs.%s.enabled" .resourceType $name -}}
+{{- end -}}
 {{- if and (hasKey $job "enabled") (not (kindIs "invalid" $job.enabled)) -}}
 {{- if not (kindIs "bool" $job.enabled) -}}
-{{- fail (printf "jobs.%s.enabled must be a boolean, got %s (value: %v). Use true or false (unquoted)." $name (kindOf $job.enabled) $job.enabled) -}}
+{{- fail (printf "%s must be a boolean, got %s (value: %v). Use true or false (unquoted)." $path (kindOf $job.enabled) $job.enabled) -}}
 {{- end -}}
 {{- ternary "true" "false" $job.enabled -}}
 {{- else -}}

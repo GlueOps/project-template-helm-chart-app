@@ -69,13 +69,19 @@ image:
   port: 8080
   # -- Registry pull secret name inherited by all pod templates (Deployment, StatefulSet, Job, CronJob).
   # Resolution order (highest first): per-job `imagePullSecrets` -> workload `imagePullSecrets`
-  #   -> `image.pullSecrets` -> `image.imagePullSecrets` (alias, used only when `pullSecrets` is unset).
+  #   -> `image.pullSecrets` -> `image.imagePullSecrets` (alias, used when `pullSecrets` is unset OR empty).
   # NOTE: the top-level key here is `pullSecrets`, but every workload/per-job override key is
   #   `imagePullSecrets` (not `pullSecrets`). Using `pullSecrets` on a workload is a silent no-op.
   # Only cronJob.jobs.<name>.imagePullSecrets / job.jobs.<name>.imagePullSecrets: "" opts out (no pull
   #   secret); an empty string elsewhere inherits, and a `null` per-job value behaves as unset.
+  # At this top level "" is equivalent to unset: it does not block the `imagePullSecrets` alias below.
+  #   To render no pull secret at all, leave both keys empty.
   # Example: pullSecrets: my-registry-cred
   pullSecrets: ""
+  # -- Alias for `image.pullSecrets`, honored only when `pullSecrets` is unset or empty.
+  # Prefer `pullSecrets`; this exists because both spellings were acceptable to the requester.
+  # Example: imagePullSecrets: my-registry-cred
+  imagePullSecrets: ""
 
 # -- Common annotations for all Kubernetes objects
 commonAnnotations:

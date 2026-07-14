@@ -1478,3 +1478,27 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "deployment\\.imagePullSecrets must be a string secret name.*inherit image\\.pullSecrets"
+
+  # "" at the top level is equivalent to unset and does NOT block the alias.
+  - it: should honor image.imagePullSecrets alias when image.pullSecrets is explicitly empty
+    set:
+      image:
+        pullSecrets: ""
+        imagePullSecrets: alias-cred
+      deployment:
+        enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: alias-cred
+
+  - it: should render no pull secret when both top-level keys are empty
+    set:
+      image:
+        pullSecrets: ""
+        imagePullSecrets: ""
+      deployment:
+        enabled: true
+    asserts:
+      - isNull:
+          path: spec.template.spec.imagePullSecrets
