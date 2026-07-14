@@ -1392,3 +1392,68 @@ tests:
           path: spec.template.spec.imagePullSecrets[0].name
           value: alias-cred
 
+
+  # Set-but-non-string values at the workload/top level must be rejected, not silently
+  # swallowed as "unset" and inherited from below. "" stays a valid falsey inherit signal.
+  - it: should fail when image.pullSecrets is a bool
+    set:
+      image:
+        pullSecrets: false
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.pullSecrets must be a string secret name"
+
+  - it: should fail when image.pullSecrets is a number
+    set:
+      image:
+        pullSecrets: 0
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.pullSecrets must be a string secret name"
+
+  - it: should fail when image.pullSecrets is a list
+    set:
+      image:
+        pullSecrets: ["a", "b"]
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.pullSecrets must be a string secret name"
+
+  - it: should fail when image.imagePullSecrets alias is a list
+    set:
+      image:
+        imagePullSecrets: []
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.imagePullSecrets must be a string secret name"
+
+  - it: should fail when deployment.imagePullSecrets is a number
+    set:
+      image:
+        pullSecrets: real-cred
+      deployment:
+        enabled: true
+        imagePullSecrets: 0
+    asserts:
+      - failedTemplate:
+          errorPattern: "deployment.imagePullSecrets must be a string secret name"
+
+  - it: should still inherit image.pullSecrets when deployment.imagePullSecrets is empty string
+    set:
+      image:
+        pullSecrets: real-cred
+      deployment:
+        enabled: true
+        imagePullSecrets: ""
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: real-cred

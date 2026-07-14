@@ -189,6 +189,21 @@ true
 {{- end -}}
 
 {{/*
+Assert that a set imagePullSecrets value is a string, so that an explicitly-set but
+falsey non-string (false, 0, []) is rejected rather than silently treated as "unset".
+An unset (null) value and the empty string "" are both allowed through: "" is a
+legitimate falsey inherit/opt-out signal whose meaning depends on the level.
+Inputs: .value, .key (the values path, used in the error message)
+*/}}
+{{- define "chart.assertPullSecretKind" -}}
+{{- if not (kindIs "invalid" .value) -}}
+{{- if not (kindIs "string" .value) -}}
+{{- fail (printf "%s must be a string secret name, got %s (value: %v). Use a secret name, or \"\" to opt out." .key (kindOf .value) .value) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Resolve the Kubernetes imagePullSecrets secret name for a pod template context.
 Precedence (highest wins):
   1. cronJob.jobs.<name>.imagePullSecrets / job.jobs.<name>.imagePullSecrets when set to a non-null value (only this path: empty string "" opts out; null is treated as unset and inherits from below). "" is the ONLY opt-out — other falsey values (false, 0, []) are rejected as type errors, not silently rendered as a secret name.
@@ -196,6 +211,8 @@ Precedence (highest wins):
   3. .Root.Values.image.pullSecrets (when .Values.image is a map) — customer-requested top-level key
   4. .Root.Values.image.imagePullSecrets (alias, only when image.pullSecrets is unset)
 Per-job lookup uses Values.jobs directly because shallow merge does not reliably override globals.
+Every level is kind-checked before the truthiness test that selects it, so a set-but-non-string
+value fails the render instead of being silently swallowed as "unset" and inheriting from below.
 */}}
 {{- define "chart.imagePullSecretName" -}}
 {{- $secret := "" -}}
@@ -215,6 +232,17 @@ Per-job lookup uses Values.jobs directly because shallow merge does not reliably
 {{- end -}}
 {{- end -}}
 {{- if not $explicitPerJob -}}
+{{- if hasKey . "imagePullSecrets" -}}
+{{- include "chart.assertPullSecretKind" (dict "value" .imagePullSecrets "key" (printf "%s.imagePullSecrets" .resourceType)) -}}
+{{- end -}}
+{{- if kindIs "map" .Root.Values.image -}}
+{{- if hasKey .Root.Values.image "pullSecrets" -}}
+{{- include "chart.assertPullSecretKind" (dict "value" .Root.Values.image.pullSecrets "key" "image.pullSecrets") -}}
+{{- end -}}
+{{- if hasKey .Root.Values.image "imagePullSecrets" -}}
+{{- include "chart.assertPullSecretKind" (dict "value" .Root.Values.image.imagePullSecrets "key" "image.imagePullSecrets") -}}
+{{- end -}}
+{{- end -}}
 {{- if .imagePullSecrets -}}
 {{- $secret = .imagePullSecrets -}}
 {{- else if kindIs "map" .Root.Values.image -}}
