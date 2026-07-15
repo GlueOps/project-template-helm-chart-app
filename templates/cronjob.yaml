@@ -1,4 +1,4 @@
-{{ if and .Values.cronJob .Values.cronJob.enabled }}
+{{- if and .Values.cronJob .Values.cronJob.enabled }}
 {{- range $name, $job := .Values.cronJob.jobs }}
 {{- if eq (include "chart.jobEntryEnabled" (dict "job" $job "name" $name "resourceType" "cronJob")) "true" }}
 ---
