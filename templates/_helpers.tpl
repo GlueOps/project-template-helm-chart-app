@@ -219,7 +219,7 @@ Precedence (highest wins):
   1. cronJob.jobs.<name>.imagePullSecrets / job.jobs.<name>.imagePullSecrets when set to a non-null value (only this path: empty string "" opts out; null is treated as unset and inherits from below). "" is the ONLY opt-out — other falsey values (false, 0, []) are rejected as type errors, not silently rendered as a secret name.
   2. .imagePullSecrets on the merged workload context when truthy (deployment/statefulSet empty string is falsy and inherits steps 3-4)
   3. .Root.Values.image.pullSecrets (when .Values.image is a map) — customer-requested top-level key
-  4. .Root.Values.image.imagePullSecrets (alias, only when image.pullSecrets is unset)
+  4. .Root.Values.image.imagePullSecrets (alias, only when image.pullSecrets is unset or empty)
 Per-job lookup uses Values.jobs directly because shallow merge does not reliably override globals.
 Every level is kind-checked before the truthiness test that selects it, so a set-but-non-string
 value fails the render instead of being silently swallowed as "unset" and inheriting from below.
