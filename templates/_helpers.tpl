@@ -175,8 +175,9 @@ deliberate, versioned change — see .ai/patterns.md.
 {{/*
 Whether a cronJob.jobs.<name> or job.jobs.<name> entry should render. .enabled must be boolean when set.
 A null .enabled is treated as unset (renders), matching how a null imagePullSecrets is treated as
-unset by chart.imagePullSecretName — this keeps `--set jobs.<name>.enabled=null` (Helm's canonical
-unset idiom) working rather than failing the render.
+unset by chart.imagePullSecretName — this keeps `--set cronJob.jobs.<name>.enabled=null`
+/ `--set job.jobs.<name>.enabled=null` (Helm's canonical unset idiom) working rather than
+failing the render.
 */}}
 {{- define "chart.jobEntryEnabled" -}}
 {{- $job := .job -}}
