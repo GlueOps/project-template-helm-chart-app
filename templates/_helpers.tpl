@@ -201,10 +201,10 @@ true
 {{/*
 Assert that a set imagePullSecrets value is a string, so that an explicitly-set but
 falsey non-string (false, 0, []) is rejected rather than silently treated as "unset".
-An unset (null) value and the empty string "" are both allowed through: "" is a
-legitimate falsey inherit/opt-out signal whose meaning depends on the level.
-Inputs: .value, .key (the values path, named in the error), .hint (level-appropriate
-guidance — "" means different things by level, so the caller supplies the wording)
+An unset (null) value and the empty string "" are both allowed through: "" is the
+legitimate opt-out signal at every level.
+Inputs: .value, .key (the values path, named in the error), .hint (what opting out means
+at this level — the caller supplies the wording so the error can name the right scope)
 */}}
 {{- define "chart.assertPullSecretKind" -}}
 {{- if not (kindIs "invalid" .value) -}}
@@ -217,18 +217,22 @@ guidance — "" means different things by level, so the caller supplies the word
 {{/*
 Resolve the Kubernetes imagePullSecrets secret name for a pod template context.
 Precedence (highest wins):
-  1. cronJob.jobs.<name>.imagePullSecrets / job.jobs.<name>.imagePullSecrets when set to a non-null value (only this path: empty string "" opts out; null is treated as unset and inherits from below). "" is the ONLY opt-out — other falsey values (false, 0, []) are rejected as type errors, not silently rendered as a secret name.
-  2. .imagePullSecrets on the merged workload context when truthy (deployment/statefulSet empty string is falsy and inherits steps 3-4)
-  3. .Root.Values.image.pullSecrets (when .Values.image is a map) — customer-requested top-level key
-  4. .Root.Values.image.imagePullSecrets (alias, only when image.pullSecrets is unset or empty)
+  1. cronJob.jobs.<name>.imagePullSecrets / job.jobs.<name>.imagePullSecrets
+  2. .imagePullSecrets on the merged workload context (deployment/statefulSet/cronJob/job)
+  3. .Root.Values.image.pullSecrets (when .Values.image is a map)
+"Set" means present and non-null at that level; a set value wins even when empty. The same
+literal means the same thing at every level: "" opts out (render no pull secret, ignoring
+anything below), null/absent inherits from the next level down. "" is the ONLY opt-out —
+other falsey values (false, 0, []) are rejected as type errors rather than rendered as a
+literal secret name.
 Per-job lookup uses Values.jobs directly because shallow merge does not reliably override globals.
-Every level is kind-checked before the truthiness test that selects it, so a set-but-non-string
-value fails the render instead of being silently swallowed as "unset" and inheriting from below.
+Every level is kind-checked before the test that selects it, so a set-but-non-string value
+fails the render instead of being silently swallowed as "unset" and inheriting from below.
 */}}
 {{- define "chart.imagePullSecretName" -}}
 {{- $secret := "" -}}
 {{- $source := "imagePullSecrets" -}}
-{{- $explicitPerJob := false -}}
+{{- $resolved := false -}}
 {{- if and .name (or (eq .resourceType "cronJob") (eq .resourceType "job")) -}}
 {{- $jobsMap := dict -}}
 {{- if eq .resourceType "cronJob" -}}
@@ -240,35 +244,28 @@ value fails the render instead of being silently swallowed as "unset" and inheri
 {{- with index $jobsMap .name -}}
 {{- if and (hasKey . "imagePullSecrets") (not (kindIs "invalid" .imagePullSecrets)) -}}
 {{- include "chart.assertPullSecretKind" (dict "value" .imagePullSecrets "key" $jobPath "hint" "Use a secret name, or \"\" to opt this job out of pull secrets.") -}}
-{{- $explicitPerJob = true -}}
+{{- $resolved = true -}}
 {{- $secret = .imagePullSecrets -}}
 {{- $source = $jobPath -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
-{{- if not $explicitPerJob -}}
+{{- if not $resolved -}}
 {{- $workloadPath := printf "%s.imagePullSecrets" .resourceType -}}
-{{- if hasKey . "imagePullSecrets" -}}
-{{- include "chart.assertPullSecretKind" (dict "value" .imagePullSecrets "key" $workloadPath "hint" "Use a secret name, or \"\" to inherit image.pullSecrets.") -}}
-{{- end -}}
-{{- if kindIs "map" .Root.Values.image -}}
-{{- if hasKey .Root.Values.image "pullSecrets" -}}
-{{- include "chart.assertPullSecretKind" (dict "value" .Root.Values.image.pullSecrets "key" "image.pullSecrets" "hint" "Use a secret name, or remove the key to render no pull secret.") -}}
-{{- end -}}
-{{- if hasKey .Root.Values.image "imagePullSecrets" -}}
-{{- include "chart.assertPullSecretKind" (dict "value" .Root.Values.image.imagePullSecrets "key" "image.imagePullSecrets" "hint" "Use a secret name, or remove the key to render no pull secret.") -}}
-{{- end -}}
-{{- end -}}
-{{- if .imagePullSecrets -}}
+{{- if and (hasKey . "imagePullSecrets") (not (kindIs "invalid" .imagePullSecrets)) -}}
+{{- include "chart.assertPullSecretKind" (dict "value" .imagePullSecrets "key" $workloadPath "hint" "Use a secret name, or \"\" to opt this workload out of pull secrets.") -}}
+{{- $resolved = true -}}
 {{- $secret = .imagePullSecrets -}}
 {{- $source = $workloadPath -}}
-{{- else if kindIs "map" .Root.Values.image -}}
-{{- if .Root.Values.image.pullSecrets -}}
+{{- end -}}
+{{- end -}}
+{{- if not $resolved -}}
+{{- if kindIs "map" .Root.Values.image -}}
+{{- if and (hasKey .Root.Values.image "pullSecrets") (not (kindIs "invalid" .Root.Values.image.pullSecrets)) -}}
+{{- include "chart.assertPullSecretKind" (dict "value" .Root.Values.image.pullSecrets "key" "image.pullSecrets" "hint" "Use a secret name, or \"\" to render no pull secret.") -}}
+{{- $resolved = true -}}
 {{- $secret = .Root.Values.image.pullSecrets -}}
 {{- $source = "image.pullSecrets" -}}
-{{- else if .Root.Values.image.imagePullSecrets -}}
-{{- $secret = .Root.Values.image.imagePullSecrets -}}
-{{- $source = "image.imagePullSecrets" -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}

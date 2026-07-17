@@ -17,13 +17,13 @@ A Helm chart template for applications
 | configMap.configs | string | `nil` | Data for the ConfigMap |
 | configMap.enabled | bool | `false` | Whether to create a ConfigMap |
 | configMap.labels | string | `nil` | Labels for the ConfigMap |
-| cronJob | object | `{"enabled":false,"imagePullSecrets":"","jobs":null}` | CronJob configuration |
+| cronJob | object | `{"enabled":false,"imagePullSecrets":null,"jobs":null}` | CronJob configuration |
 | cronJob.enabled | bool | `false` | Whether to create a CronJob |
-| cronJob.imagePullSecrets | string | `""` | Registry pull secret for all CronJob pods (per-job `imagePullSecrets` overrides). Falls back to top-level `image.pullSecrets` when unset. Example: imagePullSecrets: my-registry-cred |
+| cronJob.imagePullSecrets | string | `nil` | Registry pull secret for all CronJob pods (per-job `imagePullSecrets` overrides). `null` (default) inherits `image.pullSecrets`; `""` opts all CronJob pods out of pull secrets. Example: imagePullSecrets: my-registry-cred |
 | cronJob.jobs | string | `nil` | List of jobs to run |
 | customResources | string | `nil` | CustomResources configuration |
 | customResourcesMap | string | `nil` | Custom resource configuration via a map |
-| deployment | object | `{"affinity":{},"annotations":null,"containerPorts":null,"containerSecurityContext":null,"enabled":false,"envConfigMaps":null,"envMap":null,"envSecrets":null,"envVariables":null,"hostAliases":null,"imagePullSecrets":"","initContainers":null,"labels":null,"lifecycle":null,"livenessProbe":null,"matchLabels":null,"nodeSelector":null,"readinessProbe":null,"replicas":1,"resources":{},"securityContext":null,"serviceAccount":{"enabled":false},"sidecar":null,"startupProbe":{},"strategy":"RollingUpdate","tolerations":null,"topologySpreadConstraints":null,"volumeMounts":null,"volumes":null}` | Deployment configuration |
+| deployment | object | `{"affinity":{},"annotations":null,"containerPorts":null,"containerSecurityContext":null,"enabled":false,"envConfigMaps":null,"envMap":null,"envSecrets":null,"envVariables":null,"hostAliases":null,"imagePullSecrets":null,"initContainers":null,"labels":null,"lifecycle":null,"livenessProbe":null,"matchLabels":null,"nodeSelector":null,"readinessProbe":null,"replicas":1,"resources":{},"securityContext":null,"serviceAccount":{"enabled":false},"sidecar":null,"startupProbe":{},"strategy":"RollingUpdate","tolerations":null,"topologySpreadConstraints":null,"volumeMounts":null,"volumes":null}` | Deployment configuration |
 | deployment.affinity | object | `{}` | Affinity rules for scheduling the pods |
 | deployment.annotations | string | `nil` | Annotations for the Deployment |
 | deployment.containerPorts | string | `nil` | Additional container ports |
@@ -34,7 +34,7 @@ A Helm chart template for applications
 | deployment.envSecrets | string | `nil` | List of secret environment variables variable   - name of env variable inside container secretName - name of kubernetes secret object secretKey  - name of the key in secret object which holds the value |
 | deployment.envVariables | string | `nil` | List of environment variables |
 | deployment.hostAliases | string | `nil` | Host aliases for the pods |
-| deployment.imagePullSecrets | string | `""` | Registry pull secret for this Deployment (overrides `image.pullSecrets`). Empty string inherits `image.pullSecrets`. Example: imagePullSecrets: my-registry-cred |
+| deployment.imagePullSecrets | string | `nil` | Registry pull secret for this Deployment (overrides `image.pullSecrets`). `null` (default) inherits `image.pullSecrets`; `""` opts this Deployment out of pull secrets. Example: imagePullSecrets: my-registry-cred |
 | deployment.initContainers | string | `nil` | Init containers configuration |
 | deployment.labels | string | `nil` | Labels for the Deployment |
 | deployment.lifecycle | string | `nil` | Lifecycle hooks |
@@ -59,12 +59,11 @@ A Helm chart template for applications
 | externalSecret.refreshInterval | string | `"2s"` | RefreshInterval is the amount of time before the values reading again from the SecretStore provider |
 | externalSecret.secretStore | object | `{"name":"vault-backend"}` | Global SecretStore for all ExternalSecrets |
 | externalSecret.secrets | string | `nil` | Data for the External Secret |
-| image | object | `{"args":null,"command":null,"imagePullSecrets":"","port":8080,"pullSecrets":"","registry":"docker.io","repository":"nginx","tag":"1.29.5@sha256:341bf0f3ce6c5277d6002cf6e1fb0319fa4252add24ab6a0e262e0056d313208","useChartVersionAsTagFallback":true}` | Docker image configuration |
+| image | object | `{"args":null,"command":null,"port":8080,"pullSecrets":null,"registry":"docker.io","repository":"nginx","tag":"1.29.5@sha256:341bf0f3ce6c5277d6002cf6e1fb0319fa4252add24ab6a0e262e0056d313208","useChartVersionAsTagFallback":true}` | Docker image configuration |
 | image.args | string | `nil` | Arguments to pass to the command |
 | image.command | string | `nil` | Command to run in the Docker container |
-| image.imagePullSecrets | string | `""` | Alias for `image.pullSecrets`, honored only when `pullSecrets` is unset or empty. Prefer `pullSecrets`; this exists because both spellings were acceptable to the requester. Example: imagePullSecrets: my-registry-cred |
 | image.port | int | `8080` | Port the application will listen on (>1024) |
-| image.pullSecrets | string | `""` | Registry pull secret name inherited by all pod templates (Deployment, StatefulSet, Job, CronJob). Resolution order (highest first): per-job `imagePullSecrets` -> workload `imagePullSecrets`   -> `image.pullSecrets` -> `image.imagePullSecrets` (alias, used when `pullSecrets` is unset OR empty). NOTE: the top-level key here is `pullSecrets`, but every workload/per-job override key is   `imagePullSecrets` (not `pullSecrets`). Using `pullSecrets` on a workload is a silent no-op. Only cronJob.jobs.<name>.imagePullSecrets / job.jobs.<name>.imagePullSecrets: "" opts out (no pull   secret); an empty string elsewhere inherits, and a `null` per-job value behaves as unset. At this top level "" is equivalent to unset: it does not block the `imagePullSecrets` alias below.   To render no pull secret at all, leave both keys empty. Example: pullSecrets: my-registry-cred |
+| image.pullSecrets | string | `nil` | Registry pull secret name inherited by all pod templates (Deployment, StatefulSet, Job, CronJob). Resolution order (highest first): per-job `imagePullSecrets` -> workload `imagePullSecrets`   -> `image.pullSecrets`. The first level that is set (present and non-null) wins, even if empty. At every level `""` means the same thing: render no pull secret, ignoring lower levels.   `null` (the default) means unset: inherit from the next level down. NOTE: the top-level key here is `pullSecrets`, but every workload/per-job override key is   `imagePullSecrets` (not `pullSecrets`). Using `pullSecrets` on a workload is a silent no-op. Example: pullSecrets: my-registry-cred |
 | image.registry | string | `"docker.io"` | Docker registry |
 | image.repository | string | `"nginx"` | Docker image repository |
 | image.tag | string | `"1.29.5@sha256:341bf0f3ce6c5277d6002cf6e1fb0319fa4252add24ab6a0e262e0056d313208"` | Docker image tag |
@@ -73,9 +72,9 @@ A Helm chart template for applications
 | ingress.annotations | string | `nil` | Annotations for the Ingress |
 | ingress.enabled | bool | `false` | Whether to create an Ingress |
 | ingress.entries | string | `nil` | Entries for the Ingress |
-| job | object | `{"enabled":false,"imagePullSecrets":"","jobs":null}` | Job configuration |
+| job | object | `{"enabled":false,"imagePullSecrets":null,"jobs":null}` | Job configuration |
 | job.enabled | bool | `false` | Whether to create a Job |
-| job.imagePullSecrets | string | `""` | Registry pull secret for all Job pods (per-job `imagePullSecrets` overrides). Falls back to top-level `image.pullSecrets` when unset. Example: imagePullSecrets: my-registry-cred |
+| job.imagePullSecrets | string | `nil` | Registry pull secret for all Job pods (per-job `imagePullSecrets` overrides). `null` (default) inherits `image.pullSecrets`; `""` opts all Job pods out of pull secrets. Example: imagePullSecrets: my-registry-cred |
 | job.jobs | string | `nil` | List of jobs to run |
 | keda | object | `{"enabled":false,"scaledObject":{"enabled":false,"spec":{"triggers":[],"triggersMap":{}}},"triggerAuthentication":null}` | Keda configuration |
 | keda.enabled | bool | `false` | Whether to enable Keda |
@@ -105,7 +104,7 @@ A Helm chart template for applications
 | serviceAccount.annotations | string | `nil` | Annotations for the Service Account |
 | serviceAccount.create | bool | `false` | Whether to create a Service Account |
 | serviceAccount.labels | string | `nil` | Labels for the Service Account |
-| statefulSet | object | `{"affinity":{},"annotations":null,"containerPorts":null,"containerSecurityContext":null,"enabled":false,"envConfigMaps":null,"envMap":null,"envSecrets":null,"envVariables":null,"hostAliases":null,"imagePullSecrets":"","initContainers":null,"labels":null,"lifecycle":null,"livenessProbe":null,"matchLabels":null,"nodeSelector":null,"readinessProbe":null,"resources":{},"securityContext":null,"serviceAccount":{"enabled":false},"sidecar":null,"startupProbe":{},"tolerations":null,"topologySpreadConstraints":null,"updateStrategy":"RollingUpdate","volumeClaimTemplates":null,"volumeMounts":null,"volumes":null}` | StatefulSet configuration |
+| statefulSet | object | `{"affinity":{},"annotations":null,"containerPorts":null,"containerSecurityContext":null,"enabled":false,"envConfigMaps":null,"envMap":null,"envSecrets":null,"envVariables":null,"hostAliases":null,"imagePullSecrets":null,"initContainers":null,"labels":null,"lifecycle":null,"livenessProbe":null,"matchLabels":null,"nodeSelector":null,"readinessProbe":null,"resources":{},"securityContext":null,"serviceAccount":{"enabled":false},"sidecar":null,"startupProbe":{},"tolerations":null,"topologySpreadConstraints":null,"updateStrategy":"RollingUpdate","volumeClaimTemplates":null,"volumeMounts":null,"volumes":null}` | StatefulSet configuration |
 | statefulSet.affinity | object | `{}` | Affinity rules for scheduling the pods |
 | statefulSet.annotations | string | `nil` | Annotations for the StatefulSet |
 | statefulSet.containerPorts | string | `nil` | Additional container ports |
@@ -116,7 +115,7 @@ A Helm chart template for applications
 | statefulSet.envSecrets | string | `nil` | List of secret environment variables variable   - name of env variable inside container secretName - name of kubernetes secret object secretKey  - name of the key in secret object which holds the value |
 | statefulSet.envVariables | string | `nil` | List of environment variables |
 | statefulSet.hostAliases | string | `nil` | Host aliases for the pods |
-| statefulSet.imagePullSecrets | string | `""` | Registry pull secret for this StatefulSet (overrides `image.pullSecrets`). Empty string inherits `image.pullSecrets`. Example: imagePullSecrets: my-registry-cred |
+| statefulSet.imagePullSecrets | string | `nil` | Registry pull secret for this StatefulSet (overrides `image.pullSecrets`). `null` (default) inherits `image.pullSecrets`; `""` opts this StatefulSet out of pull secrets. Example: imagePullSecrets: my-registry-cred |
 | statefulSet.initContainers | string | `nil` | Init containers configuration |
 | statefulSet.labels | string | `nil` | Labels for the StatefulSet |
 | statefulSet.lifecycle | string | `nil` | Lifecycle hooks |

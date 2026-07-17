@@ -69,19 +69,13 @@ image:
   port: 8080
   # -- Registry pull secret name inherited by all pod templates (Deployment, StatefulSet, Job, CronJob).
   # Resolution order (highest first): per-job `imagePullSecrets` -> workload `imagePullSecrets`
-  #   -> `image.pullSecrets` -> `image.imagePullSecrets` (alias, used when `pullSecrets` is unset OR empty).
+  #   -> `image.pullSecrets`. The first level that is set (present and non-null) wins, even if empty.
+  # At every level `""` means the same thing: render no pull secret, ignoring lower levels.
+  #   `null` (the default) means unset: inherit from the next level down.
   # NOTE: the top-level key here is `pullSecrets`, but every workload/per-job override key is
   #   `imagePullSecrets` (not `pullSecrets`). Using `pullSecrets` on a workload is a silent no-op.
-  # Only cronJob.jobs.<name>.imagePullSecrets / job.jobs.<name>.imagePullSecrets: "" opts out (no pull
-  #   secret); an empty string elsewhere inherits, and a `null` per-job value behaves as unset.
-  # At this top level "" is equivalent to unset: it does not block the `imagePullSecrets` alias below.
-  #   To render no pull secret at all, leave both keys empty.
   # Example: pullSecrets: my-registry-cred
-  pullSecrets: ""
-  # -- Alias for `image.pullSecrets`, honored only when `pullSecrets` is unset or empty.
-  # Prefer `pullSecrets`; this exists because both spellings were acceptable to the requester.
-  # Example: imagePullSecrets: my-registry-cred
-  imagePullSecrets: ""
+  pullSecrets: null
 
 # -- Common annotations for all Kubernetes objects
 commonAnnotations:
@@ -98,9 +92,10 @@ commonLabels:
 deployment:
   # -- Whether to create a Deployment
   enabled: false
-  # -- Registry pull secret for this Deployment (overrides `image.pullSecrets`). Empty string inherits `image.pullSecrets`.
+  # -- Registry pull secret for this Deployment (overrides `image.pullSecrets`).
+  # `null` (default) inherits `image.pullSecrets`; `""` opts this Deployment out of pull secrets.
   # Example: imagePullSecrets: my-registry-cred
-  imagePullSecrets: ""
+  imagePullSecrets: null
   # -- Annotations for the Deployment
   annotations:
     # deploy.annotations.example.com/name: deploy
@@ -365,9 +360,10 @@ deployment:
 statefulSet:
   # -- Whether to create a StatefulSet
   enabled: false
-  # -- Registry pull secret for this StatefulSet (overrides `image.pullSecrets`). Empty string inherits `image.pullSecrets`.
+  # -- Registry pull secret for this StatefulSet (overrides `image.pullSecrets`).
+  # `null` (default) inherits `image.pullSecrets`; `""` opts this StatefulSet out of pull secrets.
   # Example: imagePullSecrets: my-registry-cred
-  imagePullSecrets: ""
+  imagePullSecrets: null
   # -- Annotations for the StatefulSet
   annotations:
     # deploy.annotations.example.com/name: deploy
@@ -640,9 +636,9 @@ cronJob:
   enabled: false
 
   # -- Registry pull secret for all CronJob pods (per-job `imagePullSecrets` overrides).
-  # Falls back to top-level `image.pullSecrets` when unset.
+  # `null` (default) inherits `image.pullSecrets`; `""` opts all CronJob pods out of pull secrets.
   # Example: imagePullSecrets: my-registry-cred
-  imagePullSecrets: ""
+  imagePullSecrets: null
 
   # -- Global JobSpec defaults for all cronjobs (per-job values override these)
   # backoffLimit: 6
@@ -750,9 +746,9 @@ job:
   enabled: false
 
   # -- Registry pull secret for all Job pods (per-job `imagePullSecrets` overrides).
-  # Falls back to top-level `image.pullSecrets` when unset.
+  # `null` (default) inherits `image.pullSecrets`; `""` opts all Job pods out of pull secrets.
   # Example: imagePullSecrets: my-registry-cred
-  imagePullSecrets: ""
+  imagePullSecrets: null
 
   # -- Global JobSpec defaults for all jobs (per-job values override these)
   # backoffLimit: 6

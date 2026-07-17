@@ -76,6 +76,10 @@ spec:
       whenUnsatisfiable: ScheduleAnyway
   {{- end }}
   {{- $imagePullSecret := include "chart.imagePullSecretName" . | trim }}
+  {{- /* The quote below is load-bearing: Helm's loader is YAML 1.1, so an unquoted secret
+         name like y/no/on/off would parse as a bool. helm-unittest cannot catch its removal
+         — it reads the rendered doc with a YAML 1.2 parser, which normalizes the difference
+         away — so a green suite is not evidence that dropping it is safe. */}}
   {{- if $imagePullSecret }}
   imagePullSecrets:
   - name: {{ $imagePullSecret | quote }}

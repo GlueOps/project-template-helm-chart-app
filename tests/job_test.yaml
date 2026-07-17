@@ -735,10 +735,10 @@ tests:
           errorPattern: "must not contain a digest"
 
 
-  - it: should inherit image.imagePullSecrets on job pods
+  - it: should inherit image.pullSecrets on job pods
     set:
       image:
-        imagePullSecrets: global-reg-cred
+        pullSecrets: global-reg-cred
       job:
         enabled: true
         jobs:
@@ -748,6 +748,46 @@ tests:
       - equal:
           path: spec.template.spec.imagePullSecrets[0].name
           value: global-reg-cred
+
+  # Regression: the per-job lookup runs inside a `range`, so a wrong (or constant) key gives
+  # every job the same secret. Assert each job resolves its own value and that a job with
+  # none falls through to the top-level key.
+  - it: should resolve per-job imagePullSecrets independently for each job
+    set:
+      image:
+        pullSecrets: top-cred
+      job:
+        enabled: true
+        jobs:
+          aaa:
+            image: nginx
+            imagePullSecrets: secret-a
+          bbb:
+            image: nginx
+            imagePullSecrets: secret-b
+          ccc:
+            image: nginx
+    asserts:
+      - hasDocuments:
+          count: 3
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: secret-a
+        documentSelector:
+          path: metadata.name
+          value: example-app-aaa
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: secret-b
+        documentSelector:
+          path: metadata.name
+          value: example-app-bbb
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: top-cred
+        documentSelector:
+          path: metadata.name
+          value: example-app-ccc
 
   - it: should inherit job.imagePullSecrets on all jobs
     set:
