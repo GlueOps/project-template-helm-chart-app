@@ -67,6 +67,15 @@ image:
 
   # -- Port the application will listen on (>1024)
   port: 8080
+  # -- Registry pull secret name inherited by all pod templates (Deployment, StatefulSet, Job, CronJob).
+  # Resolution order (highest first): per-job `imagePullSecrets` -> workload `imagePullSecrets`
+  #   -> `image.pullSecrets`. The first level that is set (present and non-null) wins, even if empty.
+  # At every level `""` means the same thing: render no pull secret, ignoring lower levels.
+  #   `null` (the default) means unset: inherit from the next level down.
+  # NOTE: the top-level key here is `pullSecrets`, but every workload/per-job override key is
+  #   `imagePullSecrets` (not `pullSecrets`). Using `pullSecrets` on a workload is a silent no-op.
+  # Example: pullSecrets: my-registry-cred
+  pullSecrets: null
 
 # -- Common annotations for all Kubernetes objects
 commonAnnotations:
@@ -83,6 +92,10 @@ commonLabels:
 deployment:
   # -- Whether to create a Deployment
   enabled: false
+  # -- Registry pull secret for this Deployment (overrides `image.pullSecrets`).
+  # `null` (default) inherits `image.pullSecrets`; `""` opts this Deployment out of pull secrets.
+  # Example: imagePullSecrets: my-registry-cred
+  imagePullSecrets: null
   # -- Annotations for the Deployment
   annotations:
     # deploy.annotations.example.com/name: deploy
@@ -347,6 +360,10 @@ deployment:
 statefulSet:
   # -- Whether to create a StatefulSet
   enabled: false
+  # -- Registry pull secret for this StatefulSet (overrides `image.pullSecrets`).
+  # `null` (default) inherits `image.pullSecrets`; `""` opts this StatefulSet out of pull secrets.
+  # Example: imagePullSecrets: my-registry-cred
+  imagePullSecrets: null
   # -- Annotations for the StatefulSet
   annotations:
     # deploy.annotations.example.com/name: deploy
@@ -618,6 +635,11 @@ cronJob:
   # -- Whether to create a CronJob
   enabled: false
 
+  # -- Registry pull secret for all CronJob pods (per-job `imagePullSecrets` overrides).
+  # `null` (default) inherits `image.pullSecrets`; `""` opts all CronJob pods out of pull secrets.
+  # Example: imagePullSecrets: my-registry-cred
+  imagePullSecrets: null
+
   # -- Global JobSpec defaults for all cronjobs (per-job values override these)
   # backoffLimit: 6
   # parallelism: 1
@@ -636,6 +658,8 @@ cronJob:
   # -- List of jobs to run
   jobs:
     # cronjob:
+    #   # -- Render this job (default true). Set false to opt out when the job key is defined in shared values.
+    #   enabled: true
     #   labels: {}
     #   annotations: {}
     #   schedule: "* * * 8 *"
@@ -721,6 +745,11 @@ job:
   # -- Whether to create a Job
   enabled: false
 
+  # -- Registry pull secret for all Job pods (per-job `imagePullSecrets` overrides).
+  # `null` (default) inherits `image.pullSecrets`; `""` opts all Job pods out of pull secrets.
+  # Example: imagePullSecrets: my-registry-cred
+  imagePullSecrets: null
+
   # -- Global JobSpec defaults for all jobs (per-job values override these)
   # backoffLimit: 6
   # parallelism: 1
@@ -739,6 +768,8 @@ job:
   # -- List of jobs to run
   jobs:
     # db-migration:
+    #   # -- Render this job (default true). Set false to opt out when the job key is defined in shared values.
+    #   enabled: true
     #   suspend: false
     #   # -- JobSpec fields:
     #   # backoffLimit: 2            # max retries before marking failed (0 = never retry)

@@ -1,0 +1,6 @@
+appName: example-app
+image: null
+job:
+  enabled: true
+  jobs:
+    run-once: {}

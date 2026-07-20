@@ -3,8 +3,27 @@ templates:
   - cronjob.yaml
 set:
   appName: "example-app"
-
 tests:
+  - it: per-job tolerations should override global tolerations
+    set:
+      cronJob:
+        enabled: true
+        tolerations:
+          - key: global
+            value: should-not-win
+        jobs:
+          test:
+            schedule: "* * * * *"
+            tolerations:
+              - key: per-job
+                value: should-win
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.tolerations[0].key
+          value: per-job
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.tolerations[0].value
+          value: should-win
   - it: should be disabled by default
     set:
       cronJob.enabled: false
@@ -773,3 +792,416 @@ tests:
           path: spec.jobTemplate.spec.template.spec.containers[0].image
           value: docker.io/shared-service:latest
 
+
+  - it: should inherit image.pullSecrets on cronjob pods
+    set:
+      image:
+        pullSecrets: global-reg-cred
+      cronJob:
+        enabled: true
+        jobs:
+          backup:
+            schedule: "0 0 * * *"
+            image: nginx
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.imagePullSecrets[0].name
+          value: global-reg-cred
+
+  - it: should fail when a per-job imagePullSecrets contains whitespace
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          backup:
+            schedule: "0 0 * * *"
+            image: nginx
+            imagePullSecrets: "my secret"
+    asserts:
+      - failedTemplate:
+          errorPattern: "cronJob\\.jobs\\.backup\\.imagePullSecrets must not contain whitespace"
+
+  # Regression: the per-job lookup `index $jobsMap .name` sits inside a `range`, so a wrong
+  # (or constant) key silently gives every job the same secret. Several differently-named
+  # cronjobs with disagreeing secrets is the whole use case, so assert each job resolves its
+  # OWN value and that a job with none still falls through to the top-level key.
+  - it: should resolve per-job imagePullSecrets independently for each job
+    set:
+      image:
+        pullSecrets: top-cred
+      cronJob:
+        enabled: true
+        jobs:
+          aaa:
+            schedule: "0 0 * * *"
+            image: nginx
+            imagePullSecrets: secret-a
+          bbb:
+            schedule: "0 1 * * *"
+            image: nginx
+            imagePullSecrets: secret-b
+          ccc:
+            schedule: "0 2 * * *"
+            image: nginx
+    asserts:
+      - hasDocuments:
+          count: 3
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.imagePullSecrets[0].name
+          value: secret-a
+        documentSelector:
+          path: metadata.name
+          value: example-app-aaa
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.imagePullSecrets[0].name
+          value: secret-b
+        documentSelector:
+          path: metadata.name
+          value: example-app-bbb
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.imagePullSecrets[0].name
+          value: top-cred
+        documentSelector:
+          path: metadata.name
+          value: example-app-ccc
+
+  # Same leakage risk for the "" opt-out: one job opting out must not opt the others out.
+  - it: should scope the per-job empty-string opt-out to that job only
+    set:
+      cronJob:
+        enabled: true
+        imagePullSecrets: cron-global-cred
+        jobs:
+          opted-out:
+            schedule: "0 0 * * *"
+            image: nginx
+            imagePullSecrets: ""
+          inherits:
+            schedule: "0 1 * * *"
+            image: nginx
+    asserts:
+      - isNull:
+          path: spec.jobTemplate.spec.template.spec.imagePullSecrets
+        documentSelector:
+          path: metadata.name
+          value: example-app-opted-out
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.imagePullSecrets[0].name
+          value: cron-global-cred
+        documentSelector:
+          path: metadata.name
+          value: example-app-inherits
+
+  - it: should inherit cronJob.imagePullSecrets on all jobs
+    set:
+      cronJob:
+        enabled: true
+        imagePullSecrets: cron-global-cred
+        jobs:
+          backup:
+            schedule: "0 0 * * *"
+            image: nginx
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.imagePullSecrets[0].name
+          value: cron-global-cred
+
+  - it: should prefer per-job imagePullSecrets over cronJob global
+    set:
+      cronJob:
+        enabled: true
+        imagePullSecrets: cron-global-cred
+        jobs:
+          backup:
+            schedule: "0 0 * * *"
+            image: nginx
+            imagePullSecrets: job-specific-cred
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.imagePullSecrets[0].name
+          value: job-specific-cred
+
+  - it: should not render imagePullSecrets when unset
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          backup:
+            schedule: "0 0 * * *"
+            image: nginx
+    asserts:
+      - isNull:
+          path: spec.jobTemplate.spec.template.spec.imagePullSecrets
+
+  - it: should not leak schedule into pod template spec
+    set:
+      cronJob:
+        enabled: true
+        imagePullSecrets: cron-global-cred
+        jobs:
+          backup:
+            schedule: "0 0 * * *"
+            image: nginx
+    asserts:
+      - isNull:
+          path: spec.jobTemplate.spec.template.spec.schedule
+
+  - it: should skip cronjob when jobs entry has enabled false
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          wanted:
+            schedule: "0 0 * * *"
+            image: nginx
+          unwanted:
+            enabled: false
+            schedule: "0 1 * * *"
+            image: nginx
+    asserts:
+      - hasDocuments:
+          count: 1
+      - matchRegex:
+          path: metadata.name
+          pattern: '-wanted$'
+
+
+  # `image.imagePullSecrets` is not a key: only `pullSecrets` is read at the top level.
+  - it: should ignore an image.imagePullSecrets misspelling at the top level
+    set:
+      image:
+        imagePullSecrets: not-a-key
+      cronJob:
+        enabled: true
+        jobs:
+          backup:
+            schedule: "0 0 * * *"
+            image: nginx
+    asserts:
+      - isNull:
+          path: spec.jobTemplate.spec.template.spec.imagePullSecrets
+
+
+  - it: should opt out of pull secrets when per-job imagePullSecrets is empty string
+    set:
+      cronJob:
+        enabled: true
+        imagePullSecrets: cron-global-cred
+        jobs:
+          backup:
+            schedule: "0 0 * * *"
+            image: nginx
+            imagePullSecrets: ""
+    asserts:
+      - isNull:
+          path: spec.jobTemplate.spec.template.spec.imagePullSecrets
+
+  - it: should not inherit global cronJob labels onto pod template
+    set:
+      cronJob:
+        enabled: true
+        labels:
+          team: platform
+        jobs:
+          backup:
+            schedule: "0 0 * * *"
+            image: nginx
+    asserts:
+      - isNull:
+          path: spec.jobTemplate.spec.template.metadata.labels.team
+
+  - it: should fail when jobs entry enabled is a string
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          backup:
+            enabled: "false"
+            schedule: "0 0 * * *"
+            image: nginx
+    asserts:
+      - failedTemplate:
+          errorPattern: "cronJob\\.jobs\\.[a-z-]+\\.enabled must be a boolean"
+
+  - it: should fail when imagePullSecrets is not a string
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          backup:
+            schedule: "0 0 * * *"
+            image: nginx
+            imagePullSecrets: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "must be a string secret name"
+
+  - it: should fail when per-job imagePullSecrets is false (falsey, not an opt-out)
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          backup:
+            schedule: "0 0 * * *"
+            image: nginx
+            imagePullSecrets: false
+    asserts:
+      - failedTemplate:
+          errorPattern: "must be a string secret name"
+
+  - it: should fail when per-job imagePullSecrets is the number zero
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          backup:
+            schedule: "0 0 * * *"
+            image: nginx
+            imagePullSecrets: 0
+    asserts:
+      - failedTemplate:
+          errorPattern: "must be a string secret name"
+
+  - it: should fail when per-job imagePullSecrets is an empty list
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          backup:
+            schedule: "0 0 * * *"
+            image: nginx
+            imagePullSecrets: []
+    asserts:
+      - failedTemplate:
+          errorPattern: "must be a string secret name"
+
+  - it: should inherit image.pullSecrets (documented key) on cronjob pods
+    set:
+      image:
+        pullSecrets: global-reg-cred
+      cronJob:
+        enabled: true
+        jobs:
+          backup:
+            schedule: "0 0 * * *"
+            image: nginx
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.imagePullSecrets[0].name
+          value: global-reg-cred
+
+  # M1: helper must not reference the OTHER workload's jobs map (guards the ternary->if/else fix).
+  - it: should render a cronjob without panicking when job is null
+    set:
+      job: null
+      cronJob:
+        enabled: true
+        jobs:
+          backup:
+            schedule: "0 0 * * *"
+            image: nginx
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: CronJob
+
+  # M1: line-1 null guard on THIS template (guards `and .Values.cronJob .Values.cronJob.enabled`).
+  # Without the guard, `.Values.cronJob.enabled` on a null cronJob panics instead of rendering nothing.
+  - it: should render zero cronjobs when cronJob itself is null
+    set:
+      cronJob: null
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  # M1 (#1 regression): per-job imagePullSecrets: null is treated as unset and inherits, not name: "".
+  - it: should treat per-job imagePullSecrets null as unset and inherit image.pullSecrets
+    set:
+      image:
+        pullSecrets: global-reg-cred
+      cronJob:
+        enabled: true
+        jobs:
+          backup:
+            schedule: "0 0 * * *"
+            image: nginx
+            imagePullSecrets: null
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.imagePullSecrets[0].name
+          value: global-reg-cred
+
+  - it: should render no imagePullSecrets when per-job value is null and nothing to inherit
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          backup:
+            schedule: "0 0 * * *"
+            image: nginx
+            imagePullSecrets: null
+    asserts:
+      - isNull:
+          path: spec.jobTemplate.spec.template.spec.imagePullSecrets
+
+  # M2: a global cronJob pod-level field (nodeSelector) must NOT leak into job pods.
+  # Guards against re-widening chart.jobPodGlobals beyond imagePullSecrets.
+  - it: should not leak global cronJob pod fields (nodeSelector) into job pods
+    set:
+      cronJob:
+        enabled: true
+        nodeSelector:
+          disktype: ssd
+        jobs:
+          backup:
+            schedule: "0 0 * * *"
+            image: nginx
+    asserts:
+      - isNull:
+          path: spec.jobTemplate.spec.template.spec.nodeSelector
+
+
+  # Errors must name the offending values path so the bad job entry is identifiable.
+  - it: should name the full job path in per-job imagePullSecrets type errors
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          nightly-backup:
+            schedule: "0 0 * * *"
+            image: nginx
+            imagePullSecrets: false
+    asserts:
+      - failedTemplate:
+          errorPattern: "cronJob\\.jobs\\.nightly-backup\\.imagePullSecrets must be a string secret name"
+
+  - it: should name the full job path in per-job whitespace-only errors
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          nightly-backup:
+            schedule: "0 0 * * *"
+            image: nginx
+            imagePullSecrets: "   "
+    asserts:
+      - failedTemplate:
+          errorPattern: "cronJob\\.jobs\\.nightly-backup\\.imagePullSecrets must not be empty or whitespace only"
+
+  # null is Helm's canonical "unset" idiom; it must not hard-fail, matching how a null
+  # per-job imagePullSecrets is treated as unset.
+  - it: should treat jobs entry enabled null as unset and render the job
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          backup:
+            enabled: null
+            schedule: "0 0 * * *"
+            image: nginx
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: CronJob

@@ -127,3 +127,67 @@ tests:
       - equal:
           path: spec.template.spec.containers[0].image
           value: quay.io/example/stateful:v9.0.0
+
+
+  - it: should inherit image.pullSecrets (documented key) on statefulset pods
+    set:
+      image:
+        pullSecrets: global-reg-cred
+      statefulSet:
+        enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: global-reg-cred
+
+  - it: should prefer statefulSet.imagePullSecrets over image.pullSecrets
+    set:
+      image:
+        pullSecrets: global-reg-cred
+      statefulSet:
+        enabled: true
+        imagePullSecrets: sts-cred
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: sts-cred
+
+  - it: should opt out of image.pullSecrets when statefulSet.imagePullSecrets is empty string
+    set:
+      image:
+        pullSecrets: global-reg-cred
+      statefulSet:
+        enabled: true
+        imagePullSecrets: ""
+    asserts:
+      - isNull:
+          path: spec.template.spec.imagePullSecrets
+
+  - it: should inherit image.pullSecrets when statefulSet.imagePullSecrets is null
+    set:
+      image:
+        pullSecrets: global-reg-cred
+      statefulSet:
+        enabled: true
+        imagePullSecrets: null
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: global-reg-cred
+
+  - it: should render no imagePullSecrets on statefulset when none are set
+    set:
+      statefulSet:
+        enabled: true
+    asserts:
+      - isNull:
+          path: spec.template.spec.imagePullSecrets
+
+  - it: should fail when statefulSet.imagePullSecrets is not a string
+    set:
+      statefulSet:
+        enabled: true
+        imagePullSecrets: false
+    asserts:
+      - failedTemplate:
+          errorPattern: "statefulSet\\.imagePullSecrets must be a string secret name"

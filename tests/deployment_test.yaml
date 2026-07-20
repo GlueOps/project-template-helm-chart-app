@@ -1324,3 +1324,198 @@ tests:
       - equal:
           path: spec.template.spec.containers[0].image
           value: docker.io/nginx:v1.2.3
+
+
+  - it: should prefer deployment.imagePullSecrets over image.pullSecrets
+    set:
+      image:
+        pullSecrets: global-reg-cred
+      deployment:
+        enabled: true
+        imagePullSecrets: deployment-specific-cred
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: deployment-specific-cred
+
+  - it: should not render imagePullSecrets when unset
+    set:
+      deployment:
+        enabled: true
+    asserts:
+      - isNull:
+          path: spec.template.spec.imagePullSecrets
+
+  - it: should inherit image.pullSecrets (documented key) on deployment pods
+    set:
+      image:
+        pullSecrets: global-reg-cred
+      deployment:
+        enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: global-reg-cred
+
+  # `image.imagePullSecrets` is not a key: only `pullSecrets` is read at the top level.
+  - it: should ignore an image.imagePullSecrets misspelling at the top level
+    set:
+      image:
+        imagePullSecrets: not-a-key
+      deployment:
+        enabled: true
+    asserts:
+      - isNull:
+          path: spec.template.spec.imagePullSecrets
+
+
+  # Set-but-non-string values at the workload/top level must be rejected, not silently
+  # swallowed as "unset" and inherited from below. "" stays a valid explicit opt-out.
+  - it: should fail when image.pullSecrets is a bool
+    set:
+      image:
+        pullSecrets: false
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.pullSecrets must be a string secret name"
+
+  - it: should fail when image.pullSecrets is a number
+    set:
+      image:
+        pullSecrets: 0
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.pullSecrets must be a string secret name"
+
+  - it: should fail when image.pullSecrets is a list
+    set:
+      image:
+        pullSecrets: ["a", "b"]
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.pullSecrets must be a string secret name"
+
+  - it: should fail when deployment.imagePullSecrets is a number
+    set:
+      image:
+        pullSecrets: real-cred
+      deployment:
+        enabled: true
+        imagePullSecrets: 0
+    asserts:
+      - failedTemplate:
+          errorPattern: "deployment.imagePullSecrets must be a string secret name"
+
+  # "" is an explicit opt-out at every level, including the workload level: a Deployment
+  # must be able to escape a global set in a shared common values file.
+  - it: should opt out of image.pullSecrets when deployment.imagePullSecrets is empty string
+    set:
+      image:
+        pullSecrets: real-cred
+      deployment:
+        enabled: true
+        imagePullSecrets: ""
+    asserts:
+      - isNull:
+          path: spec.template.spec.imagePullSecrets
+
+  # null is the "unset" signal and still inherits, which is what distinguishes it from "".
+  - it: should inherit image.pullSecrets when deployment.imagePullSecrets is null
+    set:
+      image:
+        pullSecrets: real-cred
+      deployment:
+        enabled: true
+        imagePullSecrets: null
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: real-cred
+
+  # Kubernetes does not validate pull secret names at the API server (it accepts `My_Secret`,
+  # `-bad`, `foo/bar`, even names with spaces, and just warns at pull time), so this
+  # render-time check is the only thing that catches a typo. Each guard gets a test.
+  - it: should fail when image.pullSecrets is whitespace only
+    set:
+      image:
+        pullSecrets: "   "
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image\\.pullSecrets must not be empty or whitespace only"
+
+  - it: should fail when image.pullSecrets contains an internal space
+    set:
+      image:
+        pullSecrets: "my secret"
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image\\.pullSecrets must not contain whitespace"
+
+  - it: should fail when image.pullSecrets contains a tab
+    set:
+      image:
+        pullSecrets: "my\tsecret"
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image\\.pullSecrets must not contain whitespace"
+
+  - it: should name the workload path when deployment.imagePullSecrets contains whitespace
+    set:
+      deployment:
+        enabled: true
+        imagePullSecrets: "my secret"
+    asserts:
+      - failedTemplate:
+          errorPattern: "deployment\\.imagePullSecrets must not contain whitespace"
+
+  - it: should trim surrounding whitespace from a valid secret name
+    set:
+      image:
+        pullSecrets: "  real-cred  "
+      deployment:
+        enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: real-cred
+
+  - it: should give level-correct guidance for image.pullSecrets type errors
+    set:
+      image:
+        pullSecrets: false
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image\\.pullSecrets must be a string secret name.*\"\" to render no pull secret"
+
+  - it: should give level-correct guidance for deployment.imagePullSecrets type errors
+    set:
+      deployment:
+        enabled: true
+        imagePullSecrets: false
+    asserts:
+      - failedTemplate:
+          errorPattern: "deployment\\.imagePullSecrets must be a string secret name.*opt this workload out"
+
+  - it: should render no pull secret when image.pullSecrets is empty
+    set:
+      image:
+        pullSecrets: ""
+      deployment:
+        enabled: true
+    asserts:
+      - isNull:
+          path: spec.template.spec.imagePullSecrets

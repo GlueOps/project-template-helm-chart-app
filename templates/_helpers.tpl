@@ -163,6 +163,131 @@ Object fields: structured YAML (maps/lists). Add new K8s fields to $objectFields
 {{- end -}}
 
 {{/*
+Pod-template fields allowed to inherit from cronJob/job global config.
+Scoped to imagePullSecrets only (the customer-requested field). Broadening this
+allowlist changes pod rendering for existing tenants on upgrade and must be a
+deliberate, versioned change — see .ai/patterns.md.
+*/}}
+{{- define "chart.jobPodGlobals" -}}
+{{- toYaml (pick . "imagePullSecrets") -}}
+{{- end -}}
+
+{{/*
+Whether a cronJob.jobs.<name> or job.jobs.<name> entry should render. .enabled must be boolean when set.
+A null .enabled is treated as unset (renders), matching how a null imagePullSecrets is treated as
+unset by chart.imagePullSecretName — this keeps `--set cronJob.jobs.<name>.enabled=null`
+/ `--set job.jobs.<name>.enabled=null` (Helm's canonical unset idiom) working rather than
+failing the render.
+*/}}
+{{- define "chart.jobEntryEnabled" -}}
+{{- $job := .job -}}
+{{- $name := .name -}}
+{{/* resourceType lets the error name the real values path (cronJob.jobs.<n>.enabled vs
+     job.jobs.<n>.enabled), which is otherwise ambiguous when both workloads are enabled. */}}
+{{- $path := printf "jobs.%s.enabled" $name -}}
+{{- if .resourceType -}}
+{{- $path = printf "%s.jobs.%s.enabled" .resourceType $name -}}
+{{- end -}}
+{{- if and (hasKey $job "enabled") (not (kindIs "invalid" $job.enabled)) -}}
+{{- if not (kindIs "bool" $job.enabled) -}}
+{{- fail (printf "%s must be a boolean, got %s (value: %v). Use true or false (unquoted)." $path (kindOf $job.enabled) $job.enabled) -}}
+{{- end -}}
+{{- ternary "true" "false" $job.enabled -}}
+{{- else -}}
+true
+{{- end -}}
+{{- end -}}
+
+{{/*
+Assert that a set imagePullSecrets value is a string, so that an explicitly-set but
+falsey non-string (false, 0, []) is rejected rather than silently treated as "unset".
+An unset (null) value and the empty string "" are both allowed through: "" is the
+legitimate opt-out signal at every level.
+Inputs: .value, .key (the values path, named in the error), .hint (what opting out means
+at this level — the caller supplies the wording so the error can name the right scope)
+*/}}
+{{- define "chart.assertPullSecretKind" -}}
+{{- if not (kindIs "invalid" .value) -}}
+{{- if not (kindIs "string" .value) -}}
+{{- fail (printf "%s must be a string secret name, got %s (value: %v). %s" .key (kindOf .value) .value .hint) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Resolve the Kubernetes imagePullSecrets secret name for a pod template context.
+Precedence (highest wins):
+  1. cronJob.jobs.<name>.imagePullSecrets / job.jobs.<name>.imagePullSecrets
+  2. .imagePullSecrets on the merged workload context (deployment/statefulSet/cronJob/job)
+  3. .Root.Values.image.pullSecrets (when .Values.image is a map)
+"Set" means present and non-null at that level; a set value wins even when empty. The same
+literal means the same thing at every level: "" opts out (render no pull secret, ignoring
+anything below), null/absent inherits from the next level down. "" is the ONLY opt-out —
+other falsey values (false, 0, []) are rejected as type errors rather than rendered as a
+literal secret name.
+Per-job lookup uses Values.jobs directly because shallow merge does not reliably override globals.
+Every level is kind-checked before the test that selects it, so a set-but-non-string value
+fails the render instead of being silently swallowed as "unset" and inheriting from below.
+*/}}
+{{- define "chart.imagePullSecretName" -}}
+{{- $secret := "" -}}
+{{- $source := "imagePullSecrets" -}}
+{{- $resolved := false -}}
+{{- if and .name (or (eq .resourceType "cronJob") (eq .resourceType "job")) -}}
+{{- $jobsMap := dict -}}
+{{- if eq .resourceType "cronJob" -}}
+{{- $jobsMap = .Root.Values.cronJob.jobs -}}
+{{- else -}}
+{{- $jobsMap = .Root.Values.job.jobs -}}
+{{- end -}}
+{{- $jobPath := printf "%s.jobs.%s.imagePullSecrets" .resourceType .name -}}
+{{- with index $jobsMap .name -}}
+{{- if and (hasKey . "imagePullSecrets") (not (kindIs "invalid" .imagePullSecrets)) -}}
+{{- include "chart.assertPullSecretKind" (dict "value" .imagePullSecrets "key" $jobPath "hint" "Use a secret name, or \"\" to opt this job out of pull secrets.") -}}
+{{- $resolved = true -}}
+{{- $secret = .imagePullSecrets -}}
+{{- $source = $jobPath -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- if not $resolved -}}
+{{- $workloadPath := printf "%s.imagePullSecrets" .resourceType -}}
+{{- if and (hasKey . "imagePullSecrets") (not (kindIs "invalid" .imagePullSecrets)) -}}
+{{- include "chart.assertPullSecretKind" (dict "value" .imagePullSecrets "key" $workloadPath "hint" "Use a secret name, or \"\" to opt this workload out of pull secrets.") -}}
+{{- $resolved = true -}}
+{{- $secret = .imagePullSecrets -}}
+{{- $source = $workloadPath -}}
+{{- end -}}
+{{- end -}}
+{{- if not $resolved -}}
+{{- if kindIs "map" .Root.Values.image -}}
+{{- if and (hasKey .Root.Values.image "pullSecrets") (not (kindIs "invalid" .Root.Values.image.pullSecrets)) -}}
+{{- include "chart.assertPullSecretKind" (dict "value" .Root.Values.image.pullSecrets "key" "image.pullSecrets" "hint" "Use a secret name, or \"\" to render no pull secret.") -}}
+{{- $resolved = true -}}
+{{- $secret = .Root.Values.image.pullSecrets -}}
+{{- $source = "image.pullSecrets" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{/* Validate every resolved value except the empty-string opt-out. Gating on truthiness
+     would let falsey non-null values (false, 0, []) skip the type check and render as a
+     literal secret name ("false", "0", "[]"). */}}
+{{- if not (and (kindIs "string" $secret) (eq $secret "")) -}}
+{{- if not (kindIs "string" $secret) -}}
+{{- fail (printf "%s must be a string secret name, got %s (value: %v)" $source (kindOf $secret) $secret) -}}
+{{- end -}}
+{{- $secret = trim $secret -}}
+{{- if eq $secret "" -}}
+{{- fail (printf "%s must not be empty or whitespace only" $source) -}}
+{{- end -}}
+{{- if regexMatch "\\s" $secret -}}
+{{- fail (printf "%s must not contain whitespace, got %q" $source $secret) -}}
+{{- end -}}
+{{- end -}}
+{{- $secret -}}
+{{- end -}}
+
+{{/*
 Build a container image reference with per-resource override and inheritance support.
 Inputs: .root (template context), .image (per-resource: string or map), .defaultImage (top-level image map)
 Output: registry/repository[:tag] string
