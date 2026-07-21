@@ -125,3 +125,104 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "configMap.configs.config1: must set 'data' or 'dataMap'"
+
+  - it: should quote dataMap keys so YAML 1.1 boolean-like keys survive
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap:
+              "no": "norwegian-locale"
+              "on": "toggle-file"
+              "123": "numeric-name"
+    asserts:
+      - equal:
+          path: .data["no"]
+          value: "norwegian-locale"
+      - equal:
+          path: .data["on"]
+          value: "toggle-file"
+      - equal:
+          path: .data["123"]
+          value: "numeric-name"
+
+  - it: should fail when a dataMap value is a nested map
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap:
+              settings:
+                nested: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: dataMap key 'settings' must have a scalar value \\(string/number/bool\\), got map"
+
+  - it: should fail when a dataMap value is a list
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap:
+              items:
+                - a
+                - b
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: dataMap key 'items' must have a scalar value \\(string/number/bool\\), got slice"
+
+  - it: should fail when dataMap is not a map
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap: "oops"
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: 'dataMap' must be a map of key/value pairs, got string"
+
+  - it: should fail with actionable error when data is a map
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            data:
+              key1: value1
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: 'data' must be a string, got map - use 'dataMap' for key/value maps"
+
+  - it: should render empty configmap when data is an empty string
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            data: ""
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ConfigMap
+      - isNullOrEmpty:
+          path: .data
+
+  - it: should render empty configmap when dataMap is an empty map
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap: {}
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ConfigMap
+      - isNullOrEmpty:
+          path: .data

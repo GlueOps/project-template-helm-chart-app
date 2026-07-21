@@ -22,15 +22,26 @@ metadata:
     {{- end }}
     {{- end }}
 data:
-  {{- if and $data.data $data.dataMap }}
+  {{- $hasData := and (hasKey $data "data") (not (kindIs "invalid" $data.data)) }}
+  {{- $hasDataMap := and (hasKey $data "dataMap") (not (kindIs "invalid" $data.dataMap)) }}
+  {{- if and $hasData $hasDataMap }}
   {{- fail (printf "configMap.configs.%s: set either 'data' or 'dataMap', not both" $nameSuffix) }}
   {{- end }}
-  {{- if $data.data }}
+  {{- if $hasData }}
+  {{- if not (kindIs "string" $data.data) }}
+  {{- fail (printf "configMap.configs.%s: 'data' must be a string, got %s - use 'dataMap' for key/value maps" $nameSuffix (kindOf $data.data)) }}
+  {{- end }}
   {{ tpl $data.data $ | indent 2 | trim }}
-  {{- else if $data.dataMap }}
+  {{- else if $hasDataMap }}
+  {{- if not (kindIs "map" $data.dataMap) }}
+  {{- fail (printf "configMap.configs.%s: 'dataMap' must be a map of key/value pairs, got %s" $nameSuffix (kindOf $data.dataMap)) }}
+  {{- end }}
   {{- range $key, $value := $data.dataMap }}
   {{- if not (kindIs "invalid" $value) }}
-  {{ $key }}: {{ toString $value | toYaml | indent 2 | trim }}
+  {{- if not (or (kindIs "string" $value) (kindIs "bool" $value) (kindIs "int" $value) (kindIs "int64" $value) (kindIs "float64" $value)) }}
+  {{- fail (printf "configMap.configs.%s: dataMap key '%s' must have a scalar value (string/number/bool), got %s" $nameSuffix $key (kindOf $value)) }}
+  {{- end }}
+  {{ $key | quote }}: {{ toString $value | toYaml | indent 2 | trim }}
   {{- end }}
   {{- end }}
   {{- else }}

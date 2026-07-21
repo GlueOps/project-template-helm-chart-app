@@ -931,8 +931,10 @@ configMap:
   # with Helm templating via `tpl`) or `dataMap` (key/value map, rendered literally without `tpl`).
   # Prefer `dataMap` when overriding values per environment: its keys merge individually across
   # values files (e.g. base-values.yaml + env values.yaml), while `data` is replaced as a whole.
-  # Setting a `dataMap` key to `null` in an overriding values file removes it. Quote number-like
-  # values that must keep their exact text (e.g. `VERSION: "1.10"`), otherwise YAML normalizes them.
+  # Setting a `dataMap` key to `null` in an overriding values file removes it. `dataMap` values
+  # must be flat scalars (string/number/bool) - nested maps or lists are rejected. Quote
+  # number-like values that must keep their exact text (e.g. `VERSION: "1.10"`), otherwise YAML
+  # normalizes them.
   configs:
     # nameSuffix of configMap
     # configmap1:
