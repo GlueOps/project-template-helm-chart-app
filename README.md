@@ -1,6 +1,6 @@
 # app
 
-![Version: 0.14.0](https://img.shields.io/badge/Version-0.14.0-informational?style=flat-square)
+![Version: 0.15.0](https://img.shields.io/badge/Version-0.15.0-informational?style=flat-square)
 
 A Helm chart template for applications
 
@@ -14,7 +14,7 @@ A Helm chart template for applications
 | commonLabels | string | `nil` | Common labels for all Kubernetes objects |
 | configMap | object | `{"annotations":null,"configs":null,"enabled":false,"labels":null}` | ConfigMap configuration |
 | configMap.annotations | string | `nil` | Annotations for the ConfigMap |
-| configMap.configs | string | `nil` | Data for the ConfigMap |
+| configMap.configs | string | `nil` | Data for the ConfigMap. Each config takes either `data` (multiline string, rendered with Helm templating via `tpl`) or `dataMap` (key/value map, rendered literally without `tpl`). Prefer `dataMap` when overriding values per environment: its keys merge individually across values files (e.g. base-values.yaml + env values.yaml), while `data` is replaced as a whole. Setting a `dataMap` key to `null` in an overriding values file removes it. Quote number-like values that must keep their exact text (e.g. `VERSION: "1.10"`), otherwise YAML normalizes them. |
 | configMap.enabled | bool | `false` | Whether to create a ConfigMap |
 | configMap.labels | string | `nil` | Labels for the ConfigMap |
 | cronJob | object | `{"enabled":false,"imagePullSecrets":null,"jobs":null}` | CronJob configuration |

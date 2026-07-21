@@ -37,3 +37,91 @@ tests:
       - equal:
           path: .data.key2
           value: "value2"
+
+  - it: should create configmap from dataMap
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap:
+              LOG_LEVEL: info
+              API_PORT: 8080
+              DEBUG: true
+              EMPTY: ""
+              braces.conf: "value with {{ literal braces }}"
+              .env: |
+                FOO=BAR
+                APP=test
+              script.sh: |-
+                #!/bin/sh
+                echo "no trailing newline"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: metadata.name
+          value: "example-app-config1"
+      - equal:
+          path: .data.LOG_LEVEL
+          value: "info"
+      - equal:
+          path: .data["API_PORT"]
+          value: "8080"
+      - equal:
+          path: .data.DEBUG
+          value: "true"
+      - equal:
+          path: .data.EMPTY
+          value: ""
+      - equal:
+          path: .data["braces.conf"]
+          value: "value with {{ literal braces }}"
+      - equal:
+          path: .data[".env"]
+          value: "FOO=BAR\nAPP=test\n"
+      - equal:
+          path: .data["script.sh"]
+          value: "#!/bin/sh\necho \"no trailing newline\""
+
+  - it: should omit dataMap keys set to null
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap:
+              LOG_LEVEL: debug
+              REMOVE_ME: null
+    asserts:
+      - equal:
+          path: .data.LOG_LEVEL
+          value: "debug"
+      - isNull:
+          path: .data.REMOVE_ME
+
+  - it: should fail when both data and dataMap are set
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            data: |-
+              key1: value1
+            dataMap:
+              key2: value2
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: set either 'data' or 'dataMap', not both"
+
+  - it: should fail when neither data nor dataMap is set
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1: {}
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: must set 'data' or 'dataMap'"

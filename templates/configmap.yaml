@@ -22,6 +22,19 @@ metadata:
     {{- end }}
     {{- end }}
 data:
+  {{- if and $data.data $data.dataMap }}
+  {{- fail (printf "configMap.configs.%s: set either 'data' or 'dataMap', not both" $nameSuffix) }}
+  {{- end }}
+  {{- if $data.data }}
   {{ tpl $data.data $ | indent 2 | trim }}
+  {{- else if $data.dataMap }}
+  {{- range $key, $value := $data.dataMap }}
+  {{- if not (kindIs "invalid" $value) }}
+  {{ $key }}: {{ toString $value | toYaml | indent 2 | trim }}
+  {{- end }}
+  {{- end }}
+  {{- else }}
+  {{- fail (printf "configMap.configs.%s: must set 'data' or 'dataMap'" $nameSuffix) }}
+  {{- end }}
 {{- end }}
 {{- end }}
