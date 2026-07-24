@@ -931,10 +931,15 @@ configMap:
   # with Helm templating via `tpl`) or `dataMap` (key/value map, rendered literally without `tpl`).
   # Prefer `dataMap` when overriding values per environment: its keys merge individually across
   # values files (e.g. base-values.yaml + env values.yaml), while `data` is replaced as a whole.
-  # Setting a `dataMap` key to `null` in an overriding values file removes it. `dataMap` values
-  # must be flat scalars (string/number/bool) - nested maps or lists are rejected. Quote
-  # number-like values that must keep their exact text (e.g. `VERSION: "1.10"`), otherwise YAML
-  # normalizes them.
+  # Setting a `dataMap` key to `null` in an overriding values file removes it; setting a whole
+  # config to `null` removes that ConfigMap. `dataMap` values must be flat scalars
+  # (string/number/bool) - nested maps or lists are rejected. Keys must match [-._a-zA-Z0-9]+.
+  # IMPORTANT - quote any dataMap key or value that YAML could type, because Helm's values
+  # parser (YAML 1.1) coerces them before the chart ever sees them: booleans as keys OR values
+  # (`on: x` becomes the key "true"; `no:` and `off:` both become "false" and silently collide),
+  # octal-like (`0755` -> "493"), hex-like (`0x1F` -> "31"), version strings (`1.10` -> "1.1"),
+  # and integers above 2^53, which lose precision in the parser itself. A bare `KEY:` is null
+  # and is dropped - use `KEY: ""` for an intentionally empty value.
   configs:
     # nameSuffix of configMap
     # configmap1:
@@ -959,6 +964,13 @@ configMap:
     #     .env: |
     #       FOO=BAR
     #       APP=test
+    #
+    # Migrating a config from `data` to `dataMap` in an env overlay (lower values file keeps
+    # the string `data`): set `data: null` alongside `dataMap` in the overriding file:
+    # configmap1:
+    #   data: null
+    #   dataMap:
+    #     LOG_LEVEL: debug
 
 ##########################################################
 # External Secrets

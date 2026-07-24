@@ -226,3 +226,55 @@ tests:
           of: ConfigMap
       - isNullOrEmpty:
           path: .data
+
+  - it: should preserve exact digits and trailing newlines for values-file input
+    values:
+      - fixtures/values-configmap-datamap.yaml
+    asserts:
+      - equal:
+          path: .data.CACHE_TTL_MS
+          value: "86400000"
+      - equal:
+          path: .data.MAX_CONNS
+          value: "1000000"
+      - equal:
+          path: .data.TRAILING
+          value: "a\n\n"
+
+  - it: should skip a config set to null so overlays can delete a whole configmap
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1: null
+          config2:
+            dataMap:
+              key1: value1
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: metadata.name
+          value: "example-app-config2"
+
+  - it: should fail with named error when a config is not a map
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1: "oops"
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: must be a map containing 'data' or 'dataMap', got string"
+
+  - it: should fail when a dataMap key is not a valid ConfigMap key
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap:
+              "bad/key": value
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: dataMap key 'bad/key' is not a valid ConfigMap key"

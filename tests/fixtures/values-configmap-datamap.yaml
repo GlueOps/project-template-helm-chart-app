@@ -1,0 +1,8 @@
+configMap:
+  enabled: true
+  configs:
+    config1:
+      dataMap:
+        CACHE_TTL_MS: 86400000
+        MAX_CONNS: 1000000
+        TRAILING: "a\n\n"

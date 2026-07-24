@@ -1,6 +1,10 @@
 
 {{- if .Values.configMap.enabled }}
 {{- range $nameSuffix, $data := .Values.configMap.configs }}
+{{- if not (kindIs "invalid" $data) }}
+{{- if not (kindIs "map" $data) }}
+{{- fail (printf "configMap.configs.%s: must be a map containing 'data' or 'dataMap', got %s" $nameSuffix (kindOf $data)) }}
+{{- end }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -25,7 +29,7 @@ data:
   {{- $hasData := and (hasKey $data "data") (not (kindIs "invalid" $data.data)) }}
   {{- $hasDataMap := and (hasKey $data "dataMap") (not (kindIs "invalid" $data.dataMap)) }}
   {{- if and $hasData $hasDataMap }}
-  {{- fail (printf "configMap.configs.%s: set either 'data' or 'dataMap', not both" $nameSuffix) }}
+  {{- fail (printf "configMap.configs.%s: set either 'data' or 'dataMap', not both (migrating from 'data' set in a lower values file? add 'data: null' next to 'dataMap' in the overriding file)" $nameSuffix) }}
   {{- end }}
   {{- if $hasData }}
   {{- if not (kindIs "string" $data.data) }}
@@ -38,14 +42,22 @@ data:
   {{- end }}
   {{- range $key, $value := $data.dataMap }}
   {{- if not (kindIs "invalid" $value) }}
+  {{- if or (not (regexMatch "^[-._a-zA-Z0-9]+$" $key)) (eq $key ".") (eq $key "..") }}
+  {{- fail (printf "configMap.configs.%s: dataMap key '%s' is not a valid ConfigMap key (must match [-._a-zA-Z0-9]+, not '.' or '..')" $nameSuffix $key) }}
+  {{- end }}
   {{- if not (or (kindIs "string" $value) (kindIs "bool" $value) (kindIs "int" $value) (kindIs "int64" $value) (kindIs "float64" $value)) }}
   {{- fail (printf "configMap.configs.%s: dataMap key '%s' must have a scalar value (string/number/bool), got %s" $nameSuffix $key (kindOf $value)) }}
   {{- end }}
-  {{ $key | quote }}: {{ toString $value | toYaml | indent 2 | trim }}
+  {{- $str := toString $value }}
+  {{- if and (kindIs "float64" $value) (eq (floor $value) $value) }}
+  {{- $str = printf "%.0f" $value }}
+  {{- end }}
+  {{ $key | toJson }}: {{ $str | toJson }}
   {{- end }}
   {{- end }}
   {{- else }}
   {{- fail (printf "configMap.configs.%s: must set 'data' or 'dataMap'" $nameSuffix) }}
   {{- end }}
+{{- end }}
 {{- end }}
 {{- end }}
