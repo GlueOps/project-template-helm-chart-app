@@ -33,8 +33,16 @@ for d in */ ; do
   echo "[INFO] kubeval on directory: $(pwd)"
   helm template ../../ -f ../../values.yaml -f values.yaml | kubeval --kubernetes-version $KUBE_VER_FULL --schema-location https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master --skip-kinds=ExternalSecret --skip-kinds=TriggerAuthentication --skip-kinds=ScaledObject --skip-kinds=WebApplicationFirewall
   echo "[INFO] kubectl dry-run on directory: $(pwd)"
-  helm template ../../ -f ../../values.yaml -f values.yaml |  kubectl apply --dry-run='client' -f - 
-  
+  helm template ../../ -f ../../values.yaml -f values.yaml |  kubectl apply --dry-run='client' -f -
+
+  if [[ $d == "configmap/" ]]; then
+    # dataMap keys must be emitted quoted: an unquoted `on` key would be coerced
+    # to "true" by the YAML 1.1 parsers in Helm and Kubernetes, and neither
+    # helm-unittest nor kubectl dry-run fails on that corruption
+    echo "[INFO] dataMap key-quoting canary on directory: $(pwd)"
+    helm template ../../ -f ../../values.yaml -f values.yaml | grep -q '"on": "quoted-key-canary"'
+  fi
+
   if [[ $d == "keda/" ]] && [[ $CI == "true" ]]; then
     helm install example-app ../../ -f ../../values.yaml -f deployment.yaml --wait
     kubectl wait deployment -n default example-app --for condition=Available=True --timeout=60s

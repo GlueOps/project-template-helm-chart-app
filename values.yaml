@@ -939,9 +939,12 @@ configMap:
   # parser (YAML 1.1) coerces them before the chart ever sees them: booleans as keys OR values
   # (`on: x` becomes the key "true"; `no:` and `off:` both become "false" and silently collide),
   # octal-like (`0755` -> "493"), hex-like (`0x1F` -> "31"), version strings (`1.10` -> "1.1"),
-  # and integers above 2^53, which lose precision in the parser itself. Unquoted decimals
+  # and integers above 2^53, which lose precision in the parser itself. Unquoted numbers
   # below 0.000001 or at/above 1e21 render in scientific notation (`0.0000001` -> "1e-7").
   # A bare `KEY:` is null and is dropped - use `KEY: ""` for an intentionally empty value.
+  # If some values need Helm templating, keep those in a separate config using `data` -
+  # each config renders its own ConfigMap. Note: `secret.secrets.<name>.data` and
+  # `externalSecret` data are already key/value maps, so they merge per-key out of the box.
   configs:
     # nameSuffix of configMap
     # configmap1:
@@ -977,6 +980,8 @@ configMap:
     #   dataMap:
     #     API_PORT: "8080"   # redeclared from the old data string
     #     LOG_LEVEL: debug   # the env-specific override
+    #     # ...plus every other key from the old data string you still need
+    #     # (.env, example.json, ...)
 
 ##########################################################
 # External Secrets

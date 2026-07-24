@@ -3,7 +3,7 @@
 {{- range $nameSuffix, $data := .Values.configMap.configs }}
 {{- if not (kindIs "invalid" $data) }}
 {{- if not (kindIs "map" $data) }}
-{{- fail (printf "configMap.configs.%s: must be a map containing 'data' or 'dataMap', got %s" $nameSuffix (kindOf $data)) }}
+{{- fail (printf "configMap.configs.%s: must be a map containing 'data' or 'dataMap', got %s" $nameSuffix (kindOf $data | replace "slice" "list")) }}
 {{- end }}
 ---
 apiVersion: v1
@@ -33,12 +33,12 @@ data:
   {{- end }}
   {{- if $hasData }}
   {{- if not (kindIs "string" $data.data) }}
-  {{- fail (printf "configMap.configs.%s: 'data' must be a string, got %s - use 'dataMap' for key/value maps" $nameSuffix (kindOf $data.data)) }}
+  {{- fail (printf "configMap.configs.%s: 'data' must be a string, got %s - use 'dataMap' for key/value maps" $nameSuffix (kindOf $data.data | replace "slice" "list")) }}
   {{- end }}
   {{ tpl $data.data $ | indent 2 | trim }}
   {{- else if $hasDataMap }}
   {{- if not (kindIs "map" $data.dataMap) }}
-  {{- fail (printf "configMap.configs.%s: 'dataMap' must be a map of key/value pairs, got %s" $nameSuffix (kindOf $data.dataMap)) }}
+  {{- fail (printf "configMap.configs.%s: 'dataMap' must be a map of key/value pairs, got %s" $nameSuffix (kindOf $data.dataMap | replace "slice" "list")) }}
   {{- end }}
   {{- range $key, $value := $data.dataMap }}
   {{- if not (kindIs "invalid" $value) }}

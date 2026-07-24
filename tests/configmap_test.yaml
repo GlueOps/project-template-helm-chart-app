@@ -147,9 +147,11 @@ tests:
       # KNOWN LIMITATION: helm-unittest converts rendered YAML to JSON and
       # stringifies every map key, so no parsed assert here can detect lost key
       # quoting (mutation-verified: removing toJson from the key emission keeps
-      # this suite green). The real guard is the `$key | toJson` emission in
-      # templates/configmap.yaml; verify against the Kubernetes YAML 1.1 parser
-      # with: helm template ... | kubectl create --dry-run=client -o yaml -f -
+      # this suite green). kubectl dry-run also exits 0 on the regression (a
+      # coerced key like "true" is still a valid ConfigMap key) - it only shows
+      # the corruption in its output. The executable guard is the key-quoting
+      # canary in examples/configmap + examples/test.sh, which greps the raw
+      # helm template output for the quoted "on" key.
       - equal:
           path: .data["123"]
           value: "numeric-name"
@@ -319,6 +321,16 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "configMap.configs.config1: must be a map containing 'data' or 'dataMap', got string"
+
+  - it: should fail with named error when a config is a list
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1: ["oops"]
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: must be a map containing 'data' or 'dataMap', got list"
 
   - it: should fail when a dataMap key is not a valid ConfigMap key
     set:
