@@ -136,6 +136,7 @@ tests:
               "no": "norwegian-locale"
               "on": "toggle-file"
               "123": "numeric-name"
+              "true": "quoted-bool-key"
     asserts:
       - equal:
           path: .data["no"]
@@ -143,9 +144,18 @@ tests:
       - equal:
           path: .data["on"]
           value: "toggle-file"
+      # KNOWN LIMITATION: helm-unittest converts rendered YAML to JSON and
+      # stringifies every map key, so no parsed assert here can detect lost key
+      # quoting (mutation-verified: removing toJson from the key emission keeps
+      # this suite green). The real guard is the `$key | toJson` emission in
+      # templates/configmap.yaml; verify against the Kubernetes YAML 1.1 parser
+      # with: helm template ... | kubectl create --dry-run=client -o yaml -f -
       - equal:
           path: .data["123"]
           value: "numeric-name"
+      - equal:
+          path: .data["true"]
+          value: "quoted-bool-key"
 
   - it: should fail when a dataMap value is a nested map
     set:
@@ -172,7 +182,7 @@ tests:
                 - b
     asserts:
       - failedTemplate:
-          errorPattern: "configMap.configs.config1: dataMap key 'items' must have a scalar value \\(string/number/bool\\), got slice"
+          errorPattern: "configMap.configs.config1: dataMap key 'items' must have a scalar value \\(string/number/bool\\), got list"
 
   - it: should fail when dataMap is not a map
     set:
@@ -240,6 +250,49 @@ tests:
       - equal:
           path: .data.TRAILING
           value: "a\n\n"
+      # values files reach the template as float64 (Helm parses values via YAML->JSON);
+      # these pin the decimal-preserving formatting for non-integral floats
+      - equal:
+          path: .data.PRICE
+          value: "1234567.89"
+      - equal:
+          path: .data.RATIO
+          value: "1.5"
+      - equal:
+          path: .data.NEG
+          value: "-1.5"
+      - equal:
+          path: .data.SCI
+          value: "100000"
+      - equal:
+          path: .data.DEBUG_FLAG
+          value: "true"
+      # documented limitation: precision above 2^53 is lost in Helm's own values parser
+      - equal:
+          path: .data.BIG
+          value: "9007199254740992"
+
+  - it: should merge dataMap per-key across layered values files and honor null deletions
+    values:
+      - fixtures/values-configmap-datamap-base.yaml
+      - fixtures/values-configmap-datamap-override.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: metadata.name
+          value: "example-app-app"
+      - equal:
+          path: .data.LOG_LEVEL
+          value: "debug"
+      - equal:
+          path: .data.API_URL
+          value: "https://base.example.com"
+      - equal:
+          path: .data.EXTRA
+          value: "dev-only"
+      - isNull:
+          path: .data.REMOVE_ME
 
   - it: should skip a config set to null so overlays can delete a whole configmap
     set:
@@ -278,3 +331,27 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "configMap.configs.config1: dataMap key 'bad/key' is not a valid ConfigMap key"
+
+  - it: should fail when a dataMap key starts with double dots
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap:
+              "..foo": value
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: dataMap key '\\.\\.foo' is not a valid ConfigMap key"
+
+  - it: should fail when a dataMap key exceeds 253 characters
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap:
+              "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk": value
+    asserts:
+      - failedTemplate:
+          errorPattern: "is not a valid ConfigMap key \\(must match \\[-._a-zA-Z0-9\\]\\+, max 253 chars"

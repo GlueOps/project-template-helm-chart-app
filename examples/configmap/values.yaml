@@ -21,3 +21,14 @@ configMap:
       data: |-
         example.yaml: |
           "test": "123"
+    # dataMap keys merge individually across layered values files
+    # (base-values.yaml + env values.yaml); prefer it for per-environment overrides
+    configmap3:
+      dataMap:
+        API_PORT: "8080"
+        LOG_LEVEL: info
+        DEBUG: true
+        braces.conf: "rendered literally, no tpl: {{ .Values.appName }}"
+        .env: |
+          FOO=BAR
+          APP=test

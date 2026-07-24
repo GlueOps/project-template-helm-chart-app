@@ -29,7 +29,7 @@ data:
   {{- $hasData := and (hasKey $data "data") (not (kindIs "invalid" $data.data)) }}
   {{- $hasDataMap := and (hasKey $data "dataMap") (not (kindIs "invalid" $data.dataMap)) }}
   {{- if and $hasData $hasDataMap }}
-  {{- fail (printf "configMap.configs.%s: set either 'data' or 'dataMap', not both (migrating from 'data' set in a lower values file? add 'data: null' next to 'dataMap' in the overriding file)" $nameSuffix) }}
+  {{- fail (printf "configMap.configs.%s: set either 'data' or 'dataMap', not both (migrating? prefer converting the config to 'dataMap' in the base values file; if you can only edit the overriding file, set the old field to null there ('data: null' or 'dataMap: null') and redeclare EVERY key you still need - keys from the old field are not carried over)" $nameSuffix) }}
   {{- end }}
   {{- if $hasData }}
   {{- if not (kindIs "string" $data.data) }}
@@ -42,15 +42,15 @@ data:
   {{- end }}
   {{- range $key, $value := $data.dataMap }}
   {{- if not (kindIs "invalid" $value) }}
-  {{- if or (not (regexMatch "^[-._a-zA-Z0-9]+$" $key)) (eq $key ".") (eq $key "..") }}
-  {{- fail (printf "configMap.configs.%s: dataMap key '%s' is not a valid ConfigMap key (must match [-._a-zA-Z0-9]+, not '.' or '..')" $nameSuffix $key) }}
+  {{- if or (not (regexMatch "^[-._a-zA-Z0-9]+$" $key)) (eq $key ".") (hasPrefix ".." $key) (gt (len $key) 253) }}
+  {{- fail (printf "configMap.configs.%s: dataMap key '%s' is not a valid ConfigMap key (must match [-._a-zA-Z0-9]+, max 253 chars, not '.', must not start with '..')" $nameSuffix $key) }}
   {{- end }}
   {{- if not (or (kindIs "string" $value) (kindIs "bool" $value) (kindIs "int" $value) (kindIs "int64" $value) (kindIs "float64" $value)) }}
-  {{- fail (printf "configMap.configs.%s: dataMap key '%s' must have a scalar value (string/number/bool), got %s" $nameSuffix $key (kindOf $value)) }}
+  {{- fail (printf "configMap.configs.%s: dataMap key '%s' must have a scalar value (string/number/bool), got %s" $nameSuffix $key (kindOf $value | replace "slice" "list")) }}
   {{- end }}
   {{- $str := toString $value }}
-  {{- if and (kindIs "float64" $value) (eq (floor $value) $value) }}
-  {{- $str = printf "%.0f" $value }}
+  {{- if kindIs "float64" $value }}
+  {{- $str = toJson $value }}
   {{- end }}
   {{ $key | toJson }}: {{ $str | toJson }}
   {{- end }}
