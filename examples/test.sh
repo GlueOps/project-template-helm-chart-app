@@ -9,8 +9,9 @@ fi
 IGNORE_TESTS_KUBE_SCORE=(--ignore-test=container-image-pull-policy --ignore-test=container-security-context-readonlyrootfilesystem --ignore-test=container-security-context-user-group-id --ignore-test=pod-networkpolicy --ignore-test=ingress-targets-service --ignore-test=container-ephemeral-storage-request-and-limit)
 # --ignore-test=pod-probes
 
-export KUBE_VER=1.27
+export KUBE_VER=1.35
 export KUBE_VER_FULL=`echo $KUBE_VER`.2
+canary_ran=0
 for d in */ ; do
   if [[ $d == "testcases/" ]]; then
     echo "[INFO] Skipping $d ..."
@@ -41,6 +42,7 @@ for d in */ ; do
     # helm-unittest nor kubectl dry-run fails on that corruption
     echo "[INFO] dataMap key-quoting canary on directory: $(pwd)"
     helm template ../../ -f ../../values.yaml -f values.yaml | grep -q '"on": "quoted-key-canary"'
+    canary_ran=1
   fi
 
   if [[ $d == "keda/" ]] && [[ $CI == "true" ]]; then
@@ -56,6 +58,13 @@ for d in */ ; do
   fi
   cd ..
 done
+
+# errexit cannot catch a branch that never ran: if examples/configmap/ is renamed or
+# removed, the key-quoting canary above silently stops guarding. Fail loud instead.
+if [[ $canary_ran -ne 1 ]]; then
+  echo "[ERROR] dataMap key-quoting canary never ran (examples/configmap/ missing?)"
+  exit 1
+fi
 
 if [[ -d "testcases/" ]]; then
   echo "[INFO] Run testcases ..."

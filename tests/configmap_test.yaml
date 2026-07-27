@@ -312,6 +312,49 @@ tests:
           path: metadata.name
           value: "example-app-config2"
 
+  - it: should fail with named error when configs itself is a list
+    set:
+      configMap:
+        enabled: true
+        configs:
+          - data: "x"
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs: must be a map of configs keyed by name suffix, got list"
+
+  - it: should fail with named error when configs itself is a scalar
+    set:
+      configMap:
+        enabled: true
+        configs: "oops"
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs: must be a map of configs keyed by name suffix, got string"
+
+  - it: should fail with named error when data is a number
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            data: 123
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: 'data' must be a string, got number"
+
+  - it: should not HTML-escape dataMap values
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap:
+              html.tpl: "<div class='a'>A & B</div>"
+    asserts:
+      - equal:
+          path: data["html.tpl"]
+          value: "<div class='a'>A & B</div>"
+
   - it: should fail with named error when a config is not a map
     set:
       configMap:

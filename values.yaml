@@ -927,25 +927,41 @@ configMap:
   # -- Annotations for the ConfigMap
   annotations:
   # key: value
-  # -- Data for the ConfigMap. Each config takes either `data` (multiline string, rendered
-  # with Helm templating via `tpl`) or `dataMap` (key/value map, rendered literally without `tpl`).
-  # Prefer `dataMap` when overriding values per environment: its keys merge individually across
-  # values files (e.g. base-values.yaml + env values.yaml), while `data` is replaced as a whole.
-  # Setting a `dataMap` key to `null` in an overriding values file removes it; setting a whole
-  # config to `null` removes that ConfigMap. `dataMap` values must be flat scalars
-  # (string/number/bool) - nested maps or lists are rejected. Keys must match [-._a-zA-Z0-9]+
-  # (max 253 chars, not '.', must not start with '..').
-  # IMPORTANT - quote any dataMap key or value that YAML could type, because Helm's values
-  # parser (YAML 1.1) coerces them before the chart ever sees them: booleans as keys OR values
-  # (`on: x` becomes the key "true"; `no:` and `off:` both become "false" and silently collide),
-  # octal-like (`0755` -> "493"), hex-like (`0x1F` -> "31"), version strings (`1.10` -> "1.1"),
-  # and integers above 2^53, which lose precision in the parser itself. Unquoted numbers
-  # below 0.000001 or at/above 1e21 render in scientific notation (`0.0000001` -> "1e-7").
-  # A bare `KEY:` is null and is dropped - use `KEY: ""` for an intentionally empty value.
-  # If some values need Helm templating, keep those in a separate config using `data` -
-  # each config renders its own ConfigMap. Note: `secret.secrets.<name>.data` and
-  # `externalSecret` data are already key/value maps, so they merge per-key out of the box.
+  # -- (map) ConfigMaps to create, keyed by name suffix. Each config sets exactly one of
+  # `data` (multiline string, rendered with Helm templating via `tpl`) or `dataMap`
+  # (key/value map of flat scalars, rendered literally without `tpl`). Prefer `dataMap`
+  # when overriding values per environment: its keys merge individually across values
+  # files, a `dataMap` key set to `null` in an overriding file is removed, and a whole
+  # config set to `null` removes that ConfigMap (`data` is replaced as a whole). Quote
+  # any `dataMap` key or value that YAML could type - booleans, anything numeric-looking,
+  # version strings - the comments under `configs` in values.yaml list every coercion.
+  # To migrate a config from `data` to `dataMap`, convert the base values file AND every
+  # environment overlay for that config in the same commit - mixing `data` and `dataMap`
+  # for one config is an error in either direction.
   configs:
+    # Each config sets exactly one of:
+    #   data    - multiline string, rendered with Helm templating via `tpl`
+    #   dataMap - key/value map rendered literally without `tpl`; values must be flat
+    #             scalars (string/number/bool), nested maps or lists are rejected; keys
+    #             must match [-._a-zA-Z0-9]+ (max 253 chars, not '.', no '..' prefix)
+    #
+    # IMPORTANT - quote any dataMap key or value that YAML could type, because Helm's
+    # values parser (YAML 1.1) coerces them before the chart ever sees them:
+    # - booleans as keys OR values: `on: x` becomes the key "true"; `no:` and `off:`
+    #   both become "false" and silently collide (one value is lost)
+    # - any number YAML can parse is normalized, not kept verbatim: `1.0` -> "1",
+    #   `.5` -> "0.5", `+1` -> "1", `-0` -> "0", `1_000` -> "1000", version strings
+    #   `1.10` -> "1.1", hex-like `0x1F` -> "31"
+    # - any leading-zero number loses the zero: `08` -> "8", `0755` -> "493" (octal)
+    # - integers above 2^53 lose precision in the parser itself; unquoted numbers below
+    #   0.000001 or at/above 1e21 render in scientific notation (`0.0000001` -> "1e-7")
+    # - a bare `KEY:`, `KEY: ~`, or `KEY: null` is null and is silently dropped - use
+    #   `KEY: ""` for an intentionally empty value
+    #
+    # If some values need Helm templating, keep those in a separate config using `data` -
+    # each config renders its own ConfigMap. Note: `secret.secrets.<name>.data` and
+    # `externalSecret` data are already key/value maps, so they merge per-key out of the box.
+    #
     # nameSuffix of configMap
     # configmap1:
     #   data: |-
@@ -970,18 +986,25 @@ configMap:
     #       FOO=BAR
     #       APP=test
     #
-    # Migrating a config from `data` to `dataMap`: prefer converting the base values file
-    # itself to `dataMap`, then override single keys per environment. If you can only edit
-    # the env overlay (lower values file keeps the string `data`), set `data: null` alongside
-    # `dataMap` in the overriding file AND redeclare EVERY key you still need - keys from the
-    # old `data` string are NOT carried over:
-    # configmap1:
-    #   data: null
-    #   dataMap:
-    #     API_PORT: "8080"   # redeclared from the old data string
-    #     LOG_LEVEL: debug   # the env-specific override
-    #     # ...plus every other key from the old data string you still need
-    #     # (.env, example.json, ...)
+    # Migrating a config from `data` to `dataMap`: mixing the two forms for one config
+    # is a hard error in BOTH directions (base `data` + overlay `dataMap`, or base
+    # `dataMap` + overlay `data`), so converting only the base values file breaks every
+    # environment overlay that still sets `data` for that config. The unit of migration
+    # is one config across the base file AND every environment overlay, in the same
+    # commit:
+    #   base-values.yaml:
+    #     configmap1:
+    #       dataMap:            # all shared keys, converted from the old data string
+    #         API_PORT: "8080"
+    #         LOG_LEVEL: info
+    #   values-<env>.yaml:
+    #     configmap1:
+    #       dataMap:            # only the keys this environment overrides
+    #         LOG_LEVEL: debug
+    # Last resort - if you truly cannot edit the base file, an overlay can set
+    # `data: null` alongside its `dataMap` and redeclare EVERY key it still needs
+    # (keys from the old `data` string are NOT carried over). That forfeits per-key
+    # merging - the reason `dataMap` exists - so treat it as a stopgap, not a migration.
 
 ##########################################################
 # External Secrets
