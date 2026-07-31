@@ -59,14 +59,14 @@ A Helm chart template for applications
 | externalSecret.refreshInterval | string | `"2s"` | RefreshInterval is the amount of time before the values reading again from the SecretStore provider |
 | externalSecret.secretStore | object | `{"name":"vault-backend"}` | Global SecretStore for all ExternalSecrets |
 | externalSecret.secrets | string | `nil` | Data for the External Secret |
-| image | object | `{"args":null,"command":null,"port":8080,"pullSecrets":null,"registry":"docker.io","repository":"nginx","tag":"1.29.5@sha256:341bf0f3ce6c5277d6002cf6e1fb0319fa4252add24ab6a0e262e0056d313208","useChartVersionAsTagFallback":true}` | Docker image configuration |
+| image | object | `{"args":null,"command":null,"port":8080,"pullSecrets":null,"registry":"docker.io","repository":"nginx","tag":"1.30.2@sha256:540858b3a92eed95cbcae475698c12f619b4a6afa122485f439e4d7227cbeb38","useChartVersionAsTagFallback":true}` | Docker image configuration |
 | image.args | string | `nil` | Arguments to pass to the command |
 | image.command | string | `nil` | Command to run in the Docker container |
 | image.port | int | `8080` | Port the application will listen on (>1024) |
 | image.pullSecrets | string | `nil` | Registry pull secret name inherited by all pod templates (Deployment, StatefulSet, Job, CronJob). Resolution order (highest first): per-job `imagePullSecrets` -> workload `imagePullSecrets`   -> `image.pullSecrets`. The first level that is set (present and non-null) wins, even if empty. At every level `""` means the same thing: render no pull secret, ignoring lower levels.   `null` (the default) means unset: inherit from the next level down. NOTE: the top-level key here is `pullSecrets`, but every workload/per-job override key is   `imagePullSecrets` (not `pullSecrets`). Using `pullSecrets` on a workload is a silent no-op. Example: pullSecrets: my-registry-cred |
 | image.registry | string | `"docker.io"` | Docker registry |
 | image.repository | string | `"nginx"` | Docker image repository |
-| image.tag | string | `"1.29.5@sha256:341bf0f3ce6c5277d6002cf6e1fb0319fa4252add24ab6a0e262e0056d313208"` | Docker image tag |
+| image.tag | string | `"1.30.2@sha256:540858b3a92eed95cbcae475698c12f619b4a6afa122485f439e4d7227cbeb38"` | Docker image tag |
 | image.useChartVersionAsTagFallback | bool | `true` | Keep .Chart.Version as final tag fallback when image.tag and appVersion are unset. WARNING: setting this to false causes chart rendering to fail if image.tag and appVersion are both unset. You must provide an explicit tag or appVersion when disabling this fallback. |
 | ingress | object | `{"annotations":null,"enabled":false,"entries":null}` | Ingress configuration |
 | ingress.annotations | string | `nil` | Annotations for the Ingress |
