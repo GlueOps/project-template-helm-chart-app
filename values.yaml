@@ -927,23 +927,47 @@ configMap:
   # -- Annotations for the ConfigMap
   annotations:
   # key: value
-  # -- (map) ConfigMaps to create, keyed by name suffix. Each config sets exactly one of
+  # -- (map) ConfigMaps to create, keyed by name suffix. Use `dataMap` for per-environment
+  # overrides that don't wipe the base: its keys merge individually across layered values
+  # files, so an env overlay can change one key while the base keeps the rest - the string
+  # `data` form is replaced as a whole on any override. Each config sets exactly one of
   # `data` (multiline string, rendered with Helm templating via `tpl`) or `dataMap`
-  # (key/value map of flat scalars, rendered literally without `tpl`). Prefer `dataMap`
-  # when overriding values per environment: its keys merge individually across values
-  # files, a `dataMap` key set to `null` in an overriding file is removed, and a whole
-  # config set to `null` removes that ConfigMap (`data` is replaced as a whole). Quote
-  # any `dataMap` key or value that YAML could type - booleans, anything numeric-looking,
-  # version strings - the comments under `configs` in values.yaml list every coercion.
-  # To migrate a config from `data` to `dataMap`, convert the base values file AND every
-  # environment overlay for that config in the same commit - mixing `data` and `dataMap`
-  # for one config is an error in either direction.
+  # (key/value map of flat scalars, rendered literally without `tpl`). A `dataMap` key set
+  # to `null` in an overriding file is removed; a whole config set to `null` removes that
+  # ConfigMap. HARD RULE: quote every `dataMap` key and value that is not plain alphabetic
+  # text - Helm's YAML 1.1 parser coerces unquoted booleans/numbers before the chart can
+  # see them, silently renaming keys (`on:` becomes "true") or rewriting values; the
+  # comments under `configs` list every coercion. Text content only (`binaryData` is not
+  # supported). To migrate a config from `data` to `dataMap`, convert the base values file
+  # AND every environment overlay for that config in the same commit - mixing the two
+  # forms for one config is an error in either direction.
   configs:
     # Each config sets exactly one of:
     #   data    - multiline string, rendered with Helm templating via `tpl`
     #   dataMap - key/value map rendered literally without `tpl`; values must be flat
     #             scalars (string/number/bool), nested maps or lists are rejected; keys
     #             must match [-._a-zA-Z0-9]+ (max 253 chars, not '.', no '..' prefix)
+    #
+    # MIGRATING a config from `data` to `dataMap`: the unit of migration is one config
+    # across the base file AND every environment overlay, in the same commit. Mixing the
+    # two forms for one config is a hard error in BOTH directions (base `data` + overlay
+    # `dataMap`, or the reverse), so converting only the base file breaks every overlay
+    # that still sets `data` for that config.
+    #   BEFORE                                  AFTER
+    #   base-values.yaml:                       base-values.yaml:
+    #     configmap1:                             configmap1:
+    #       data: |-                                dataMap:          # converted keys
+    #         API_PORT: "8080"                        API_PORT: "8080"
+    #         LOG_LEVEL: info                         LOG_LEVEL: info
+    #   values-<env>.yaml:                      values-<env>.yaml:
+    #     configmap1:                             configmap1:
+    #       data: |-                                dataMap:          # only overridden keys
+    #         API_PORT: "8080"                        LOG_LEVEL: debug
+    #         LOG_LEVEL: debug
+    # Last resort - if you truly cannot edit the base file, an overlay can set
+    # `data: null` alongside its `dataMap` and redeclare EVERY key it still needs
+    # (keys from the old `data` string are NOT carried over). That forfeits per-key
+    # merging - the reason `dataMap` exists - so treat it as a stopgap, not a migration.
     #
     # IMPORTANT - quote any dataMap key or value that YAML could type, because Helm's
     # values parser (YAML 1.1) coerces them before the chart ever sees them:
@@ -985,26 +1009,6 @@ configMap:
     #     .env: |
     #       FOO=BAR
     #       APP=test
-    #
-    # Migrating a config from `data` to `dataMap`: mixing the two forms for one config
-    # is a hard error in BOTH directions (base `data` + overlay `dataMap`, or base
-    # `dataMap` + overlay `data`), so converting only the base values file breaks every
-    # environment overlay that still sets `data` for that config. The unit of migration
-    # is one config across the base file AND every environment overlay, in the same
-    # commit:
-    #   base-values.yaml:
-    #     configmap1:
-    #       dataMap:            # all shared keys, converted from the old data string
-    #         API_PORT: "8080"
-    #         LOG_LEVEL: info
-    #   values-<env>.yaml:
-    #     configmap1:
-    #       dataMap:            # only the keys this environment overrides
-    #         LOG_LEVEL: debug
-    # Last resort - if you truly cannot edit the base file, an overlay can set
-    # `data: null` alongside its `dataMap` and redeclare EVERY key it still needs
-    # (keys from the old `data` string are NOT carried over). That forfeits per-key
-    # merging - the reason `dataMap` exists - so treat it as a stopgap, not a migration.
 
 ##########################################################
 # External Secrets

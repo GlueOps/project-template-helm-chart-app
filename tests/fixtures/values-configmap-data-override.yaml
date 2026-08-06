@@ -1,0 +1,5 @@
+configMap:
+  configs:
+    app:
+      data: |-
+        LOG_LEVEL: debug

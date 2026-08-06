@@ -42,6 +42,10 @@ for d in */ ; do
     # helm-unittest nor kubectl dry-run fails on that corruption
     echo "[INFO] dataMap key-quoting canary on directory: $(pwd)"
     helm template ../../ -f ../../values.yaml -f values.yaml | grep -q '"on": "quoted-key-canary"'
+    # dataMap values must not be HTML-escaped: helm-unittest un-escapes &/< on
+    # parse, so only this raw-render grep catches a toJson/toRawJson regression
+    echo "[INFO] dataMap html-escape canary on directory: $(pwd)"
+    helm template ../../ -f ../../values.yaml -f values.yaml | grep -qF "A & B <div class='x'>ok</div>"
     canary_ran=1
   fi
 

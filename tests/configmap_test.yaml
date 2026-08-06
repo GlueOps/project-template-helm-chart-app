@@ -274,6 +274,66 @@ tests:
           path: .data.BIG
           value: "9007199254740992"
 
+  - it: should replace data atomically across layered values files (the behavior dataMap exists to fix)
+    values:
+      - fixtures/values-configmap-data-base.yaml
+      - fixtures/values-configmap-data-override.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: .data.LOG_LEVEL
+          value: "debug"
+      # the base file's other key is wiped, not merged - string data replaces as a whole
+      - isNull:
+          path: .data.API_PORT
+
+  - it: should render tpl expressions inside the data string path
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            data: |-
+              ENV: {{ .Values.appEnv }}
+              NAME: {{ include "app.name" . }}
+    asserts:
+      - equal:
+          path: .data.ENV
+          value: "dev"
+      - equal:
+          path: .data.NAME
+          value: "example-app"
+
+  - it: should keep the data string render byte-stable (snapshot)
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            data: |-
+              API_PORT: "8080"
+              .env: |
+                FOO=BAR
+                APP=test
+    asserts:
+      # scoped to .data: a whole-document snapshot would embed the chart version
+      # in labels and break on every release-please version bump
+      - matchSnapshot:
+          path: .data
+
+  - it: should fail when a config name suffix is not a valid lowercase RFC 1123 subdomain
+    set:
+      configMap:
+        enabled: true
+        configs:
+          My_Config:
+            dataMap:
+              key1: value1
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.My_Config: name suffix is not a valid lowercase RFC 1123 subdomain"
+
   - it: should merge dataMap per-key across layered values files and honor null deletions
     values:
       - fixtures/values-configmap-datamap-base.yaml

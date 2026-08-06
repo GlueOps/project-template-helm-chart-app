@@ -36,3 +36,7 @@ configMap:
         # an unquoted `on` key would be coerced to "true" by the YAML 1.1 parsers
         # in Helm and Kubernetes
         "on": "quoted-key-canary"
+        # html-escape canary: test.sh greps the raw render for the literal `A & B <div`;
+        # an HTML-escaping regression (toJson instead of toRawJson) would emit
+        # & and < instead, invisible to helm-unittest which un-escapes on parse
+        html.txt: "A & B <div class='x'>ok</div>"
