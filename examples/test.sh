@@ -9,8 +9,9 @@ fi
 IGNORE_TESTS_KUBE_SCORE=(--ignore-test=container-image-pull-policy --ignore-test=container-security-context-readonlyrootfilesystem --ignore-test=container-security-context-user-group-id --ignore-test=pod-networkpolicy --ignore-test=ingress-targets-service --ignore-test=container-ephemeral-storage-request-and-limit)
 # --ignore-test=pod-probes
 
-export KUBE_VER=1.27
+export KUBE_VER=1.35
 export KUBE_VER_FULL=`echo $KUBE_VER`.2
+canary_ran=0
 for d in */ ; do
   if [[ $d == "testcases/" ]]; then
     echo "[INFO] Skipping $d ..."
@@ -33,8 +34,21 @@ for d in */ ; do
   echo "[INFO] kubeval on directory: $(pwd)"
   helm template ../../ -f ../../values.yaml -f values.yaml | kubeval --kubernetes-version $KUBE_VER_FULL --schema-location https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master --skip-kinds=ExternalSecret --skip-kinds=TriggerAuthentication --skip-kinds=ScaledObject --skip-kinds=WebApplicationFirewall
   echo "[INFO] kubectl dry-run on directory: $(pwd)"
-  helm template ../../ -f ../../values.yaml -f values.yaml |  kubectl apply --dry-run='client' -f - 
-  
+  helm template ../../ -f ../../values.yaml -f values.yaml |  kubectl apply --dry-run='client' -f -
+
+  if [[ $d == "configmap/" ]]; then
+    # dataMap keys must be emitted quoted: an unquoted `on` key would be coerced
+    # to "true" by the YAML 1.1 parsers in Helm and Kubernetes, and neither
+    # helm-unittest nor kubectl dry-run fails on that corruption
+    echo "[INFO] dataMap key-quoting canary on directory: $(pwd)"
+    helm template ../../ -f ../../values.yaml -f values.yaml | grep -q '"on": "quoted-key-canary"'
+    # dataMap values must not be HTML-escaped: helm-unittest un-escapes &/< on
+    # parse, so only this raw-render grep catches a toJson/toRawJson regression
+    echo "[INFO] dataMap html-escape canary on directory: $(pwd)"
+    helm template ../../ -f ../../values.yaml -f values.yaml | grep -qF "A & B <div class='x'>ok</div>"
+    canary_ran=1
+  fi
+
   if [[ $d == "keda/" ]] && [[ $CI == "true" ]]; then
     helm install example-app ../../ -f ../../values.yaml -f deployment.yaml --wait
     kubectl wait deployment -n default example-app --for condition=Available=True --timeout=60s
@@ -48,6 +62,13 @@ for d in */ ; do
   fi
   cd ..
 done
+
+# errexit cannot catch a branch that never ran: if examples/configmap/ is renamed or
+# removed, the key-quoting canary above silently stops guarding. Fail loud instead.
+if [[ $canary_ran -ne 1 ]]; then
+  echo "[ERROR] dataMap key-quoting canary never ran (examples/configmap/ missing?)"
+  exit 1
+fi
 
 if [[ -d "testcases/" ]]; then
   echo "[INFO] Run testcases ..."

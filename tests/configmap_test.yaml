@@ -37,3 +37,436 @@ tests:
       - equal:
           path: .data.key2
           value: "value2"
+
+  - it: should create configmap from dataMap
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap:
+              LOG_LEVEL: info
+              API_PORT: 8080
+              DEBUG: true
+              EMPTY: ""
+              braces.conf: "value with {{ literal braces }}"
+              .env: |
+                FOO=BAR
+                APP=test
+              script.sh: |-
+                #!/bin/sh
+                echo "no trailing newline"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: metadata.name
+          value: "example-app-config1"
+      - equal:
+          path: .data.LOG_LEVEL
+          value: "info"
+      - equal:
+          path: .data["API_PORT"]
+          value: "8080"
+      - equal:
+          path: .data.DEBUG
+          value: "true"
+      - equal:
+          path: .data.EMPTY
+          value: ""
+      - equal:
+          path: .data["braces.conf"]
+          value: "value with {{ literal braces }}"
+      - equal:
+          path: .data[".env"]
+          value: "FOO=BAR\nAPP=test\n"
+      - equal:
+          path: .data["script.sh"]
+          value: "#!/bin/sh\necho \"no trailing newline\""
+
+  - it: should omit dataMap keys set to null
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap:
+              LOG_LEVEL: debug
+              REMOVE_ME: null
+    asserts:
+      - equal:
+          path: .data.LOG_LEVEL
+          value: "debug"
+      - isNull:
+          path: .data.REMOVE_ME
+
+  - it: should fail when both data and dataMap are set
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            data: |-
+              key1: value1
+            dataMap:
+              key2: value2
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: set either 'data' or 'dataMap', not both"
+
+  - it: should fail when neither data nor dataMap is set
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1: {}
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: must set 'data' or 'dataMap'"
+
+  - it: should quote dataMap keys so YAML 1.1 boolean-like keys survive
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap:
+              "no": "norwegian-locale"
+              "on": "toggle-file"
+              "123": "numeric-name"
+              "true": "quoted-bool-key"
+    asserts:
+      - equal:
+          path: .data["no"]
+          value: "norwegian-locale"
+      - equal:
+          path: .data["on"]
+          value: "toggle-file"
+      # KNOWN LIMITATION: helm-unittest converts rendered YAML to JSON and
+      # stringifies every map key, so no parsed assert here can detect lost key
+      # quoting (mutation-verified: removing toJson from the key emission keeps
+      # this suite green). kubectl dry-run also exits 0 on the regression (a
+      # coerced key like "true" is still a valid ConfigMap key) - it only shows
+      # the corruption in its output. The executable guard is the key-quoting
+      # canary in examples/configmap + examples/test.sh, which greps the raw
+      # helm template output for the quoted "on" key.
+      - equal:
+          path: .data["123"]
+          value: "numeric-name"
+      - equal:
+          path: .data["true"]
+          value: "quoted-bool-key"
+
+  - it: should fail when a dataMap value is a nested map
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap:
+              settings:
+                nested: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: dataMap key 'settings' must have a scalar value \\(string/number/bool\\), got map"
+
+  - it: should fail when a dataMap value is a list
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap:
+              items:
+                - a
+                - b
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: dataMap key 'items' must have a scalar value \\(string/number/bool\\), got list"
+
+  - it: should fail when dataMap is not a map
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap: "oops"
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: 'dataMap' must be a map of key/value pairs, got string"
+
+  - it: should fail with actionable error when data is a map
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            data:
+              key1: value1
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: 'data' must be a string, got map - use 'dataMap' for key/value maps"
+
+  - it: should render empty configmap when data is an empty string
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            data: ""
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ConfigMap
+      - isNullOrEmpty:
+          path: .data
+
+  - it: should render empty configmap when dataMap is an empty map
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap: {}
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ConfigMap
+      - isNullOrEmpty:
+          path: .data
+
+  - it: should preserve exact digits and trailing newlines for values-file input
+    values:
+      - fixtures/values-configmap-datamap.yaml
+    asserts:
+      - equal:
+          path: .data.CACHE_TTL_MS
+          value: "86400000"
+      - equal:
+          path: .data.MAX_CONNS
+          value: "1000000"
+      - equal:
+          path: .data.TRAILING
+          value: "a\n\n"
+      # values files reach the template as float64 (Helm parses values via YAML->JSON);
+      # these pin the decimal-preserving formatting for non-integral floats
+      - equal:
+          path: .data.PRICE
+          value: "1234567.89"
+      - equal:
+          path: .data.RATIO
+          value: "1.5"
+      - equal:
+          path: .data.NEG
+          value: "-1.5"
+      - equal:
+          path: .data.SCI
+          value: "100000"
+      - equal:
+          path: .data.DEBUG_FLAG
+          value: "true"
+      # documented limitation: precision above 2^53 is lost in Helm's own values parser
+      - equal:
+          path: .data.BIG
+          value: "9007199254740992"
+
+  - it: should replace data atomically across layered values files (the behavior dataMap exists to fix)
+    values:
+      - fixtures/values-configmap-data-base.yaml
+      - fixtures/values-configmap-data-override.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: .data.LOG_LEVEL
+          value: "debug"
+      # the base file's other key is wiped, not merged - string data replaces as a whole
+      - isNull:
+          path: .data.API_PORT
+
+  - it: should render tpl expressions inside the data string path
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            data: |-
+              ENV: {{ .Values.appEnv }}
+              NAME: {{ include "app.name" . }}
+    asserts:
+      - equal:
+          path: .data.ENV
+          value: "dev"
+      - equal:
+          path: .data.NAME
+          value: "example-app"
+
+  - it: should keep the data string render byte-stable (snapshot)
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            data: |-
+              API_PORT: "8080"
+              .env: |
+                FOO=BAR
+                APP=test
+    asserts:
+      # scoped to .data: a whole-document snapshot would embed the chart version
+      # in labels and break on every release-please version bump
+      - matchSnapshot:
+          path: .data
+
+  - it: should fail when a config name suffix is not a valid lowercase RFC 1123 subdomain
+    set:
+      configMap:
+        enabled: true
+        configs:
+          My_Config:
+            dataMap:
+              key1: value1
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.My_Config: name suffix is not a valid lowercase RFC 1123 subdomain"
+
+  - it: should merge dataMap per-key across layered values files and honor null deletions
+    values:
+      - fixtures/values-configmap-datamap-base.yaml
+      - fixtures/values-configmap-datamap-override.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: metadata.name
+          value: "example-app-app"
+      - equal:
+          path: .data.LOG_LEVEL
+          value: "debug"
+      - equal:
+          path: .data.API_URL
+          value: "https://base.example.com"
+      - equal:
+          path: .data.EXTRA
+          value: "dev-only"
+      - isNull:
+          path: .data.REMOVE_ME
+
+  - it: should skip a config set to null so overlays can delete a whole configmap
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1: null
+          config2:
+            dataMap:
+              key1: value1
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: metadata.name
+          value: "example-app-config2"
+
+  - it: should fail with named error when configs itself is a list
+    set:
+      configMap:
+        enabled: true
+        configs:
+          - data: "x"
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs: must be a map of configs keyed by name suffix, got list"
+
+  - it: should fail with named error when configs itself is a scalar
+    set:
+      configMap:
+        enabled: true
+        configs: "oops"
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs: must be a map of configs keyed by name suffix, got string"
+
+  - it: should fail with named error when data is a number
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            data: 123
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: 'data' must be a string, got number"
+
+  - it: should not HTML-escape dataMap values
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap:
+              html.tpl: "<div class='a'>A & B</div>"
+    asserts:
+      - equal:
+          path: data["html.tpl"]
+          value: "<div class='a'>A & B</div>"
+
+  - it: should fail with named error when a config is not a map
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1: "oops"
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: must be a map containing 'data' or 'dataMap', got string"
+
+  - it: should fail with named error when a config is a list
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1: ["oops"]
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: must be a map containing 'data' or 'dataMap', got list"
+
+  - it: should fail when a dataMap key is not a valid ConfigMap key
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap:
+              "bad/key": value
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: dataMap key 'bad/key' is not a valid ConfigMap key"
+
+  - it: should fail when a dataMap key starts with double dots
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap:
+              "..foo": value
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: dataMap key '\\.\\.foo' is not a valid ConfigMap key"
+
+  - it: should fail when a dataMap key exceeds 253 characters
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap:
+              "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk": value
+    asserts:
+      - failedTemplate:
+          errorPattern: "is not a valid ConfigMap key \\(must match \\[-._a-zA-Z0-9\\]\\+, max 253 chars"
