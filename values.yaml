@@ -927,20 +927,17 @@ configMap:
   # -- Annotations for the ConfigMap
   annotations:
   # key: value
-  # -- (map) ConfigMaps to create, keyed by name suffix. Use `dataMap` for per-environment
-  # overrides that don't wipe the base: its keys merge individually across layered values
-  # files, so an env overlay can change one key while the base keeps the rest - the string
-  # `data` form is replaced as a whole on any override. Each config sets exactly one of
-  # `data` (multiline string, rendered with Helm templating via `tpl`) or `dataMap`
-  # (key/value map of flat scalars, rendered literally without `tpl`). A `dataMap` key set
-  # to `null` in an overriding file is removed; a whole config set to `null` removes that
-  # ConfigMap. HARD RULE: quote every `dataMap` key and value that is not plain alphabetic
-  # text - Helm's YAML 1.1 parser coerces unquoted booleans/numbers before the chart can
-  # see them, silently renaming keys (`on:` becomes "true") or rewriting values; the
-  # comments under `configs` list every coercion. Text content only (`binaryData` is not
-  # supported). To migrate a config from `data` to `dataMap`, convert the base values file
-  # AND every environment overlay for that config in the same commit - mixing the two
-  # forms for one config is an error in either direction.
+  # -- (map) ConfigMaps to create, keyed by name suffix (`<appName>-<suffix>`). Each
+  # config sets exactly one of `data` (multiline string, rendered with `tpl`, replaced
+  # as a whole on override) or `dataMap` (key/value map rendered literally; keys merge
+  # individually across layered values files - use it for per-environment overrides
+  # that don't wipe the base, and delete keys or whole configs by setting them `null`).
+  # HARD RULE: quote every `dataMap` key and value that is numeric or one of YAML's
+  # boolean words (`y`/`n`/`yes`/`no`/`true`/`false`/`on`/`off`, any case) - YAML 1.1
+  # coerces them before the chart can see them (`on:` silently becomes the key "true").
+  # Full semantics, the complete coercion list, and the data->dataMap migration guide:
+  # see the "ConfigMaps: data vs dataMap" section of this README and the comments under
+  # `configs` in values.yaml. Text content only (`binaryData` is not supported).
   configs:
     # Each config sets exactly one of:
     #   data    - multiline string, rendered with Helm templating via `tpl`
@@ -968,6 +965,11 @@ configMap:
     # `data: null` alongside its `dataMap` and redeclare EVERY key it still needs
     # (keys from the old `data` string are NOT carried over). That forfeits per-key
     # merging - the reason `dataMap` exists - so treat it as a stopgap, not a migration.
+    #
+    # Null-deletion caveat: removing keys or whole configs with `null` works when all
+    # values files are passed together (as ArgoCD and `helm upgrade -f base -f env` do);
+    # it does NOT work through `helm upgrade --reuse-values`, which silently keeps the
+    # old key and reports success.
     #
     # IMPORTANT - quote any dataMap key or value that YAML could type, because Helm's
     # values parser (YAML 1.1) coerces them before the chart ever sees them:

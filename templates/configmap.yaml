@@ -8,14 +8,18 @@
 {{- if not (kindIs "map" $data) }}
 {{- fail (printf "configMap.configs.%v: must be a map containing 'data' or 'dataMap', got %s" $nameSuffix (include "chart.valuesKind" $data)) }}
 {{- end }}
-{{- if not (regexMatch "^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)*$" (printf "%v" $nameSuffix)) }}
-{{- fail (printf "configMap.configs.%v: name suffix is not a valid lowercase RFC 1123 subdomain (lowercase alphanumerics, '-' and '.', must start and end alphanumeric) - it becomes part of the ConfigMap name" $nameSuffix) }}
+{{- $cmName := printf "%s-%v" (include "app.name" $) $nameSuffix }}
+{{- /* validate the joined name the apiserver actually sees, not the bare suffix: a
+suffix like "-prod" is legal after the join (name--prod), and only the full name
+carries the 253-char limit */}}
+{{- if or (not (regexMatch "^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)*$" $cmName)) (gt (len $cmName) 253) }}
+{{- fail (printf "configMap.configs.%v: rendered ConfigMap name '%s' is not a valid RFC 1123 subdomain of at most 253 chars (lowercase alphanumerics, '-' and '.', must start and end alphanumeric)" $nameSuffix $cmName) }}
 {{- end }}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "app.name" $ }}-{{ $nameSuffix }}
+  name: {{ $cmName }}
   namespace: {{ include "app.namespace" $ }}
   labels:
     {{- include "chart.commonLabels" $ | indent 4 }}
@@ -35,7 +39,7 @@ data:
   {{- $hasData := and (hasKey $data "data") (not (kindIs "invalid" $data.data)) }}
   {{- $hasDataMap := and (hasKey $data "dataMap") (not (kindIs "invalid" $data.dataMap)) }}
   {{- if and $hasData $hasDataMap }}
-  {{- fail (printf "configMap.configs.%s: set either 'data' or 'dataMap', not both (a 'data' and a 'dataMap' for the same config collide across merged values files) - see the configMap.configs section of the chart README" $nameSuffix) }}
+  {{- fail (printf "configMap.configs.%s: set either 'data' or 'dataMap', not both (a 'data' and a 'dataMap' for the same config collide across merged values files) - see 'ConfigMaps: data vs dataMap' in the chart README" $nameSuffix) }}
   {{- end }}
   {{- if $hasData }}
   {{- if not (kindIs "string" $data.data) }}

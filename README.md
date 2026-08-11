@@ -4,6 +4,63 @@
 
 A Helm chart template for applications
 
+## ConfigMaps: data vs dataMap
+
+`configMap.configs` creates one ConfigMap per entry, named `<appName>-<nameSuffix>`.
+Each config sets exactly one of two forms:
+
+|  | `data` | `dataMap` |
+|---|---|---|
+| Shape | one multiline string | key/value map of flat scalars |
+| Helm templating (`tpl`) | yes | no — values render literally |
+| Override across values files | replaced as a whole | keys merge individually |
+| Delete a key from an overlay | not possible | set the key to `null` |
+
+Use `dataMap` for per-environment overrides: an env overlay changes one key while the
+base file keeps the rest. Setting a whole config to `null` in an overlay removes that
+ConfigMap. Null-deletion works when all values files are passed together (as ArgoCD
+does); it does **not** work through `helm upgrade --reuse-values`, which silently keeps
+the old key.
+
+### Quote anything YAML could type
+
+Helm parses values files as YAML 1.1 *before* the chart can validate anything, so
+unquoted boolean words (`y`, `n`, `yes`, `no`, `true`, `false`, `on`, `off` — any case)
+and numbers are coerced silently: `on: x` becomes the key `"true"`; `no:` and `off:`
+both collapse to `"false"` and one value is lost; `1.10` becomes `"1.1"`; `0755`
+becomes `"493"`. When in doubt, quote both key and value. The comment block under
+`configMap.configs` in values.yaml lists every coercion.
+
+### Migrating a config from data to dataMap
+
+Mixing the two forms for one config is an error in both directions, so migrate one
+config across the base file **and every environment overlay in the same commit**:
+
+```yaml
+# BEFORE - base-values.yaml            # BEFORE - values-<env>.yaml
+configMap:                             configMap:
+  configs:                               configs:
+    app:                                   app:
+      data: |-                               data: |-
+        API_PORT: "8080"                       API_PORT: "8080"
+        LOG_LEVEL: info                        LOG_LEVEL: debug
+```
+
+```yaml
+# AFTER - base-values.yaml             # AFTER - values-<env>.yaml
+configMap:                             configMap:
+  configs:                               configs:
+    app:                                   app:
+      dataMap:                               dataMap:
+        API_PORT: "8080"                       LOG_LEVEL: debug   # only the override
+        LOG_LEVEL: info
+```
+
+Other guardrails, all failing at template time with an error naming the config:
+values must be flat scalars (string/number/bool), keys must match `[-._a-zA-Z0-9]+`,
+the rendered name must be a valid RFC 1123 subdomain, and content is text-only
+(`binaryData` is not supported).
+
 ## Values
 
 | Key | Type | Default | Description |
@@ -14,7 +71,7 @@ A Helm chart template for applications
 | commonLabels | string | `nil` | Common labels for all Kubernetes objects |
 | configMap | object | `{"annotations":null,"configs":null,"enabled":false,"labels":null}` | ConfigMap configuration |
 | configMap.annotations | string | `nil` | Annotations for the ConfigMap |
-| configMap.configs | map | `nil` | ConfigMaps to create, keyed by name suffix. Use `dataMap` for per-environment overrides that don't wipe the base: its keys merge individually across layered values files, so an env overlay can change one key while the base keeps the rest - the string `data` form is replaced as a whole on any override. Each config sets exactly one of `data` (multiline string, rendered with Helm templating via `tpl`) or `dataMap` (key/value map of flat scalars, rendered literally without `tpl`). A `dataMap` key set to `null` in an overriding file is removed; a whole config set to `null` removes that ConfigMap. HARD RULE: quote every `dataMap` key and value that is not plain alphabetic text - Helm's YAML 1.1 parser coerces unquoted booleans/numbers before the chart can see them, silently renaming keys (`on:` becomes "true") or rewriting values; the comments under `configs` list every coercion. Text content only (`binaryData` is not supported). To migrate a config from `data` to `dataMap`, convert the base values file AND every environment overlay for that config in the same commit - mixing the two forms for one config is an error in either direction. |
+| configMap.configs | map | `nil` | ConfigMaps to create, keyed by name suffix (`<appName>-<suffix>`). Each config sets exactly one of `data` (multiline string, rendered with `tpl`, replaced as a whole on override) or `dataMap` (key/value map rendered literally; keys merge individually across layered values files - use it for per-environment overrides that don't wipe the base, and delete keys or whole configs by setting them `null`). HARD RULE: quote every `dataMap` key and value that is numeric or one of YAML's boolean words (`y`/`n`/`yes`/`no`/`true`/`false`/`on`/`off`, any case) - YAML 1.1 coerces them before the chart can see them (`on:` silently becomes the key "true"). Full semantics, the complete coercion list, and the data->dataMap migration guide: see the "ConfigMaps: data vs dataMap" section of this README and the comments under `configs` in values.yaml. Text content only (`binaryData` is not supported). |
 | configMap.enabled | bool | `false` | Whether to create a ConfigMap |
 | configMap.labels | string | `nil` | Labels for the ConfigMap |
 | cronJob | object | `{"enabled":false,"imagePullSecrets":null,"jobs":null}` | CronJob configuration |

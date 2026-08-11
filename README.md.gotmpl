@@ -13,4 +13,61 @@
 
 {{ template "chart.requirementsSection" . }}
 
+## ConfigMaps: data vs dataMap
+
+`configMap.configs` creates one ConfigMap per entry, named `<appName>-<nameSuffix>`.
+Each config sets exactly one of two forms:
+
+|  | `data` | `dataMap` |
+|---|---|---|
+| Shape | one multiline string | key/value map of flat scalars |
+| Helm templating (`tpl`) | yes | no — values render literally |
+| Override across values files | replaced as a whole | keys merge individually |
+| Delete a key from an overlay | not possible | set the key to `null` |
+
+Use `dataMap` for per-environment overrides: an env overlay changes one key while the
+base file keeps the rest. Setting a whole config to `null` in an overlay removes that
+ConfigMap. Null-deletion works when all values files are passed together (as ArgoCD
+does); it does **not** work through `helm upgrade --reuse-values`, which silently keeps
+the old key.
+
+### Quote anything YAML could type
+
+Helm parses values files as YAML 1.1 *before* the chart can validate anything, so
+unquoted boolean words (`y`, `n`, `yes`, `no`, `true`, `false`, `on`, `off` — any case)
+and numbers are coerced silently: `on: x` becomes the key `"true"`; `no:` and `off:`
+both collapse to `"false"` and one value is lost; `1.10` becomes `"1.1"`; `0755`
+becomes `"493"`. When in doubt, quote both key and value. The comment block under
+`configMap.configs` in values.yaml lists every coercion.
+
+### Migrating a config from data to dataMap
+
+Mixing the two forms for one config is an error in both directions, so migrate one
+config across the base file **and every environment overlay in the same commit**:
+
+```yaml
+# BEFORE - base-values.yaml            # BEFORE - values-<env>.yaml
+configMap:                             configMap:
+  configs:                               configs:
+    app:                                   app:
+      data: |-                               data: |-
+        API_PORT: "8080"                       API_PORT: "8080"
+        LOG_LEVEL: info                        LOG_LEVEL: debug
+```
+
+```yaml
+# AFTER - base-values.yaml             # AFTER - values-<env>.yaml
+configMap:                             configMap:
+  configs:                               configs:
+    app:                                   app:
+      dataMap:                               dataMap:
+        API_PORT: "8080"                       LOG_LEVEL: debug   # only the override
+        LOG_LEVEL: info
+```
+
+Other guardrails, all failing at template time with an error naming the config:
+values must be flat scalars (string/number/bool), keys must match `[-._a-zA-Z0-9]+`,
+the rendered name must be a valid RFC 1123 subdomain, and content is text-only
+(`binaryData` is not supported).
+
 {{ template "chart.valuesSection" . }}

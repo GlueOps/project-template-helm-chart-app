@@ -305,7 +305,7 @@ tests:
           path: .data.NAME
           value: "example-app"
 
-  - it: should keep the data string render byte-stable (snapshot)
+  - it: should keep the data string render byte-stable
     set:
       configMap:
         enabled: true
@@ -317,12 +317,16 @@ tests:
                 FOO=BAR
                 APP=test
     asserts:
-      # scoped to .data: a whole-document snapshot would embed the chart version
-      # in labels and break on every release-please version bump
-      - matchSnapshot:
-          path: .data
+      # explicit asserts, not matchSnapshot: __snapshot__ is gitignored, so CI runs
+      # on a fresh checkout regenerate the baseline and a snapshot can never fail
+      - equal:
+          path: .data["API_PORT"]
+          value: "8080"
+      - equal:
+          path: .data[".env"]
+          value: "FOO=BAR\nAPP=test\n"
 
-  - it: should fail when a config name suffix is not a valid lowercase RFC 1123 subdomain
+  - it: should fail when the rendered ConfigMap name is not a valid lowercase RFC 1123 subdomain
     set:
       configMap:
         enabled: true
@@ -332,7 +336,46 @@ tests:
               key1: value1
     asserts:
       - failedTemplate:
-          errorPattern: "configMap.configs.My_Config: name suffix is not a valid lowercase RFC 1123 subdomain"
+          errorPattern: "configMap.configs.My_Config: rendered ConfigMap name 'example-app-My_Config' is not a valid RFC 1123 subdomain"
+
+  - it: should allow a leading-dash suffix because the joined name is valid (0.14.1 compat)
+    set:
+      configMap:
+        enabled: true
+        configs:
+          "-prod":
+            dataMap:
+              key1: value1
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: metadata.name
+          value: "example-app--prod"
+
+  - it: should fail when the rendered ConfigMap name exceeds 253 characters
+    set:
+      configMap:
+        enabled: true
+        configs:
+          aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:
+            dataMap:
+              key1: value1
+    asserts:
+      - failedTemplate:
+          errorPattern: "is not a valid RFC 1123 subdomain of at most 253 chars"
+
+  - it: should fail when a dataMap key is a bare dot
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap:
+              ".": "dot"
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: dataMap key '.' is not a valid ConfigMap key"
 
   - it: should merge dataMap per-key across layered values files and honor null deletions
     values:
