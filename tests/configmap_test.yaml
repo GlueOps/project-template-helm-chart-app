@@ -136,7 +136,6 @@ tests:
               "no": "norwegian-locale"
               "on": "toggle-file"
               "123": "numeric-name"
-              "true": "quoted-bool-key"
     asserts:
       - equal:
           path: .data["no"]
@@ -155,9 +154,18 @@ tests:
       - equal:
           path: .data["123"]
           value: "numeric-name"
-      - equal:
-          path: .data["true"]
-          value: "quoted-bool-key"
+
+  - it: should fail on dataMap keys arriving as literal true/false (coerced unquoted booleans)
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap:
+              "true": "almost-certainly-a-coerced-on-or-yes"
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: dataMap key 'true' is almost always an unquoted YAML 1.1 boolean key"
 
   - it: should fail when a dataMap value is a nested map
     set:
@@ -398,6 +406,33 @@ tests:
           value: "dev-only"
       - isNull:
           path: .data.REMOVE_ME
+
+  - it: should migrate data to dataMap via a data-null overlay (documented escape hatch)
+    values:
+      - fixtures/values-configmap-migrate-data-base.yaml
+      - fixtures/values-configmap-migrate-data-overlay.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: .data.K2
+          value: "v2"
+      # keys from the nulled data string are NOT carried over
+      - isNull:
+          path: .data.K1
+
+  - it: should migrate dataMap back to data via a dataMap-null overlay
+    values:
+      - fixtures/values-configmap-migrate-datamap-base.yaml
+      - fixtures/values-configmap-migrate-datamap-overlay.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: .data.K2
+          value: "v2"
+      - isNull:
+          path: .data.K1
 
   - it: should skip a config set to null so overlays can delete a whole configmap
     set:

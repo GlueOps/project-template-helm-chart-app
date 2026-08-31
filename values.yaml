@@ -974,7 +974,9 @@ configMap:
     # IMPORTANT - quote any dataMap key or value that YAML could type, because Helm's
     # values parser (YAML 1.1) coerces them before the chart ever sees them:
     # - booleans as keys OR values: `on: x` becomes the key "true"; `no:` and `off:`
-    #   both become "false" and silently collide (one value is lost)
+    #   both become "false" and silently collide (one value is lost). The chart fails
+    #   the render on any dataMap key arriving as literal true/false for this reason;
+    #   keys genuinely named "true"/"false" are not supported
     # - any number YAML can parse is normalized, not kept verbatim: `1.0` -> "1",
     #   `.5` -> "0.5", `+1` -> "1", `-0` -> "0", `1_000` -> "1000", version strings
     #   `1.10` -> "1.1", hex-like `0x1F` -> "31"

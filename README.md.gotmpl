@@ -40,6 +40,13 @@ both collapse to `"false"` and one value is lost; `1.10` becomes `"1.1"`; `0755`
 becomes `"493"`. When in doubt, quote both key and value. The comment block under
 `configMap.configs` in values.yaml lists every coercion.
 
+The chart enforces the key side of this rule: a `dataMap` key arriving as literal
+`true` or `false` fails the render, because it is almost always a coerced unquoted
+boolean and the `no:`/`off:` collision silently loses a value. Keys genuinely named
+`true`/`false` are not supported (post-parse they are indistinguishable from the
+accident). Value coercion (`1.10` → `"1.1"`) cannot be detected after parsing —
+quoting is the only protection there.
+
 ### Migrating a config from data to dataMap
 
 Mixing the two forms for one config is an error in both directions, so migrate one

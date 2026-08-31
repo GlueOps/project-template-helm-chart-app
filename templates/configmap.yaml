@@ -55,6 +55,13 @@ data:
   {{- if or (not (regexMatch "^[-._a-zA-Z0-9]+$" $key)) (eq $key ".") (hasPrefix ".." $key) (gt (len $key) 253) }}
   {{- fail (printf "configMap.configs.%s: dataMap key '%s' is not a valid ConfigMap key (must match [-._a-zA-Z0-9]+, max 253 chars, not '.', must not start with '..')" $nameSuffix $key) }}
   {{- end }}
+  {{- /* a key arriving as literal true/false is almost always an unquoted YAML 1.1
+  boolean (on:/off:/yes:/no:/y:/n: coerce before the chart can see them, and no:/off:
+  colliding on "false" silently loses a value). Quoting cannot express a legitimate
+  true/false key either - post-parse they are indistinguishable - so fail closed. */}}
+  {{- if or (eq $key "true") (eq $key "false") }}
+  {{- fail (printf "configMap.configs.%s: dataMap key '%s' is almost always an unquoted YAML 1.1 boolean key (on/off/yes/no/y/n coerce to true/false before the chart sees them) - rename the key; keys literally named 'true' or 'false' are not supported" $nameSuffix $key) }}
+  {{- end }}
   {{- if not (or (kindIs "string" $value) (kindIs "bool" $value) (kindIs "int" $value) (kindIs "int64" $value) (kindIs "float64" $value)) }}
   {{- fail (printf "configMap.configs.%s: dataMap key '%s' must have a scalar value (string/number/bool), got %s" $nameSuffix $key (include "chart.valuesKind" $value)) }}
   {{- end }}
