@@ -950,6 +950,13 @@ configMap:
     # two forms for one config is a hard error in BOTH directions (base `data` + overlay
     # `dataMap`, or the reverse), so converting only the base file breaks every overlay
     # that still sets `data` for that config.
+    # PRE-FLIGHT: search the `data` string for `{{` before converting. `data` is rendered
+    # through `tpl`, `dataMap` is NOT - a converted `{{ .Values.appName }}` renders as
+    # literal braces and ships to the app with no error at any layer (helm template and
+    # helm lint both exit 0). Keep templated configs on `data`; if only some keys are
+    # templated, split those into a second config (see the note on splitting below - the
+    # second config renders a SECOND ConfigMap name, so volumeMounts/envFrom/envConfigMaps
+    # references must be updated to list both).
     #   BEFORE                                  AFTER
     #   base-values.yaml:                       base-values.yaml:
     #     configmap1:                             configmap1:
@@ -977,6 +984,8 @@ configMap:
     #   both become "false" and silently collide (one value is lost). The chart fails
     #   the render on any dataMap key arriving as literal true/false for this reason;
     #   keys genuinely named "true"/"false" are not supported
+    # - unquoted numeric KEYS collide after coercion: `1.0:` and `1:` both become the
+    #   key "1" and one value is silently lost before the chart can see either
     # - any number YAML can parse is normalized, not kept verbatim: `1.0` -> "1",
     #   `.5` -> "0.5", `+1` -> "1", `-0` -> "0", `1_000` -> "1000", version strings
     #   `1.10` -> "1.1", hex-like `0x1F` -> "31"
@@ -987,8 +996,10 @@ configMap:
     #   `KEY: ""` for an intentionally empty value
     #
     # If some values need Helm templating, keep those in a separate config using `data` -
-    # each config renders its own ConfigMap. Note: `secret.secrets.<name>.data` and
-    # `externalSecret` data are already key/value maps, so they merge per-key out of the box.
+    # each config renders its own ConfigMap, under a DIFFERENT name (`<appName>-<suffix>`),
+    # so every volumeMounts/envFrom/envConfigMaps reference to the original must be updated
+    # to list both. Note: `secret.secrets.<name>.data` and `externalSecret` data are already
+    # key/value maps, so they merge per-key out of the box.
     #
     # nameSuffix of configMap
     # configmap1:

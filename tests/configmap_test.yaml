@@ -166,6 +166,54 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "configMap.configs.config1: dataMap key 'true' is almost always an unquoted YAML 1.1 boolean key"
+      # the remedy the error prescribes is quoting, not renaming: a file legitimately
+      # named `on`/`no` keeps its name via `\"on\":` - pin that wording so it cannot
+      # regress back to advising a rename the user never typed
+      - failedTemplate:
+          errorPattern: "quote the key in your values file"
+
+  - it: should fail on a null tombstone whose key is a coerced unquoted boolean
+    # `on: null` in an overlay coerces to `"true": null`; without key validation ahead
+    # of the null skip this deletes nothing and still exits 0
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap:
+              KEEP: "x"
+              "true": null
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: dataMap key 'true' is almost always an unquoted YAML 1.1 boolean key"
+
+  - it: should fail on a null tombstone whose key is not a valid ConfigMap key
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap:
+              KEEP: "x"
+              "bad/key": null
+    asserts:
+      - failedTemplate:
+          errorPattern: "configMap.configs.config1: dataMap key 'bad/key' is not a valid ConfigMap key"
+
+  - it: should still delete a correctly quoted boolean-word key via a null tombstone
+    set:
+      configMap:
+        enabled: true
+        configs:
+          config1:
+            dataMap:
+              "on": null
+              KEEP: "x"
+    asserts:
+      - equal:
+          path: .data
+          value:
+            KEEP: "x"
 
   - it: should fail when a dataMap value is a nested map
     set:

@@ -40,33 +40,87 @@ quoting is the only protection there.
 
 ### Migrating a config from data to dataMap
 
+**Pre-flight: search the `data` string for `{{` before converting.** `data` is
+rendered through `tpl`, `dataMap` is not — a converted `{{ .Values.appName }}`
+renders as literal braces and ships to the app with no error at any layer (`helm
+template` and `helm lint` both exit 0). Keep templated configs on `data`.
+
+If only some keys are templated, split them into a second config — each config renders
+its own ConfigMap, so the templated keys stay on `data` while the rest gain per-key
+merging. The cost: the second ConfigMap has a **different name** (`<appName>-<suffix>`),
+so every `volumeMounts`, `envFrom` and `envConfigMaps` reference to the original must be
+updated to list both names.
+
 Mixing the two forms for one config is an error in both directions, so migrate one
 config across the base file **and every environment overlay in the same commit**:
 
 ```yaml
-# BEFORE - base-values.yaml            # BEFORE - values-<env>.yaml
-configMap:                             configMap:
-  configs:                               configs:
-    app:                                   app:
-      data: |-                               data: |-
-        API_PORT: "8080"                       API_PORT: "8080"
-        LOG_LEVEL: info                        LOG_LEVEL: debug
+# BEFORE
+# --- base-values.yaml
+configMap:
+  configs:
+    app:
+      data: |-
+        API_PORT: "8080"
+        LOG_LEVEL: info
+# --- values-<env>.yaml
+configMap:
+  configs:
+    app:
+      data: |-
+        API_PORT: "8080"
+        LOG_LEVEL: debug
 ```
 
 ```yaml
-# AFTER - base-values.yaml             # AFTER - values-<env>.yaml
-configMap:                             configMap:
-  configs:                               configs:
-    app:                                   app:
-      dataMap:                               dataMap:
-        API_PORT: "8080"                       LOG_LEVEL: debug   # only the override
+# AFTER
+# --- base-values.yaml
+configMap:
+  configs:
+    app:
+      dataMap:
+        API_PORT: "8080"
         LOG_LEVEL: info
+# --- values-<env>.yaml
+configMap:
+  configs:
+    app:
+      dataMap:
+        LOG_LEVEL: debug   # only the override
 ```
 
 Other guardrails, all failing at template time with an error naming the config:
 values must be flat scalars (string/number/bool), keys must match `[-._a-zA-Z0-9]+`,
 the rendered name must be a valid RFC 1123 subdomain, and content is text-only
-(`binaryData` is not supported).
+(`binaryData` is not supported). The apiserver's 1 MiB per-ConfigMap limit still
+applies and is not checked at template time — an oversized ConfigMap renders clean and
+fails on apply.
+
+Changing a `dataMap` key does **not** restart pods: no template emits a config
+checksum annotation, so config consumed through `envFrom`/`envConfigMaps` stays stale
+until the next restart, and deleting a key that is still referenced surfaces as
+`CreateContainerConfigError` only when a container next starts. Roll the workload
+yourself after a config-only change.
+
+### Upgrading from 0.14.x
+
+`configMap.configs` is validated at template time from 0.15.0 onwards. Shapes that
+previously rendered (or rendered *wrongly*) now fail the render with an error naming
+the config, so a bad config stops the sync instead of shipping. Check for these before
+upgrading:
+
+- A config that sets both `data` and `dataMap` — previously the stray `dataMap` was
+  ignored, now it is a hard error. Grep your values files for configs carrying both.
+- A config that sets neither, or sets `data` to a non-string (map/list/number), or
+  `configs` itself to something other than a map — these failed before too, but with
+  different (Go-internal) error text, so any tooling grepping for the old strings needs
+  updating.
+- A `nameSuffix` whose rendered ConfigMap name (`<appName>-<suffix>`) is not a valid
+  RFC 1123 subdomain — previously accepted at template time and rejected at apply time.
+
+Existing string `data` configs are otherwise unaffected and render byte-identically to
+0.14.x. New in 0.15.0: the `dataMap` form, per-key merging across values files, and
+`null`-deletion of individual keys.
 
 ## Values
 
