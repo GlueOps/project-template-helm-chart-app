@@ -1,0 +1,8 @@
+configMap:
+  configs:
+    app:
+      dataMap:
+        LOG_LEVEL: debug
+        REMOVE_ME: null
+        EXTRA: dev-only
+    legacy: null

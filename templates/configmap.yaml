@@ -1,11 +1,25 @@
 
 {{- if .Values.configMap.enabled }}
+{{- if and (not (kindIs "invalid" .Values.configMap.configs)) (not (kindIs "map" .Values.configMap.configs)) }}
+{{- fail (printf "configMap.configs: must be a map of configs keyed by name suffix, got %s" (include "chart.valuesKind" .Values.configMap.configs)) }}
+{{- end }}
 {{- range $nameSuffix, $data := .Values.configMap.configs }}
+{{- if not (kindIs "invalid" $data) }}
+{{- if not (kindIs "map" $data) }}
+{{- fail (printf "configMap.configs.%v: must be a map containing 'data' or 'dataMap', got %s" $nameSuffix (include "chart.valuesKind" $data)) }}
+{{- end }}
+{{- $cmName := printf "%s-%v" (include "app.name" $) $nameSuffix }}
+{{- /* validate the joined name the apiserver actually sees, not the bare suffix: a
+suffix like "-prod" is legal after the join (name--prod), and only the full name
+carries the 253-char limit */}}
+{{- if or (not (regexMatch "^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)*$" $cmName)) (gt (len $cmName) 253) }}
+{{- fail (printf "configMap.configs.%v: rendered ConfigMap name '%s' is not a valid RFC 1123 subdomain of at most 253 chars (lowercase alphanumerics, '-' and '.', must start and end alphanumeric)" $nameSuffix $cmName) }}
+{{- end }}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "app.name" $ }}-{{ $nameSuffix }}
+  name: {{ $cmName }}
   namespace: {{ include "app.namespace" $ }}
   labels:
     {{- include "chart.commonLabels" $ | indent 4 }}
@@ -22,6 +36,52 @@ metadata:
     {{- end }}
     {{- end }}
 data:
+  {{- $hasData := and (hasKey $data "data") (not (kindIs "invalid" $data.data)) }}
+  {{- $hasDataMap := and (hasKey $data "dataMap") (not (kindIs "invalid" $data.dataMap)) }}
+  {{- if and $hasData $hasDataMap }}
+  {{- fail (printf "configMap.configs.%s: set either 'data' or 'dataMap', not both (a 'data' and a 'dataMap' for the same config collide across merged values files) - see 'ConfigMaps: data vs dataMap' in the chart README" $nameSuffix) }}
+  {{- end }}
+  {{- if $hasData }}
+  {{- if not (kindIs "string" $data.data) }}
+  {{- fail (printf "configMap.configs.%s: 'data' must be a string, got %s - use 'dataMap' for key/value maps" $nameSuffix (include "chart.valuesKind" $data.data)) }}
+  {{- end }}
   {{ tpl $data.data $ | indent 2 | trim }}
+  {{- else if $hasDataMap }}
+  {{- if not (kindIs "map" $data.dataMap) }}
+  {{- fail (printf "configMap.configs.%s: 'dataMap' must be a map of key/value pairs, got %s" $nameSuffix (include "chart.valuesKind" $data.dataMap)) }}
+  {{- end }}
+  {{- range $key, $value := $data.dataMap }}
+  {{- /* key validation runs for EVERY entry, including null tombstones: a `null` whose
+  key is malformed or boolean-coerced can never be a legitimate deletion (such a key is
+  unrepresentable under the rules below), so a silently no-op deletion is always a bug. */}}
+  {{- if or (not (regexMatch "^[-._a-zA-Z0-9]+$" $key)) (eq $key ".") (hasPrefix ".." $key) (gt (len $key) 253) }}
+  {{- fail (printf "configMap.configs.%s: dataMap key '%s' is not a valid ConfigMap key (must match [-._a-zA-Z0-9]+, max 253 chars, not '.', must not start with '..')" $nameSuffix $key) }}
+  {{- end }}
+  {{- /* a key arriving as literal true/false is almost always an unquoted YAML 1.1
+  boolean (on:/off:/yes:/no:/y:/n: coerce before the chart can see them, and no:/off:
+  colliding on "false" silently loses a value). Quoting the key keeps the original
+  spelling ("on": ...); a key literally named true/false is unrepresentable post-parse,
+  so fail closed. */}}
+  {{- if or (eq $key "true") (eq $key "false") }}
+  {{- fail (printf "configMap.configs.%s: dataMap key '%s' is almost always an unquoted YAML 1.1 boolean key (on/off/yes/no/y/n coerce to true/false before the chart sees them) - quote the key in your values file (\"on\": ...) to keep it, in the base file and in every overlay that deletes it; keys literally named 'true' or 'false' are not supported (use 'data' for such a config)" $nameSuffix $key) }}
+  {{- end }}
+  {{- if not (kindIs "invalid" $value) }}
+  {{- if not (or (kindIs "string" $value) (kindIs "bool" $value) (kindIs "int" $value) (kindIs "int64" $value) (kindIs "float64" $value)) }}
+  {{- fail (printf "configMap.configs.%s: dataMap key '%s' must have a scalar value (string/number/bool), got %s" $nameSuffix $key (include "chart.valuesKind" $value)) }}
+  {{- end }}
+  {{- $str := toString $value }}
+  {{- if kindIs "float64" $value }}
+  {{- $str = toRawJson $value }}
+  {{- end }}
+  {{- /* toRawJson, not toYaml: sprig's toYaml swallows marshal errors and returns "",
+  which would silently render an empty value; toRawJson fails loudly and, unlike
+  toJson, does not HTML-escape &, < and > in rendered output. */}}
+  {{ $key | toRawJson }}: {{ $str | toRawJson }}
+  {{- end }}
+  {{- end }}
+  {{- else }}
+  {{- fail (printf "configMap.configs.%s: must set 'data' or 'dataMap'" $nameSuffix) }}
+  {{- end }}
+{{- end }}
 {{- end }}
 {{- end }}
