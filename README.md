@@ -186,10 +186,12 @@ Existing string `data` configs are otherwise unaffected and render byte-identica
 | image.repository | string | `"nginx"` | Docker image repository |
 | image.tag | string | `"1.29.5@sha256:341bf0f3ce6c5277d6002cf6e1fb0319fa4252add24ab6a0e262e0056d313208"` | Docker image tag |
 | image.useChartVersionAsTagFallback | bool | `true` | Keep .Chart.Version as final tag fallback when image.tag and appVersion are unset. WARNING: setting this to false causes chart rendering to fail if image.tag and appVersion are both unset. You must provide an explicit tag or appVersion when disabling this fallback. |
-| ingress | object | `{"annotations":null,"enabled":false,"entries":null}` | Ingress configuration |
+| ingress | object | `{"annotations":null,"enabled":false,"entries":null,"ingressClassName":null,"tls":null}` | Ingress configuration |
 | ingress.annotations | string | `nil` | Annotations for the Ingress |
 | ingress.enabled | bool | `false` | Whether to create an Ingress |
-| ingress.entries | string | `nil` | Entries for the Ingress |
+| ingress.entries | string | `nil` | Entries for the Ingress. Each entry renders one Ingress and may override `ingressClassName` and `tls`. |
+| ingress.ingressClassName | string | `nil` | Default `spec.ingressClassName` for every entry below. An entry can override it with its own `ingressClassName`. Leave unset to omit the field. |
+| ingress.tls | string | `nil` | Default `spec.tls` for every entry below. An entry can override it with its own `tls` (including `tls: []` to disable TLS for that entry only). Hosts and secret names are rendered with `tpl`. |
 | job | object | `{"enabled":false,"imagePullSecrets":null,"jobs":null}` | Job configuration |
 | job.enabled | bool | `false` | Whether to create a Job |
 | job.imagePullSecrets | string | `nil` | Registry pull secret for all Job pods (per-job `imagePullSecrets` overrides). `null` (default) inherits `image.pullSecrets`; `""` opts all Job pods out of pull secrets. Example: imagePullSecrets: my-registry-cred |

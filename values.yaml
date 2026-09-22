@@ -1102,11 +1102,21 @@ ingress:
     # kubernetes.io/ingress.class: nginx-ingress
     # ingress.kubernetes.io/rewrite-target: /
     # ingress.kubernetes.io/force-ssl-redirect: "true"
-  # -- Entries for the Ingress
+  # -- Default `spec.ingressClassName` for every entry below. An entry can override it with its own `ingressClassName`. Leave unset to omit the field.
+  ingressClassName:
+  # -- Default `spec.tls` for every entry below. An entry can override it with its own `tls` (including `tls: []` to disable TLS for that entry only). Hosts and secret names are rendered with `tpl`.
+  tls:
+  # - hosts:
+  #     - chart-example.local
+  #     - '{{ .Release.Name }}.example.com'
+  #   # Secrets must be created in the same namespace
+  #   secretName: chart-example-tls
+  # -- Entries for the Ingress. Each entry renders one Ingress and may override `ingressClassName` and `tls`.
   entries:
     # - name: external
     #   labels:
     #   annotations:
+    #   # Overrides ingress.ingressClassName for this entry only
     #   ingressClassName: nginx
     #   hosts:
     #     - hostname: service1.example.com
@@ -1115,16 +1125,20 @@ ingress:
     #           serviceName: ssl-redirect
     #           servicePortName: use-annotation
     #         - path: /metrics
-              # pathType:
-              # serviceName:
-              # servicePortNumber:
-      # TLS details for this Ingress
-      # tls:
-      #   - hosts:
-      #       - chart-example.local
-      #       - '{{ .Release.Name }}.example.com'
-      #     # Secrets must be created in the same namespace
-      #     secretName: chart-example-tls
+    #           # pathType:
+    #           # serviceName:
+    #           # servicePortNumber:
+    #   # Overrides ingress.tls for this entry only; use `tls: []` to serve this entry without TLS
+    #   tls:
+    #     - hosts:
+    #         - chart-example.local
+    #         - '{{ .Release.Name }}.example.com'
+    #       # Secrets must be created in the same namespace
+    #       secretName: chart-example-tls
+    # - name: external-traefik
+    #   ingressClassName: traefik
+    #   hosts:
+    #     - hostname: service1-traefik.example.com
 
 ##########################################################
 # Keda

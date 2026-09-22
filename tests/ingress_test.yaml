@@ -94,6 +94,9 @@ tests:
           path: metadata.annotations["ingress.kubernetes.io/rewrite-target"]
           value: /
       - equal:
+          path: spec.ingressClassName
+          value: nginx
+      - equal:
           path: .spec.rules[0].http.paths[0].path
           value: /*
       - equal:
@@ -389,3 +392,168 @@ tests:
       - equal:
           path: .spec.rules[2].host
           value: "admin.example.com"
+
+  - it: should apply the top-level ingressClassName to every entry
+    set:
+      ingress:
+        enabled: true
+        ingressClassName: nginx
+        entries:
+          - name: public
+            hosts:
+              - hostname: service1.example.com
+          - name: internal
+            hosts:
+              - hostname: service2.example.com
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: spec.ingressClassName
+          value: nginx
+        documentIndex: 0
+      - equal:
+          path: spec.ingressClassName
+          value: nginx
+        documentIndex: 1
+
+  - it: should let an entry override the top-level ingressClassName
+    set:
+      ingress:
+        enabled: true
+        ingressClassName: nginx
+        entries:
+          - name: public
+            ingressClassName: traefik
+            hosts:
+              - hostname: service1.example.com
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: spec.ingressClassName
+          value: traefik
+
+  - it: should render nginx and traefik entries side by side
+    set:
+      ingress:
+        enabled: true
+        ingressClassName: nginx
+        entries:
+          - name: public
+            hosts:
+              - hostname: service1.example.com
+          - name: public-traefik
+            ingressClassName: traefik
+            hosts:
+              - hostname: service1-traefik.example.com
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: metadata.name
+          value: example-app-public
+        documentIndex: 0
+      - equal:
+          path: spec.ingressClassName
+          value: nginx
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: example-app-public-traefik
+        documentIndex: 1
+      - equal:
+          path: spec.ingressClassName
+          value: traefik
+        documentIndex: 1
+
+  - it: should omit ingressClassName when it is set nowhere
+    set:
+      ingress:
+        enabled: true
+        entries:
+          - name: public
+            hosts:
+              - hostname: service1.example.com
+    asserts:
+      - hasDocuments:
+          count: 1
+      - notExists:
+          path: spec.ingressClassName
+
+  - it: should let an entry override the top-level tls
+    set:
+      ingress:
+        enabled: true
+        tls:
+          - hosts:
+              - service1.example.com
+            secretName: top-level-tls
+        entries:
+          - name: public
+            hosts:
+              - hostname: service1.example.com
+          - name: public-traefik
+            hosts:
+              - hostname: service1-traefik.example.com
+            tls:
+              - hosts:
+                  - service1-traefik.example.com
+                secretName: traefik-tls
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: spec.tls[0].secretName
+          value: top-level-tls
+        documentIndex: 0
+      - equal:
+          path: spec.tls[0].secretName
+          value: traefik-tls
+        documentIndex: 1
+      - equal:
+          path: spec.tls[0].hosts[0]
+          value: service1-traefik.example.com
+        documentIndex: 1
+
+  - it: should omit tls for an entry that sets an empty tls list
+    set:
+      ingress:
+        enabled: true
+        tls:
+          - hosts:
+              - service1.example.com
+            secretName: top-level-tls
+        entries:
+          - name: public-traefik
+            tls: []
+            hosts:
+              - hostname: service1-traefik.example.com
+    asserts:
+      - hasDocuments:
+          count: 1
+      - notExists:
+          path: spec.tls
+
+  - it: should render templated secret names in an entry tls
+    set:
+      appName: my-entry-tls-app
+      ingress:
+        enabled: true
+        entries:
+          - name: public
+            hosts:
+              - hostname: "{{ include \"app.name\" . }}.example.com"
+            tls:
+              - hosts:
+                  - "{{ include \"app.name\" . }}.example.com"
+                secretName: "{{ .Values.appName }}-tls-secret"
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: spec.tls[0].hosts[0]
+          value: my-entry-tls-app.example.com
+      - equal:
+          path: spec.tls[0].secretName
+          value: my-entry-tls-app-tls-secret
