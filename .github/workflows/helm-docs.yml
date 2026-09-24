@@ -1,10 +1,40 @@
 name: Update Docs
 on:
   push:
+    branches:
+      - '**'
 
+permissions:
+  contents: write
+
+concurrency:
+  group: helm-docs-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  call-workflow-passing-data:
-    uses: GlueOps/github-workflows/.github/workflows/helm-docs.yml@main
-    secrets: inherit
-    
+  helm-docs:
+    runs-on: ubuntu-24.04
+    steps:
+      # Inlined from GlueOps/github-workflows helm-docs.yml (repo archived June 2026),
+      # following the pattern in platform-helm-chart-platform: this repo's own
+      # README.md.gotmpl is authoritative instead of being overwritten by the workflow.
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Install Helm Docs
+        uses: envoy/install-helm-docs@05313083ef2cfaea27c4c3d7cb725242d22ea88b # v1.0.0
+        with:
+          version: 1.14.2
+
+      - name: Generate and Commit helm-docs
+        run: |
+          helm-docs -t README.md.gotmpl
+          if [ -n "$(git status --porcelain README.md)" ]; then
+            git config --global user.email "github@glueops.dev"
+            git config --global user.name "GlueOps"
+            git add README.md
+            git commit -m "docs: automated helm-docs action"
+            git push
+          else
+            echo "README already in sync. Nothing to commit."
+          fi

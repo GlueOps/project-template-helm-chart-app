@@ -1,0 +1,11 @@
+configMap:
+  enabled: true
+  configs:
+    app:
+      dataMap:
+        LOG_LEVEL: info
+        API_URL: "https://base.example.com"
+        REMOVE_ME: keepme-in-base
+    legacy:
+      data: |-
+        key1: value1

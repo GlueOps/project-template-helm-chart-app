@@ -1,0 +1,6 @@
+configMap:
+  enabled: true
+  configs:
+    app:
+      dataMap:
+        K1: v1

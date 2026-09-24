@@ -1,0 +1,7 @@
+configMap:
+  enabled: true
+  configs:
+    app:
+      data: |-
+        API_PORT: "8080"
+        LOG_LEVEL: info

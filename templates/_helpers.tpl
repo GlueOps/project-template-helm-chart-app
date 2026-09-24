@@ -577,3 +577,13 @@ reference. Surrounding whitespace is already trimmed at input for string sources
 {{- end }}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Kind of a value in the vocabulary of a values-file author: YAML has one number
+type, so Go's float64/int64/int all report as "number", and slice as "list".
+The exact Go kind also varies by input path (-f gives float64 where --set gives
+int64), so leaking it would make the same mistake read differently per path.
+*/}}
+{{- define "chart.valuesKind" -}}
+{{- kindOf . | replace "slice" "list" | replace "float64" "number" | replace "int64" "number" | replace "int" "number" -}}
+{{- end -}}

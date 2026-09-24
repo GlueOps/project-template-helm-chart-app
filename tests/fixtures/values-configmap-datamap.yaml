@@ -1,0 +1,14 @@
+configMap:
+  enabled: true
+  configs:
+    config1:
+      dataMap:
+        CACHE_TTL_MS: 86400000
+        MAX_CONNS: 1000000
+        TRAILING: "a\n\n"
+        PRICE: 1234567.89
+        RATIO: 1.5
+        NEG: -1.5
+        SCI: 1e5
+        DEBUG_FLAG: true
+        BIG: 9007199254740993

@@ -1,0 +1,6 @@
+configMap:
+  configs:
+    app:
+      data: null
+      dataMap:
+        K2: v2
