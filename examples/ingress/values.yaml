@@ -26,7 +26,10 @@ deployment:
 ingress:
   enabled: true
   annotations:
-    kubernetes.io/ingress.class: nginx-ingress
+    # NOTE: the deprecated `kubernetes.io/ingress.class` annotation is deliberately
+    # not set here. The API server rejects an Ingress that carries both it and a
+    # `spec.ingressClassName` that does not match it, so use one or the other --
+    # `ingressClassName` is the supported field.
     ingress.kubernetes.io/rewrite-target: /
     ingress.kubernetes.io/force-ssl-redirect: "true"
   # Default class and TLS for every entry that does not set its own
