@@ -1100,13 +1100,16 @@ ingress:
   # -- Annotations for the Ingress
   annotations:
     # NOTE: prefer `ingressClassName` below over the deprecated
-    # `kubernetes.io/ingress.class` annotation. The API server rejects an Ingress
-    # that sets both unless they hold the same value.
+    # `kubernetes.io/ingress.class` annotation, and do not set both. The API
+    # server rejects an Ingress that sets both to different values -- but only
+    # on CREATE. An existing Ingress carrying the annotation accepts a mismatched
+    # `ingressClassName` on update, leaving the object in a contradictory state
+    # that is never reported. Remove the annotation when you adopt a class.
     # ingress.kubernetes.io/rewrite-target: /
     # ingress.kubernetes.io/force-ssl-redirect: "true"
-  # -- Default `spec.ingressClassName` for every entry below. An entry can override it with its own `ingressClassName`. Leave unset to omit the field.
+  # -- (string) Default `spec.ingressClassName` for every entry below. An entry can override it with its own `ingressClassName`. Leave unset to omit the field.
   ingressClassName:
-  # -- Default `spec.tls` for every entry below. An entry can override it with its own `tls` (including `tls: []` to disable TLS for that entry only). Hosts and secret names are rendered with `tpl`.
+  # -- (list) Default `spec.tls` for every entry below. An entry overrides it by setting its own `tls` to a list; `tls: []` serves that entry without TLS, while a null or absent `tls` inherits this value. Hosts and secret names are rendered with `tpl`.
   tls:
   # - hosts:
   #     - chart-example.local
@@ -1130,7 +1133,11 @@ ingress:
     #           # pathType:
     #           # serviceName:
     #           # servicePortNumber:
-    #   # Overrides ingress.tls for this entry only; use `tls: []` to serve this entry without TLS
+    #   # Overrides ingress.tls for this entry only. `tls: []` serves this entry
+    #   # without TLS; leaving it null or absent inherits ingress.tls.
+    #   # When two entries are served by different controllers, give each its own
+    #   # secretName -- sharing one makes cert-manager's ingress-shim contend over
+    #   # a single Certificate.
     #   tls:
     #     - hosts:
     #         - chart-example.local

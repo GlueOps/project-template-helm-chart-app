@@ -191,7 +191,7 @@ Existing string `data` configs are otherwise unaffected and render byte-identica
 | ingress.enabled | bool | `false` | Whether to create an Ingress |
 | ingress.entries | string | `nil` | Entries for the Ingress. Each entry renders one Ingress and may override `ingressClassName` and `tls`. |
 | ingress.ingressClassName | string | `nil` | Default `spec.ingressClassName` for every entry below. An entry can override it with its own `ingressClassName`. Leave unset to omit the field. |
-| ingress.tls | string | `nil` | Default `spec.tls` for every entry below. An entry can override it with its own `tls` (including `tls: []` to disable TLS for that entry only). Hosts and secret names are rendered with `tpl`. |
+| ingress.tls | list | `nil` | Default `spec.tls` for every entry below. An entry overrides it by setting its own `tls` to a list; `tls: []` serves that entry without TLS, while a null or absent `tls` inherits this value. Hosts and secret names are rendered with `tpl`. |
 | job | object | `{"enabled":false,"imagePullSecrets":null,"jobs":null}` | Job configuration |
 | job.enabled | bool | `false` | Whether to create a Job |
 | job.imagePullSecrets | string | `nil` | Registry pull secret for all Job pods (per-job `imagePullSecrets` overrides). `null` (default) inherits `image.pullSecrets`; `""` opts all Job pods out of pull secrets. Example: imagePullSecrets: my-registry-cred |

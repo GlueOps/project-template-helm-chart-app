@@ -557,3 +557,88 @@ tests:
       - equal:
           path: spec.tls[0].secretName
           value: my-entry-tls-app-tls-secret
+
+  - it: should inherit the top-level tls when an entry sets tls to null
+    set:
+      ingress:
+        enabled: true
+        tls:
+          - hosts:
+              - service1.example.com
+            secretName: top-level-tls
+        entries:
+          - name: public
+            hosts:
+              - hostname: service1.example.com
+            tls: null
+    asserts:
+      - hasDocuments:
+          count: 1
+      - exists:
+          path: spec.tls
+      - equal:
+          path: spec.tls[0].secretName
+          value: top-level-tls
+
+  - it: should fall back to the top-level class when an entry sets an empty ingressClassName
+    set:
+      ingress:
+        enabled: true
+        ingressClassName: public-traefik
+        entries:
+          - name: public
+            ingressClassName: ""
+            hosts:
+              - hostname: service1.example.com
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: spec.ingressClassName
+          value: public-traefik
+
+  - it: should use an entry tls when no top-level tls is set
+    set:
+      ingress:
+        enabled: true
+        entries:
+          - name: public
+            hosts:
+              - hostname: service1.example.com
+            tls:
+              - hosts:
+                  - service1.example.com
+                secretName: entry-only-tls
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: spec.tls[0].secretName
+          value: entry-only-tls
+      - equal:
+          path: spec.tls[0].hosts[0]
+          value: service1.example.com
+
+  - it: should render a templated top-level tls inherited by an entry
+    set:
+      appName: inherited-tls-app
+      ingress:
+        enabled: true
+        tls:
+          - hosts:
+              - '{{ include "app.name" . }}.example.com'
+            secretName: '{{ .Release.Name }}-tls'
+        entries:
+          - name: public
+            hosts:
+              - hostname: '{{ include "app.name" . }}.example.com'
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: spec.tls[0].hosts[0]
+          value: inherited-tls-app.example.com
+      - equal:
+          path: spec.tls[0].secretName
+          value: RELEASE-NAME-tls
+
