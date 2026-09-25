@@ -31,8 +31,8 @@ metadata:
     {{- end }}
     {{- end }}
 spec:
-  {{- if  $.Values.ingress.ingressClassName }}
-  ingressClassName: {{  $.Values.ingress.ingressClassName }}
+  {{- with (.ingressClassName | default $.Values.ingress.ingressClassName) }}
+  ingressClassName: {{ . | quote }}
   {{- end }}
   rules:
   {{- if .hosts }}
@@ -65,9 +65,10 @@ spec:
       {{- end }}
   {{- end }}
   {{- end }}
-  {{- if $.Values.ingress.tls }}
+  {{- $tls := ternary .tls $.Values.ingress.tls (and (hasKey . "tls") (kindIs "slice" .tls)) }}
+  {{- if $tls }}
   tls:
-    {{- tpl (toYaml $.Values.ingress.tls) $ | nindent 4 }}
+    {{- tpl (toYaml $tls) $ | nindent 4 }}
   {{- end }}
 {{- end }}
 {{- end }}

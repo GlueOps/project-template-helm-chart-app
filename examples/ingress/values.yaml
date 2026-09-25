@@ -26,14 +26,25 @@ deployment:
 ingress:
   enabled: true
   annotations:
-    kubernetes.io/ingress.class: nginx-ingress
+    # NOTE: the deprecated `kubernetes.io/ingress.class` annotation is deliberately
+    # not set here. The API server rejects an Ingress that carries both it and a
+    # `spec.ingressClassName` that does not match it, so use one or the other --
+    # `ingressClassName` is the supported field.
     ingress.kubernetes.io/rewrite-target: /
     ingress.kubernetes.io/force-ssl-redirect: "true"
+  # Default class and TLS for every entry that does not set its own
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - chart-example.local
+        - '{{ .Chart.Name }}.example.com'
+      # Secrets must be created in the same namespace
+      secretName: chart-example-tls
   entries:
+    # Inherits ingressClassName: nginx and the top-level tls
     - name: external
       labels:
       annotations:
-      # ingressClassName: nginx
       hosts:
         - hostname: service1.example.com
           paths:
@@ -44,10 +55,14 @@ ingress:
               # pathType:
               # serviceName:
               # servicePortNumber:
-      # TLS details for this Ingress
+    # Same routes through Traefik, with its own class and TLS secret
+    - name: external-traefik
+      ingressClassName: traefik
+      hosts:
+        - hostname: service1-traefik.example.com
+          paths:
+            - path: /metrics
       tls:
         - hosts:
-            - chart-example.local
-            - '{{ .Chart.Name }}.example.com'
-          # Secrets must be created in the same namespace
-          secretName: chart-example-tls
+            - service1-traefik.example.com
+          secretName: chart-example-traefik-tls
