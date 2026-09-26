@@ -19,7 +19,7 @@ jobs:
       # following the pattern in platform-helm-chart-platform: this repo's own
       # README.md.gotmpl is authoritative instead of being overwritten by the workflow.
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Install Helm Docs
         uses: envoy/install-helm-docs@05313083ef2cfaea27c4c3d7cb725242d22ea88b # v1.0.0
