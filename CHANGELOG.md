@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.16.0](https://github.com/GlueOps/project-template-helm-chart-app/compare/v0.15.0...v0.16.0) (2026-09-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* **ingress:** allow per-entry ingressClassName and tls ([#131](https://github.com/GlueOps/project-template-helm-chart-app/issues/131))
+
+### Features
+
+* **ingress:** allow per-entry ingressClassName and tls ([#131](https://github.com/GlueOps/project-template-helm-chart-app/issues/131)) ([695789f](https://github.com/GlueOps/project-template-helm-chart-app/commit/695789f00591c80603c79a18df04b4b5bed3916f))
+
 ## [0.15.0](https://github.com/GlueOps/project-template-helm-chart-app/compare/v0.14.1...v0.15.0) (2026-09-24)
 
 
