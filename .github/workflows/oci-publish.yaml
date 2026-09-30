@@ -1,0 +1,43 @@
+name: Publish Chart to GHCR (OCI)
+
+# Adapted from GlueOps/platform-helm-chart-platform's oci-publish.yaml. Publishes the
+# chart as an OCI artifact alongside the S3 helm repo that production.yml feeds, so
+# consumers can pull from ghcr.io (or a registry cache in front of it) instead.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing git tag to package and push (e.g. v0.16.0), for releases cut before this workflow existed.'
+        required: true
+        type: string
+
+jobs:
+  publish-oci:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Set up Helm
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+
+      # Values reach the shell through env, never by expression interpolation, so a
+      # dispatch `tag` cannot execute as a command in a job holding a packages:write token.
+      - name: Package and push chart to GHCR (OCI)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REGISTRY_USER: ${{ github.actor }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          repo_path="$(echo "$REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+          echo "$GITHUB_TOKEN" | helm registry login ghcr.io -u "$REGISTRY_USER" --password-stdin
+          helm package .
+          helm push app-*.tgz "oci://ghcr.io/${repo_path}"
+          helm registry logout ghcr.io
