@@ -4,21 +4,10 @@ on:
   push:
     tags:
       - '*'
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Existing git tag to package and publish (e.g. v0.15.0). Leave empty to publish the default branch.'
-        required: false
-        type: string
 
-# Least privilege: this workflow only reads the repository and pushes artifacts to
-# S3 using credentials from the `production` environment. Unlike the workflow it
-# replaces, nothing here commits or pushes to git, so `contents: read` is enough.
 permissions:
   contents: read
 
-# `helm s3 reindex` rewrites index.yaml for the whole chart repo, so two publishes
-# must never overlap. Never cancel a publish that is already in flight.
 concurrency:
   group: publish-helm-chart-project-template
   cancel-in-progress: false
@@ -28,19 +17,8 @@ jobs:
     runs-on: ubuntu-24.04
     environment: production
     steps:
-      # Inlined from GlueOps/github-workflows publish-helm-chart.yml (repo archived
-      # June 2026), following the pattern already used by helm-docs.yml in this repo.
-      #
-      # The upstream "Generate and Commit helm-docs" step is deliberately NOT inlined.
-      # It overwrote this repo's own README.md.gotmpl with a generic one, then tried to
-      # `git push` from the detached HEAD of a tag build. That failed with exit 128 and
-      # skipped every publish step, so v0.15.0 and v0.16.0 were tagged but never shipped.
-      # helm-docs.yml regenerates and commits README.md on every branch push, so the
-      # README is already in sync by the time release-please cuts a tag.
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          ref: ${{ inputs.tag || github.ref }}
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4
@@ -53,16 +31,6 @@ jobs:
         uses: mamezou-tech/setup-helmfile@fd46979d2984c886929c416fbdf859b1c5efa0ea # v2.1.0
         with:
           helm-version: "v3.14.3"
-
-      # The ref is passed through env rather than interpolated into the script, so a
-      # dispatch `tag` value can never be executed as shell in a job holding the
-      # production AWS credentials.
-      - name: Show chart to be published
-        env:
-          PUBLISH_REF: ${{ inputs.tag || github.ref }}
-        run: |
-          echo "publishing ref: ${PUBLISH_REF}"
-          helm show chart . | grep -E '^(name|version):'
 
       - name: Package and Publish
         env:
