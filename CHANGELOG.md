@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.1](https://github.com/GlueOps/project-template-helm-chart-app/compare/v0.16.0...v0.16.1) (2026-10-01)
+
+
+### Continuous Integration
+
+* fix chart publishing and add OCI publishing to GHCR ([#134](https://github.com/GlueOps/project-template-helm-chart-app/issues/134)) ([ca8055b](https://github.com/GlueOps/project-template-helm-chart-app/commit/ca8055bbe745ece909a93548e19a510f9f5b438c))
+
 ## [0.16.0](https://github.com/GlueOps/project-template-helm-chart-app/compare/v0.15.0...v0.16.0) (2026-09-28)
 
 
