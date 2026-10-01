@@ -1,13 +1,50 @@
 name: Publish Production Helm Charts
+
 on:
   push:
     tags:
       - '*'
 
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-helm-chart-project-template
+  cancel-in-progress: false
+
 jobs:
-  call-workflow-passing-data:
-    uses: GlueOps/github-workflows/.github/workflows/publish-helm-chart.yml@main
-    secrets: inherit
-    with:
-      GLUEOPS_ENV: "production"
-      HELM_CHART_REPO_NAME: "project-template"
+  publish:
+    runs-on: ubuntu-24.04
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Set up Helm
+        uses: mamezou-tech/setup-helmfile@fd46979d2984c886929c416fbdf859b1c5efa0ea # v2.1.0
+        with:
+          helm-version: "v3.14.3"
+
+      - name: Package and Publish
+        env:
+          S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
+          HELM_CHART_REPO_NAME: project-template
+        run: |
+          export AWS_REGION=us-west-2
+          status_code=`curl -s -o /dev/null -I -w "%{http_code}" https://${S3_BUCKET_NAME}.s3.us-west-2.amazonaws.com/${HELM_CHART_REPO_NAME}/index.yaml`
+          if [ "$status_code" == "404" ]; then
+              helm s3 init s3://$S3_BUCKET_NAME/$HELM_CHART_REPO_NAME
+          fi
+          helm repo add $HELM_CHART_REPO_NAME s3://$S3_BUCKET_NAME/$HELM_CHART_REPO_NAME
+          helm package --dependency-update .
+          for F in $(ls -f *.tgz); do
+            helm s3 push --acl="public-read" --relative $F $HELM_CHART_REPO_NAME
+          done
+          helm s3 reindex --acl="public-read" --relative $HELM_CHART_REPO_NAME
