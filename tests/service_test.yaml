@@ -111,3 +111,26 @@ tests:
           path: spec.ports[0].protocol
           value: TCP
 
+
+  # glueops.dev/chart is pod-template only; the Service keeps helm.sh/chart.
+  - it: keeps helm.sh/chart and omits glueops.dev/chart on Service metadata
+    chart:
+      version: 1.0.0
+    set:
+      commonAnnotations:
+        anno: test
+      service:
+        enabled: true
+    asserts:
+      - notExists:
+          path: metadata.annotations["glueops.dev/chart"]
+      - notExists:
+          path: metadata.labels["glueops.dev/chart"]
+      - equal:
+          path: metadata.labels["helm.sh/chart"]
+          value: app-1.0.0
+      - equal:
+          path: metadata.annotations
+          value:
+            helm.sh/chart: app-1.0.0
+            anno: test

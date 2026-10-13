@@ -131,4 +131,68 @@ Existing string `data` configs are otherwise unaffected and render byte-identica
 0.14.x. New in 0.15.0: the `dataMap` form, per-key merging across values files, and
 `null`-deletion of individual keys.
 
+## Upgrading from 0.16.x
+
+From 0.17.0, pod templates (Deployment, StatefulSet, Job and CronJob
+`spec.template.metadata`) no longer carry the `helm.sh/chart` label and annotation.
+Top-level resources still do. The value is `<chart>-<version>`, so it changed every pod
+template on every chart release: all Deployments and StatefulSets rolled on each chart
+bump, and existing Jobs failed with `spec.template: field is immutable`.
+
+Removing it changes every pod template once. Before upgrading, check:
+
+- **One rollout.** Every Deployment and StatefulSet rolls once; apps show `Progressing`
+  until it finishes. Single-replica StatefulSets are briefly unavailable. Single-replica
+  Deployments stay available with the default `RollingUpdate` strategy (the chart renders
+  `maxSurge: 100%` / `maxUnavailable: 0`), provided they have readiness probes. Roll out
+  to tenants in stages, canary first (e.g. ApplicationSet progressive sync, or pause
+  auto-sync).
+- **Existing Jobs.** A Job that has started or finished fails this one upgrade with
+  `spec.template: field is immutable`. Suspended, never-started Jobs, Jobs already
+  removed by `ttlSecondsAfterFinished`, and Argo CD hook Jobs are unaffected.
+  - Argo CD (default client-side diff): the sync reports `Failed`, the other resources
+    still apply, and auto-sync retries until fixed.
+  - Argo CD with ServerSideDiff (including `ServerSideApply=true` setups using it): sync
+    status shows `Unknown` ("Failed to compare desired state to live state") and
+    **nothing** syncs, including the Deployment, until the Job is gone.
+  - Plain `helm upgrade`: the release is left `failed`, with the other resources applied.
+
+  **Fix: delete those Jobs.** They are recreated and run again, so make sure that is
+  safe (e.g. an idempotent migration). `Replace=true` alone does not work. With Argo CD's
+  default client-side diff only, you can instead set
+  `argocd.argoproj.io/sync-options: Replace=true,Force=true` through `job.annotations`
+  (rendered only on the Job's own metadata), never app-wide (app-wide
+  `Replace=true,Force=true` recreates every resource: an outage). It has no effect with
+  ServerSideDiff, and it deletes and re-runs the Job on every sync that changes it, so
+  remove it after the upgrade. Do not use `job.jobs.<name>.annotations` for this: those are
+  also rendered on the pod template, so removing them later changes `spec.template`
+  again.
+- **Anything using the pod's `helm.sh/chart` label.** Pods, ReplicaSets and
+  ControllerRevisions lose it. Switch to `app.kubernetes.io/name` /
+  `app.kubernetes.io/instance` in NetworkPolicies, PodMonitors, `kubectl -l`, kube-state-metrics
+  `kube_pod_labels{label_helm_sh_chart}` (when allowlisted), and Prometheus / Alloy /
+  Pyroscope `labelmap` rules over pod labels. Datadog: the KSM core check derives a
+  `helm_chart` tag from this label, so `kubernetes_state.pod.*`, `kubernetes_state.container.*`
+  and ReplicaSet metrics lose `helm_chart` (Deployment / StatefulSet / Job / CronJob
+  metrics and the Datadog Helm check keep it). Move monitors to `kube_app_name` /
+  `kube_app_instance` or `kube_deployment` / `kube_stateful_set`.
+- **New pod annotation `glueops.dev/chart: app`.** Constant (chart name, never the
+  version). It keeps the pod-template annotations non-empty: with an empty map, Argo CD's
+  default diff reports annotations added outside the chart (`kubectl rollout restart`,
+  Argo CD "Restart", Stakater Reloader) as permanently `OutOfSync`. A `commonAnnotations`
+  entry with the same key overrides it.
+- **Custom resources.** Pod templates you write in `customResources` /
+  `customResourcesMap` that include `chart.commonLabels` / `chart.commonAnnotations`
+  still get `helm.sh/chart`. Use `chart.podTemplateLabels` / `chart.podTemplateAnnotations`
+  there.
+
+After this upgrade, chart-only version bumps no longer restart pods, provided:
+
+- `appVersion` is set to a non-empty value and never changed after install. Empty, it
+  falls back to the chart version in `app.kubernetes.io/version`, which is also part of
+  the immutable selectors.
+- The image tag does not come from the chart version. The tag resolves `image.tag` →
+  `appVersion` → chart version (with `image.useChartVersionAsTagFallback: true`, the
+  default), so set `image.tag` or a non-empty `appVersion`.
+
 {{ template "chart.valuesSection" . }}

@@ -7,7 +7,9 @@
 - **`chart.jobPodGlobals`** — `pick` allowlist for cronJob/job global → pod context merge. Scoped to `imagePullSecrets` only; broadening it changes pod rendering for existing tenants on upgrade and must be a deliberate, versioned change.
 - **`chart.jobEntryEnabled`** — Validates `jobs.<name>.enabled` is boolean when set.
 - **`chart.renderLabels`** — Dual-format helper supporting both map (`{key: val}`) and list (`[{key: k, value: v}]`) formats. Used for both labels AND annotations (name is misleading but intentional). Only map format is documented to users; list format exists for backwards compatibility.
-- **`chart.commonLabels`** — Full metadata labels (includes `helm.sh/chart`, `app.kubernetes.io/managed-by`, etc.)
+- **`chart.commonLabels` / `chart.commonAnnotations`** — Metadata for top-level resources. Always include `helm.sh/chart` (`<chart>-<version>`), plus `app.kubernetes.io/managed-by` etc.
+- **`chart.podTemplateLabels` / `chart.podTemplateAnnotations`** — Metadata for pod templates (used only by `_podTemplate.tpl`). Labels are the common labels minus `helm.sh/chart`. Annotations are the constant `glueops.dev/chart: <.Chart.Name>` followed by `.Values.commonAnnotations` (the constant is skipped when `commonAnnotations` sets the same key, so the user value wins without a duplicate key); never `helm.sh/chart`. A chart-version bump therefore changes no pod template. No values flag toggles this.
+- **`chart.valuesCommonLabels` / `chart.valuesCommonAnnotations`** — Just the user-supplied `.Values.commonLabels` / `.Values.commonAnnotations`. Shared building blocks of the common and pod-template helpers; `chart.commonLabels` / `chart.commonAnnotations` output is unchanged by this split.
 - **`chart.appLabels`** — Selector labels only (used in `matchLabels`). Never add mutable fields here.
 - **`chart.deploymentLabels` / `chart.deploymentAnnotations`** — Empty extension points in `_helpers.tpl`. They exist so users can override them. Don't delete.
 
@@ -52,6 +54,10 @@ The second arg to `merge` (source) is NOT mutated — only the first arg (destin
 - **deployment/statefulSet**: uses `chart.serviceAccountName` helper
 - **job**: `restartPolicy` defaults to `Never`, labels include `resource-type: job`
 - **cronJob**: `restartPolicy` defaults to `OnFailure`, labels include `resource-type: cronjob`
+
+Pod template metadata must not depend on `.Chart.Version`: a change rolls every Deployment/StatefulSet and makes `helm upgrade` fail for existing Jobs (`spec.template` is immutable). Use `chart.podTemplateLabels` / `chart.podTemplateAnnotations` there, never `chart.commonLabels` / `chart.commonAnnotations`.
+
+Pod-template annotations are never empty: `chart.podTemplateAnnotations` always emits `glueops.dev/chart: <.Chart.Name>` (chart name, never the version). With an empty annotations map, Argo CD's default client-side diff reports annotations added outside the chart (`kubectl rollout restart`, Argo CD "Restart", Stakater Reloader) as perpetual OutOfSync; a non-empty chart-owned map stays Synced (verified on a real Argo CD). Don't remove the constant or make it conditional, and never put a chart-version-derived value there.
 
 ## Job vs CronJob Paths
 

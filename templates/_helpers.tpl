@@ -58,7 +58,20 @@ app.kubernetes.io/version: {{ include "app.version" . | quote }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{/* Common labels for the whole chart */}}
+{{/*
+Pod template labels/annotations deliberately omit helm.sh/chart (<chart>-<version>):
+any change to spec.template restarts the workload, so chart version bumps must not touch it.
+*/}}
+{{- define "chart.podTemplateLabels" -}}
+{{ include "chart.appLabels" . }}
+{{- if .Values.teamOwner }}
+app.kubernetes.io/teamowner: {{ .Values.teamOwner }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- include "chart.valuesCommonLabels" . }}
+{{- end }}
+
+{{/* Common labels for top-level resources (helm.sh/chart before .Values.commonLabels so user keys win) */}}
 {{- define "chart.commonLabels" -}}
 {{ include "chart.appLabels" . }}
 {{- if .Values.teamOwner }}
@@ -66,6 +79,11 @@ app.kubernetes.io/teamowner: {{ .Values.teamOwner }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 helm.sh/chart: {{ include "chart.name" . }}
+{{- include "chart.valuesCommonLabels" . }}
+{{- end }}
+
+{{/* User-supplied .Values.commonLabels */}}
+{{- define "chart.valuesCommonLabels" }}
 {{- if .Values.commonLabels }}
 {{- range $key, $value := .Values.commonLabels }}
 {{ $key }}: {{ $value | quote }}
@@ -73,14 +91,32 @@ helm.sh/chart: {{ include "chart.name" . }}
 {{- end }}
 {{- end }}
 
-{{/* Common annotations for the whole chart */}}
-{{- define "chart.commonAnnotations" }}
-helm.sh/chart: {{ include "chart.name" . }}
+{{/* User-supplied .Values.commonAnnotations */}}
+{{- define "chart.valuesCommonAnnotations" }}
 {{- if .Values.commonAnnotations }}
 {{- range $key, $value := .Values.commonAnnotations }}
 {{ $key }}: {{ $value | quote }}
 {{- end }}
 {{- end }}
+{{- end }}
+
+{{/*
+Pod template annotations. glueops.dev/chart is constant (chart name, never the version) so the
+annotations map is never empty: with an empty map, Argo CD's default client-side diff reports
+annotations added outside the chart (kubectl rollout restart, Reloader) as permanent drift.
+Skipped when .Values.commonAnnotations sets the same key, so the user's value wins without a duplicate key.
+*/}}
+{{- define "chart.podTemplateAnnotations" }}
+{{- if not (and (kindIs "map" .Values.commonAnnotations) (hasKey .Values.commonAnnotations "glueops.dev/chart")) }}
+glueops.dev/chart: {{ .Chart.Name }}
+{{- end }}
+{{- include "chart.valuesCommonAnnotations" . }}
+{{- end }}
+
+{{/* Common annotations for top-level resources */}}
+{{- define "chart.commonAnnotations" }}
+helm.sh/chart: {{ include "chart.name" . }}
+{{- include "chart.valuesCommonAnnotations" . }}
 {{- end }}
 
 {{/* Deployment labels */}}
