@@ -108,7 +108,7 @@ Skipped when .Values.commonAnnotations sets the same key, so the user's value wi
 */}}
 {{- define "chart.podTemplateAnnotations" }}
 {{- if not (and (kindIs "map" .Values.commonAnnotations) (hasKey .Values.commonAnnotations "glueops.dev/chart")) }}
-glueops.dev/chart: {{ .Chart.Name }}
+glueops.dev/chart: {{ .Chart.Name | quote }}
 {{- end }}
 {{- include "chart.valuesCommonAnnotations" . }}
 {{- end }}
