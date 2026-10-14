@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.17.0](https://github.com/GlueOps/project-template-helm-chart-app/compare/v0.16.1...v0.17.0) (2026-10-14)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pod-template:** pod templates no longer carry the `helm.sh/chart` label and annotation, and gain the constant annotation `glueops.dev/chart: "app"`. Upgrading from 0.16.x rolls every Deployment and StatefulSet once. Started chart-managed Jobs fail that one sync/upgrade with `spec.template: field is immutable` until deleted (then sync manually); they are recreated and re-run. Pods, ReplicaSets and ControllerRevisions lose the label, so anything selecting or grouping on it (NetworkPolicies, PodMonitors, `kubectl -l`, kube-state-metrics label allowlists, Datadog's `helm_chart` tag on pod/container metrics) must switch to `app.kubernetes.io/name` / `app.kubernetes.io/instance`. See "Upgrading from 0.16.x" in the README.
+
+### Features
+
+* update mamezou-tech/setup-helmfile to v2.2.0 #minor ([#138](https://github.com/GlueOps/project-template-helm-chart-app/issues/138)) ([85f8e6a](https://github.com/GlueOps/project-template-helm-chart-app/commit/85f8e6a2c9164c6513a422d60ed8040afeaf56c7))
+
+
+### Bug Fixes
+
+* **pod-template:** stop emitting helm.sh/chart on pod templates ([#141](https://github.com/GlueOps/project-template-helm-chart-app/issues/141)) ([0877010](https://github.com/GlueOps/project-template-helm-chart-app/commit/08770102e4b9139d260048bc1ccaf81775a725db))
+
 ## [0.16.1](https://github.com/GlueOps/project-template-helm-chart-app/compare/v0.16.0...v0.16.1) (2026-10-01)
 
 
