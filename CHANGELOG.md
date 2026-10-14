@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.1](https://github.com/GlueOps/project-template-helm-chart-app/compare/v0.17.0...v0.17.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* rollback helmfile github action from v2.2.0 -&gt; v2.1.0 ([#143](https://github.com/GlueOps/project-template-helm-chart-app/issues/143)) ([d18ca19](https://github.com/GlueOps/project-template-helm-chart-app/commit/d18ca19066d2917627076ed7825d49217f15610d))
+
 ## [0.17.0](https://github.com/GlueOps/project-template-helm-chart-app/compare/v0.16.1...v0.17.0) (2026-10-14)
 
 
