@@ -1205,3 +1205,145 @@ tests:
           count: 1
       - isKind:
           of: CronJob
+
+  # helm.sh/chart on the pod template (canonical Job tests in job_test.yaml)
+  - it: omits helm.sh/chart from the CronJob pod template
+    set:
+      cronJob:
+        enabled: true
+        jobs:
+          nightly:
+            schedule: "0 0 * * *"
+    asserts:
+      - exists:
+          path: metadata.labels["helm.sh/chart"]
+      - exists:
+          path: metadata.annotations["helm.sh/chart"]
+      - notExists:
+          path: spec.jobTemplate.spec.template.metadata.labels["helm.sh/chart"]
+      - notExists:
+          path: spec.jobTemplate.spec.template.metadata.annotations["helm.sh/chart"]
+      - equal:
+          path: spec.jobTemplate.spec.template.metadata.annotations
+          value:
+            glueops.dev/chart: app
+
+  # glueops.dev/chart is pod-template only; top-level metadata keeps helm.sh/chart.
+  - it: does not put glueops.dev/chart on CronJob metadata
+    chart:
+      version: 1.0.0
+    set:
+      commonAnnotations:
+        anno: test
+      cronJob:
+        enabled: true
+        jobs:
+          nightly:
+            schedule: "0 0 * * *"
+    asserts:
+      - notExists:
+          path: metadata.annotations["glueops.dev/chart"]
+      - notExists:
+          path: metadata.labels["glueops.dev/chart"]
+      - equal:
+          path: metadata.annotations
+          value:
+            helm.sh/chart: app-1.0.0
+            anno: test
+
+  - it: renders glueops.dev/chart, commonAnnotations and per-job annotations together on the CronJob pod template
+    set:
+      commonAnnotations:
+        anno: test
+      cronJob:
+        enabled: true
+        jobs:
+          nightly:
+            schedule: "0 0 * * *"
+            annotations:
+              - key: custom-annotation
+                value: my-value
+    asserts:
+      - equal:
+          path: spec.jobTemplate.spec.template.metadata.annotations
+          value:
+            glueops.dev/chart: app
+            anno: test
+            custom-annotation: my-value
+
+  # Regression: same exact pod template metadata under two chart versions.
+  - it: pod template metadata is chart-version independent (0.0.1)
+    chart:
+      version: 0.0.1
+    set:
+      appVersion: "1.2.3"
+      teamOwner: platform
+      commonLabels:
+        lbl: test
+      commonAnnotations:
+        anno: test
+      cronJob:
+        enabled: true
+        jobs:
+          nightly:
+            schedule: "0 0 * * *"
+    asserts:
+      - equal:
+          path: metadata.labels["helm.sh/chart"]
+          value: app-0.0.1
+      - equal:
+          path: spec.jobTemplate.spec.template.metadata
+          value:
+            labels:
+              app.kubernetes.io/name: example-app-nightly
+              app.kubernetes.io/version: "1.2.3"
+              app.kubernetes.io/instance: RELEASE-NAME
+              app.kubernetes.io/managed-by: Helm
+              app.kubernetes.io/teamowner: platform
+              lbl: test
+              resource-type: cronjob
+              cronjob: example-app-nightly
+            annotations:
+              glueops.dev/chart: app
+              anno: test
+      - notMatchRegex:
+          path: spec.jobTemplate.spec.template.metadata.annotations["glueops.dev/chart"]
+          pattern: "[0-9]"
+
+  - it: pod template metadata is chart-version independent (99.0.0)
+    chart:
+      version: 99.0.0
+    set:
+      appVersion: "1.2.3"
+      teamOwner: platform
+      commonLabels:
+        lbl: test
+      commonAnnotations:
+        anno: test
+      cronJob:
+        enabled: true
+        jobs:
+          nightly:
+            schedule: "0 0 * * *"
+    asserts:
+      - equal:
+          path: metadata.labels["helm.sh/chart"]
+          value: app-99.0.0
+      - equal:
+          path: spec.jobTemplate.spec.template.metadata
+          value:
+            labels:
+              app.kubernetes.io/name: example-app-nightly
+              app.kubernetes.io/version: "1.2.3"
+              app.kubernetes.io/instance: RELEASE-NAME
+              app.kubernetes.io/managed-by: Helm
+              app.kubernetes.io/teamowner: platform
+              lbl: test
+              resource-type: cronjob
+              cronjob: example-app-nightly
+            annotations:
+              glueops.dev/chart: app
+              anno: test
+      - notMatchRegex:
+          path: spec.jobTemplate.spec.template.metadata.annotations["glueops.dev/chart"]
+          pattern: "[0-9]"

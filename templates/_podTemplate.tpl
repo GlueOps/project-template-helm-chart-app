@@ -1,7 +1,7 @@
 {{- define "chart.podTemplate" -}}
 metadata:
   labels:
-    {{- include "chart.commonLabels" .Root | indent 4 }}
+    {{- include "chart.podTemplateLabels" .Root | indent 4 }}
     {{- include "chart.deploymentLabels" .Root | indent 4 }}
     {{- if .matchLabels }}
     {{- toYaml .matchLabels | nindent 4 }}
@@ -17,7 +17,7 @@ metadata:
     {{- include "chart.renderLabels" .labels | indent 4 }}
     {{- end }}
   annotations:
-    {{- include "chart.commonAnnotations" .Root | indent 4 }}
+    {{- include "chart.podTemplateAnnotations" .Root | indent 4 }}
     {{- include "chart.deploymentAnnotations" .Root | indent 4 }}
     {{- if .annotations }}
     {{- include "chart.renderLabels" .annotations | indent 4 }}

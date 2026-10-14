@@ -191,3 +191,121 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "statefulSet\\.imagePullSecrets must be a string secret name"
+
+  # helm.sh/chart on the pod template (canonical tests in deployment_test.yaml)
+  - it: keeps helm.sh/chart on StatefulSet metadata but not on the pod template
+    set:
+      statefulSet:
+        enabled: true
+    asserts:
+      - exists:
+          path: metadata.labels["helm.sh/chart"]
+      - exists:
+          path: metadata.annotations["helm.sh/chart"]
+      - notExists:
+          path: spec.template.metadata.labels["helm.sh/chart"]
+      - notExists:
+          path: spec.template.metadata.annotations["helm.sh/chart"]
+      - equal:
+          path: spec.template.metadata.annotations
+          value:
+            glueops.dev/chart: app
+
+  # glueops.dev/chart is pod-template only; top-level metadata keeps helm.sh/chart.
+  - it: does not put glueops.dev/chart on StatefulSet metadata
+    chart:
+      version: 1.0.0
+    set:
+      commonAnnotations:
+        anno: test
+      statefulSet:
+        enabled: true
+    asserts:
+      - notExists:
+          path: metadata.annotations["glueops.dev/chart"]
+      - notExists:
+          path: metadata.labels["glueops.dev/chart"]
+      - equal:
+          path: metadata.annotations
+          value:
+            helm.sh/chart: app-1.0.0
+            anno: test
+
+  - it: renders glueops.dev/chart, commonAnnotations and statefulSet.annotations together on the pod template
+    set:
+      commonAnnotations:
+        anno: test
+      statefulSet:
+        enabled: true
+        annotations:
+          prometheus.io/scrape: "true"
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations
+          value:
+            glueops.dev/chart: app
+            anno: test
+            prometheus.io/scrape: "true"
+
+  # Regression: same exact pod template metadata under two chart versions.
+  - it: pod template metadata is chart-version independent (0.0.1)
+    chart:
+      version: 0.0.1
+    set:
+      appVersion: "1.2.3"
+      commonLabels:
+        lbl: test
+      commonAnnotations:
+        anno: test
+      statefulSet:
+        enabled: true
+    asserts:
+      - equal:
+          path: metadata.labels["helm.sh/chart"]
+          value: app-0.0.1
+      - equal:
+          path: spec.template.metadata
+          value:
+            labels:
+              app.kubernetes.io/name: example-app
+              app.kubernetes.io/version: "1.2.3"
+              app.kubernetes.io/instance: RELEASE-NAME
+              app.kubernetes.io/managed-by: Helm
+              lbl: test
+            annotations:
+              glueops.dev/chart: app
+              anno: test
+      - notMatchRegex:
+          path: spec.template.metadata.annotations["glueops.dev/chart"]
+          pattern: "[0-9]"
+
+  - it: pod template metadata is chart-version independent (99.0.0)
+    chart:
+      version: 99.0.0
+    set:
+      appVersion: "1.2.3"
+      commonLabels:
+        lbl: test
+      commonAnnotations:
+        anno: test
+      statefulSet:
+        enabled: true
+    asserts:
+      - equal:
+          path: metadata.labels["helm.sh/chart"]
+          value: app-99.0.0
+      - equal:
+          path: spec.template.metadata
+          value:
+            labels:
+              app.kubernetes.io/name: example-app
+              app.kubernetes.io/version: "1.2.3"
+              app.kubernetes.io/instance: RELEASE-NAME
+              app.kubernetes.io/managed-by: Helm
+              lbl: test
+            annotations:
+              glueops.dev/chart: app
+              anno: test
+      - notMatchRegex:
+          path: spec.template.metadata.annotations["glueops.dev/chart"]
+          pattern: "[0-9]"

@@ -4,7 +4,7 @@
 
 2. **`startingDeadlineSeconds` defaults to 30** — This is hardcoded in cronjob.yaml, NOT the K8s default (which is unbounded). This is intentional.
 
-3. **`appLabels` vs `commonLabels`** — `appLabels` is for selectors (`matchLabels`), `commonLabels` is for metadata. Job and CronJob use `commonLabels` for metadata. Don't use `appLabels` for metadata — it's missing fields like `helm.sh/chart`.
+3. **`appLabels` vs `commonLabels`** — `appLabels` is for selectors (`matchLabels`), `commonLabels` is for metadata. Job and CronJob use `commonLabels` for metadata. Don't use `appLabels` for metadata — it's missing fields like `app.kubernetes.io/managed-by`. Pod templates use `podTemplateLabels` / `podTemplateAnnotations`, not the common helpers (see 9, 11).
 
 4. **Empty extension helpers** — `chart.deploymentLabels` and `chart.deploymentAnnotations` in `_helpers.tpl` are intentionally empty. They're override points for users. Don't delete them.
 
@@ -15,3 +15,9 @@
 7. **`ct lint` won't work locally** — It needs config files from the `helm/chart-testing-action` GitHub Action. Use `helm lint` locally instead.
 
 8. **Example files are CI-validated** — Every file in `examples/*/values.yaml` gets run through the full validation pipeline in CI. Breaking an example breaks CI.
+
+9. **No `helm.sh/chart` on pod templates** — `helm.sh/chart` (`<chart>-<version>`) changes on every release. On a pod template it rolls every Deployment/StatefulSet on each chart bump and makes `helm upgrade` fail with `spec.template: field is immutable` for Jobs still in the cluster. `_podTemplate.tpl` therefore uses `chart.podTemplateLabels` / `chart.podTemplateAnnotations`, which never emit it. Top-level resources keep it via `chart.commonLabels` / `chart.commonAnnotations`. Never put any chart-version-derived value in pod-template metadata.
+
+11. **Pod-template annotations must never be empty** — `chart.podTemplateAnnotations` always emits the constant `glueops.dev/chart: <.Chart.Name>`. With an empty map, Argo CD's default client-side diff shows externally-added pod annotations (`kubectl rollout restart`, Argo CD "Restart", Stakater Reloader) as perpetual OutOfSync. It is skipped when `.Values.commonAnnotations` sets the same key (user value wins, no duplicate key). Changing its value (or removing it) rolls every workload and breaks existing Jobs, like any pod-template change.
+
+12. **Other `.Chart.Version` leaks into the pod template** — `app.version` falls back to `.Chart.Version` when `appVersion` is empty, and that value lands in `app.kubernetes.io/version` on the pod template *and* in `matchLabels` (immutable selector). The image tag chain (`image.tag` → `appVersion` → `.Chart.Version` when `useChartVersionAsTagFallback`) does the same for the container image. So chart bumps are only pod-neutral while `appVersion` is non-empty (default `"0.0.1"`) or image tags are set; don't change the `appVersion` default or fallbacks casually.

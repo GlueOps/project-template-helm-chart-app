@@ -2,7 +2,7 @@
 
 ```
 templates/
-  _helpers.tpl          # Shared helpers (labels, annotations, jobSpec, renderLabels)
+  _helpers.tpl          # Shared helpers (common/podTemplate labels+annotations, jobSpec, renderLabels)
   _podTemplate.tpl      # Shared pod template used by Deployment, StatefulSet, Job, CronJob
   deployment.yaml       # Deployment resource
   statefulset.yaml      # StatefulSet resource
@@ -20,6 +20,6 @@ values.yaml             # Default values with inline documentation
 
 - **`values.yaml`** — All fields documented with `# --` comments (used by helm-docs to auto-generate docs)
 - **`templates/_helpers.tpl`** — All shared template helpers. New helpers go here.
-- **`templates/_podTemplate.tpl`** — Shared pod spec for all workload types. Receives a context dict with `resourceType`, `name`, `Chart`, `Root`, plus per-resource config.
+- **`templates/_podTemplate.tpl`** — Shared pod spec for all workload types. Receives a context dict with `resourceType`, `name`, `Chart`, `Root`, plus per-resource config. Its metadata uses `chart.podTemplateLabels` / `chart.podTemplateAnnotations` (no `helm.sh/chart`; always the constant `glueops.dev/chart` annotation, so annotations are never empty).
 - **`examples/test.sh`** — Runs the full validation pipeline (yamllint, kubeconform, kube-linter, kube-score, polaris, kubeval, kubectl dry-run) against each example directory.
 - **`.github/workflows/ci_test.yaml`** — CI pipeline: lint, unittest, full validation against a real k3s cluster.

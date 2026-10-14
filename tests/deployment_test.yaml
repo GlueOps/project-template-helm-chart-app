@@ -1519,3 +1519,208 @@ tests:
     asserts:
       - isNull:
           path: spec.template.spec.imagePullSecrets
+
+  # helm.sh/chart (<chart>-<version>) stays on top-level metadata but is omitted from the
+  # pod template, so a chart-version-only bump does not roll pods.
+  - it: keeps helm.sh/chart on Deployment metadata but not on the pod template
+    set:
+      deployment:
+        enabled: true
+    asserts:
+      - exists:
+          path: metadata.labels["helm.sh/chart"]
+      - exists:
+          path: metadata.annotations["helm.sh/chart"]
+      - notExists:
+          path: spec.template.metadata.labels["helm.sh/chart"]
+      - notExists:
+          path: spec.template.metadata.annotations["helm.sh/chart"]
+      - equal:
+          path: spec.template.metadata.annotations
+          value:
+            glueops.dev/chart: app
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/managed-by"]
+          value: Helm
+
+  # Regression: both tests assert the SAME exact pod template metadata under different
+  # chart versions; the top-level helm.sh/chart asserts prove the version override applied.
+  # appVersion is pinned because app.kubernetes.io/version falls back to .Chart.Version.
+  - it: pod template metadata is chart-version independent (0.0.1)
+    chart:
+      version: 0.0.1
+    set:
+      appVersion: "1.2.3"
+      teamOwner: platform
+      commonLabels:
+        lbl: test
+      commonAnnotations:
+        anno: test
+      deployment:
+        enabled: true
+    asserts:
+      - equal:
+          path: metadata.labels["helm.sh/chart"]
+          value: app-0.0.1
+      - equal:
+          path: metadata.annotations["helm.sh/chart"]
+          value: app-0.0.1
+      - equal:
+          path: spec.template.metadata
+          value:
+            labels:
+              app.kubernetes.io/name: example-app
+              app.kubernetes.io/version: "1.2.3"
+              app.kubernetes.io/instance: RELEASE-NAME
+              app.kubernetes.io/managed-by: Helm
+              app.kubernetes.io/teamowner: platform
+              lbl: test
+            annotations:
+              glueops.dev/chart: app
+              anno: test
+      - notMatchRegex:
+          path: spec.template.metadata.annotations["glueops.dev/chart"]
+          pattern: "[0-9]"
+
+  - it: pod template metadata is chart-version independent (99.0.0)
+    chart:
+      version: 99.0.0
+    set:
+      appVersion: "1.2.3"
+      teamOwner: platform
+      commonLabels:
+        lbl: test
+      commonAnnotations:
+        anno: test
+      deployment:
+        enabled: true
+    asserts:
+      - equal:
+          path: metadata.labels["helm.sh/chart"]
+          value: app-99.0.0
+      - equal:
+          path: metadata.annotations["helm.sh/chart"]
+          value: app-99.0.0
+      - equal:
+          path: spec.template.metadata
+          value:
+            labels:
+              app.kubernetes.io/name: example-app
+              app.kubernetes.io/version: "1.2.3"
+              app.kubernetes.io/instance: RELEASE-NAME
+              app.kubernetes.io/managed-by: Helm
+              app.kubernetes.io/teamowner: platform
+              lbl: test
+            annotations:
+              glueops.dev/chart: app
+              anno: test
+      - notMatchRegex:
+          path: spec.template.metadata.annotations["glueops.dev/chart"]
+          pattern: "[0-9]"
+
+  - it: renders deployment.annotations alongside glueops.dev/chart on the pod template when commonAnnotations is empty
+    set:
+      deployment:
+        enabled: true
+        annotations:
+          prometheus.io/scrape: "true"
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations
+          value:
+            glueops.dev/chart: app
+            prometheus.io/scrape: "true"
+
+  - it: renders glueops.dev/chart, commonAnnotations and map-format deployment.annotations together on the pod template
+    set:
+      commonAnnotations:
+        anno: test
+      deployment:
+        enabled: true
+        annotations:
+          prometheus.io/scrape: "true"
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations
+          value:
+            glueops.dev/chart: app
+            anno: test
+            prometheus.io/scrape: "true"
+
+  - it: renders glueops.dev/chart, commonAnnotations and list-format deployment.annotations together on the pod template
+    set:
+      commonAnnotations:
+        anno: test
+      deployment:
+        enabled: true
+        annotations:
+          - key: prometheus.io/scrape
+            value: "true"
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations
+          value:
+            glueops.dev/chart: app
+            anno: test
+            prometheus.io/scrape: "true"
+
+  # glueops.dev/chart is pod-template only; top-level metadata keeps helm.sh/chart.
+  - it: does not put glueops.dev/chart on Deployment metadata
+    chart:
+      version: 1.0.0
+    set:
+      commonAnnotations:
+        anno: test
+      deployment:
+        enabled: true
+    asserts:
+      - notExists:
+          path: metadata.annotations["glueops.dev/chart"]
+      - notExists:
+          path: metadata.labels["glueops.dev/chart"]
+      - notExists:
+          path: spec.template.metadata.labels["glueops.dev/chart"]
+      - equal:
+          path: metadata.annotations
+          value:
+            helm.sh/chart: app-1.0.0
+            anno: test
+
+  - it: renders when commonLabels and commonAnnotations are empty strings
+    set:
+      deployment:
+        enabled: true
+      commonLabels: ""
+      commonAnnotations: ""
+    asserts:
+      - exists:
+          path: metadata.labels["helm.sh/chart"]
+      - notExists:
+          path: spec.template.metadata.labels["helm.sh/chart"]
+      - equal:
+          path: spec.template.metadata.annotations
+          value:
+            glueops.dev/chart: app
+
+  - it: renders only glueops.dev/chart on the pod template when commonAnnotations is false
+    set:
+      deployment:
+        enabled: true
+      commonAnnotations: false
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations
+          value:
+            glueops.dev/chart: app
+
+  - it: lets a commonAnnotations glueops.dev/chart value replace the constant without a duplicate key
+    set:
+      deployment:
+        enabled: true
+      commonAnnotations:
+        glueops.dev/chart: custom
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations
+          value:
+            glueops.dev/chart: custom

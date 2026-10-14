@@ -996,3 +996,188 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "job\\.jobs\\.run-once\\.enabled must be a boolean"
+
+  # A Job's spec.template is immutable, so a chart-version-only bump
+  # must not change it or `helm upgrade` fails while the Job still exists.
+  - it: omits helm.sh/chart from the immutable Job pod template
+    set:
+      job:
+        enabled: true
+        jobs:
+          db-migration: {}
+    asserts:
+      - exists:
+          path: metadata.labels["helm.sh/chart"]
+      - exists:
+          path: metadata.annotations["helm.sh/chart"]
+      - notExists:
+          path: spec.template.metadata.labels["helm.sh/chart"]
+      - notExists:
+          path: spec.template.metadata.annotations["helm.sh/chart"]
+      - equal:
+          path: spec.template.metadata.annotations
+          value:
+            glueops.dev/chart: app
+
+  # glueops.dev/chart is pod-template only; top-level metadata keeps helm.sh/chart.
+  - it: does not put glueops.dev/chart on Job metadata
+    chart:
+      version: 1.0.0
+    set:
+      commonAnnotations:
+        anno: test
+      job:
+        enabled: true
+        jobs:
+          db-migration: {}
+    asserts:
+      - notExists:
+          path: metadata.annotations["glueops.dev/chart"]
+      - notExists:
+          path: metadata.labels["glueops.dev/chart"]
+      - equal:
+          path: metadata.annotations
+          value:
+            helm.sh/chart: app-1.0.0
+            anno: test
+
+  # Regression: same exact pod template metadata under two chart versions.
+  - it: pod template metadata is chart-version independent (0.0.1)
+    chart:
+      version: 0.0.1
+    set:
+      appVersion: "1.2.3"
+      teamOwner: platform
+      commonLabels:
+        lbl: test
+      commonAnnotations:
+        anno: test
+      job:
+        enabled: true
+        jobs:
+          migrate: {}
+    asserts:
+      - equal:
+          path: metadata.labels["helm.sh/chart"]
+          value: app-0.0.1
+      - equal:
+          path: spec.template.metadata
+          value:
+            labels:
+              app.kubernetes.io/name: example-app-migrate
+              app.kubernetes.io/version: "1.2.3"
+              app.kubernetes.io/instance: RELEASE-NAME
+              app.kubernetes.io/managed-by: Helm
+              app.kubernetes.io/teamowner: platform
+              lbl: test
+              resource-type: job
+              job: example-app-migrate
+            annotations:
+              glueops.dev/chart: app
+              anno: test
+      - notMatchRegex:
+          path: spec.template.metadata.annotations["glueops.dev/chart"]
+          pattern: "[0-9]"
+
+  - it: pod template metadata is chart-version independent (99.0.0)
+    chart:
+      version: 99.0.0
+    set:
+      appVersion: "1.2.3"
+      teamOwner: platform
+      commonLabels:
+        lbl: test
+      commonAnnotations:
+        anno: test
+      job:
+        enabled: true
+        jobs:
+          migrate: {}
+    asserts:
+      - equal:
+          path: metadata.labels["helm.sh/chart"]
+          value: app-99.0.0
+      - equal:
+          path: spec.template.metadata
+          value:
+            labels:
+              app.kubernetes.io/name: example-app-migrate
+              app.kubernetes.io/version: "1.2.3"
+              app.kubernetes.io/instance: RELEASE-NAME
+              app.kubernetes.io/managed-by: Helm
+              app.kubernetes.io/teamowner: platform
+              lbl: test
+              resource-type: job
+              job: example-app-migrate
+            annotations:
+              glueops.dev/chart: app
+              anno: test
+      - notMatchRegex:
+          path: spec.template.metadata.annotations["glueops.dev/chart"]
+          pattern: "[0-9]"
+
+  - it: renders list-format per-job annotations alongside glueops.dev/chart on the pod template when commonAnnotations is empty
+    set:
+      job:
+        enabled: true
+        jobs:
+          test:
+            annotations:
+              - key: custom-annotation
+                value: my-value
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations
+          value:
+            glueops.dev/chart: app
+            custom-annotation: my-value
+
+  - it: renders glueops.dev/chart, commonAnnotations and map-format per-job annotations together on the pod template
+    set:
+      commonAnnotations:
+        anno: test
+      job:
+        enabled: true
+        jobs:
+          test:
+            annotations:
+              custom-annotation: my-value
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations
+          value:
+            glueops.dev/chart: app
+            anno: test
+            custom-annotation: my-value
+
+  - it: renders glueops.dev/chart, commonAnnotations and list-format per-job annotations together on the pod template
+    set:
+      commonAnnotations:
+        anno: test
+      job:
+        enabled: true
+        jobs:
+          test:
+            annotations:
+              - key: custom-annotation
+                value: my-value
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations
+          value:
+            glueops.dev/chart: app
+            anno: test
+            custom-annotation: my-value
+
+  - it: renders only glueops.dev/chart on the Job pod template when commonAnnotations is an empty string
+    set:
+      commonAnnotations: ""
+      job:
+        enabled: true
+        jobs:
+          test: {}
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations
+          value:
+            glueops.dev/chart: app
