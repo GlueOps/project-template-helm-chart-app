@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   helm-docs:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       # Inlined from GlueOps/github-workflows helm-docs.yml (repo archived June 2026),
       # following the pattern in platform-helm-chart-platform: this repo's own
