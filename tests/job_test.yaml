@@ -1181,3 +1181,158 @@ tests:
           path: spec.template.metadata.annotations
           value:
             glueops.dev/chart: app
+
+  # command/args quoting (shared chart.containerStringList helper; canonical tests live here)
+
+  - it: renders command and args items that YAML would retype as verbatim strings
+    set:
+      job:
+        enabled: true
+        jobs:
+          quoting:
+            command: ["/bin/sh", "-c"]
+            args:
+              - "echo a: b"
+              - "echo hi #note"
+              - "yes"
+              - "true"
+              - "8080"
+              - ""
+              - "trailing spaces   "
+              - "*not-an-alias"
+              - "&not-an-anchor"
+              - "[not, a, list]"
+              - "{not: a map}"
+              - "- not a nested list"
+              - "!not-a-tag"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].command
+          value: ["/bin/sh", "-c"]
+      - equal:
+          path: spec.template.spec.containers[0].args
+          value:
+            - "echo a: b"
+            - "echo hi #note"
+            - "yes"
+            - "true"
+            - "8080"
+            - ""
+            - "trailing spaces   "
+            - "*not-an-alias"
+            - "&not-an-anchor"
+            - "[not, a, list]"
+            - "{not: a map}"
+            - "- not a nested list"
+            - "!not-a-tag"
+
+  - it: renders a multi-line block scalar arg as one string
+    set:
+      job:
+        enabled: true
+        jobs:
+          quoting:
+            command: ["/bin/sh", "-ec"]
+            args:
+              - |
+                set -e
+                echo "line: one"
+                echo two # not a comment
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].args[0]
+          value: |
+            set -e
+            echo "line: one"
+            echo two # not a comment
+
+  - it: preserves quotes inside command and args items
+    set:
+      job:
+        enabled: true
+        jobs:
+          quoting:
+            command: ['say "hi"']
+            args:
+              - "it's"
+              - '"fully-quoted"'
+              - "'single-quoted'"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].command
+          value: ['say "hi"']
+      - equal:
+          path: spec.template.spec.containers[0].args
+          value:
+            - "it's"
+            - '"fully-quoted"'
+            - "'single-quoted'"
+
+  - it: does not alter shell one-liners, $(VAR) references or HTML-significant characters
+    set:
+      job:
+        enabled: true
+        jobs:
+          quoting:
+            command: ["/bin/sh", "-c"]
+            args:
+              - "-c"
+              - "a < b && c > d"
+              - "$(ENV_APP_PORT)"
+              - "echo $HOME; sleep 5 | cat -"
+              - "until nslookup mydb.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for mydb; sleep 2; done"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].args
+          value:
+            - "-c"
+            - "a < b && c > d"
+            - "$(ENV_APP_PORT)"
+            - "echo $HOME; sleep 5 | cat -"
+            - "until nslookup mydb.$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace).svc.cluster.local; do echo waiting for mydb; sleep 2; done"
+
+  - it: stringifies numeric and boolean items instead of rendering typed scalars
+    set:
+      job:
+        enabled: true
+        jobs:
+          quoting:
+            args: [8080, true, 1.5, 10000000, 1234567890123, -42]
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].args
+          value: ["8080", "true", "1.5", "10000000", "1234567890123", "-42"]
+
+  - it: fails with the values path when args is a string instead of a list
+    set:
+      job:
+        enabled: true
+        jobs:
+          quoting:
+            args: "echo hi"
+    asserts:
+      - failedTemplate:
+          errorPattern: "job\\.jobs\\.quoting\\.args: must be a list of strings \\(got string\\)"
+
+  - it: fails on a null command item
+    set:
+      job:
+        enabled: true
+        jobs:
+          quoting:
+            command: ["/bin/sh", null]
+    asserts:
+      - failedTemplate:
+          errorPattern: "job\\.jobs\\.quoting\\.command: every item must be a string \\(got null\\)"
+
+  - it: fails on a map args item
+    set:
+      job:
+        enabled: true
+        jobs:
+          quoting:
+            args:
+              - a: b
+    asserts:
+      - failedTemplate:
+          errorPattern: "job\\.jobs\\.quoting\\.args: every item must be a string \\(got map\\)"

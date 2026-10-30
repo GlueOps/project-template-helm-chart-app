@@ -1724,3 +1724,90 @@ tests:
           path: spec.template.metadata.annotations
           value:
             glueops.dev/chart: custom
+
+  # command/args quoting: image-level vs deployment-level precedence (helper tested in job_test.yaml)
+
+  - it: image.command and image.args take precedence over deployment.command and deployment.args
+    set:
+      appName: example-app
+      image:
+        command: ["/bin/sh", "-c"]
+        args: ["echo from: image #kept"]
+      deployment:
+        enabled: true
+        command: ["/must-not-render"]
+        args: ["must: not-render"]
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].command
+          value: ["/bin/sh", "-c"]
+      - equal:
+          path: spec.template.spec.containers[0].args
+          value: ["echo from: image #kept"]
+
+  - it: image.command combines with deployment.args when image.args is unset
+    set:
+      appName: example-app
+      image:
+        command: ["/bin/sh", "-c"]
+      deployment:
+        enabled: true
+        args: ["echo a: b", "yes"]
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].command
+          value: ["/bin/sh", "-c"]
+      - equal:
+          path: spec.template.spec.containers[0].args
+          value: ["echo a: b", "yes"]
+
+  - it: deployment.command and deployment.args render as verbatim strings when image.command and image.args are unset
+    set:
+      appName: example-app
+      deployment:
+        enabled: true
+        command: ["/bin/sh", "-c"]
+        args:
+          - "echo a: b"
+          - "echo hi #note"
+          - "yes"
+          - "8080"
+          - ""
+          - "a < b && c > d"
+          - "$(ENV_APP_NAME)"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].command
+          value: ["/bin/sh", "-c"]
+      - equal:
+          path: spec.template.spec.containers[0].args
+          value:
+            - "echo a: b"
+            - "echo hi #note"
+            - "yes"
+            - "8080"
+            - ""
+            - "a < b && c > d"
+            - "$(ENV_APP_NAME)"
+
+  - it: names deployment.command in the error when a command item is null
+    set:
+      appName: example-app
+      deployment:
+        enabled: true
+        command: ["/bin/sh", null]
+    asserts:
+      - failedTemplate:
+          errorPattern: "deployment\\.command: every item must be a string \\(got null\\)"
+
+  - it: names image.args in the error when an image-level args item is a map
+    set:
+      appName: example-app
+      image:
+        args:
+          - a: b
+      deployment:
+        enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "image\\.args: every item must be a string \\(got map\\)"

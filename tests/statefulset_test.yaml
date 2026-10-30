@@ -309,3 +309,12 @@ tests:
       - notMatchRegex:
           path: spec.template.metadata.annotations["glueops.dev/chart"]
           pattern: "[0-9]"
+
+  - it: names statefulSet.args in the error when an args item is null
+    set:
+      statefulSet:
+        enabled: true
+        args: ["-c", null]
+    asserts:
+      - failedTemplate:
+          errorPattern: "statefulSet\\.args: every item must be a string \\(got null\\)"

@@ -136,27 +136,34 @@ spec:
   - name: {{ include "app.name" .Root }}
     imagePullPolicy: {{ title (.imagePullPolicy | default "IfNotPresent") }}
     image: {{ include "chart.imageReference" (dict "root" .Root "image" .image "defaultImage" .Root.Values.image) | trim }}
+    {{- /* command/args items go through chart.containerStringList, which emits each one as
+    a JSON string. A bare `- {{ . }}` let YAML retype the item on its way to the API server
+    (`a: b` -> map, ` #` -> comment, `yes`/`8080` -> bool/int, leading `*`/`&`/`[` or a
+    block scalar -> render error). See .ai/gotchas.md 13. */}}
+    {{- $valuesPath := .resourceType }}
+    {{- if and .name (or (eq .resourceType "job") (eq .resourceType "cronJob")) }}
+    {{- $valuesPath = printf "%s.jobs.%s" .resourceType .name }}
+    {{- end }}
+    {{- /* image.command / image.args win over the per-workload lists when set (truthy) */}}
+    {{- $command := .command }}
+    {{- $commandField := printf "%s.command" $valuesPath }}
     {{- if .Root.Values.image.command }}
+    {{- $command = .Root.Values.image.command }}
+    {{- $commandField = "image.command" }}
+    {{- end }}
+    {{- if $command }}
     command:
-    {{- range .Root.Values.image.command }}
-    - {{.}}
+    {{- include "chart.containerStringList" (dict "field" $commandField "items" $command) | trim | nindent 4 }}
     {{- end }}
-    {{- else if .command }}
-    command:
-    {{- range .command }}
-    - {{.}}
-    {{- end }}
-    {{- end }}
+    {{- $args := .args }}
+    {{- $argsField := printf "%s.args" $valuesPath }}
     {{- if .Root.Values.image.args }}
-    args:
-    {{- range .Root.Values.image.args }}
-    - {{.}}
+    {{- $args = .Root.Values.image.args }}
+    {{- $argsField = "image.args" }}
     {{- end }}
-    {{- else if .args }}
+    {{- if $args }}
     args:
-    {{- range .args }}
-    - {{.}}
-    {{- end }}
+    {{- include "chart.containerStringList" (dict "field" $argsField "items" $args) | trim | nindent 4 }}
     {{- end }}
     {{- if .Root.Values.image.lifecycle }}
     lifecycle:

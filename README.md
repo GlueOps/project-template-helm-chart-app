@@ -186,6 +186,66 @@ After this upgrade, chart-only version bumps no longer restart pods, provided:
   `appVersion` → chart version (with `image.useChartVersionAsTagFallback: true`, the
   default), so set `image.tag` or a non-empty `appVersion`.
 
+## Upgrading from 0.17.x
+
+From 0.18.0, every container `command` and `args` item (`image.command`, `image.args`
+and the per-workload `deployment.command`, `job.jobs.<name>.args`, ...) is rendered as
+a JSON string instead of a bare YAML scalar. 0.17.x handed the raw text to YAML, so a
+valid values file could produce a broken or different pod spec: an item containing `: `
+became a map (or failed the render), ` #` started a comment and truncated the item,
+`yes`/`true`/`8080` became a boolean or number the API server rejects, a leading `*`,
+`&`, `[`, `{` or `- ` broke the render, and multi-line block scalars did not render.
+
+### What changes on upgrade
+
+The rendered text of every pod template that sets `command` or `args` changes (`- -c`
+becomes `- "-c"`), but items that were already plain, correctly quoted strings parse to
+the same value, and Kubernetes compares the parsed object. For those workloads nothing
+rolls: rendering every bundled example and tenant fixture with 0.17.1 and 0.18.0
+produced no parsed difference.
+
+The pod spec does change, and the workload rolls once (a started Job fails that one sync
+with `spec.template: field is immutable`; see "Existing Jobs" under *Upgrading from
+0.16.x*), only for items that 0.17.x altered or rejected:
+
+| Item in values | 0.17.x gave the container | 0.18.0 gives the container |
+|---|---|---|
+| `'"echo a: b"'` (a second pair of quotes inside the value, the usual workaround for the `: ` failure) | `echo a: b` | `"echo a: b"`, quotes included |
+| `echo hi #note` | `echo hi` | `echo hi #note` |
+| `"#not-a-comment"` | an empty string | `#not-a-comment` |
+| `"  padded  "` | `padded` | `  padded  ` |
+| `~` / `null` item | an empty string | render error naming the field |
+| `echo a: b`, `"yes"`, `"8080"`, `*x`, `&x`, `[x]`, `{x}`, `- x`, a `\|` or `>` block | render error, or a value the API server rejects | the exact string |
+| a map or list item, or `args` set to a plain string | Go text such as `map[a:b]`, or API-server rejection | render error naming the field |
+
+Only the first five rows could have been running, and the first is the one to look for:
+tenants who hit the `: ` failure were told to wrap the item in a second pair of quotes,
+and that command now receives the quotes and breaks. Check your values for `command`/`args`
+items wrapped in a second pair of quotes, containing ` #` or starting with `#`, with
+leading or trailing spaces, or `null`, and fix the value (or accept the corrected
+behaviour) before upgrading. The last two rows never deployed, so nothing depends on them.
+An empty-string item (`""`) was already delivered as an empty string and is unchanged.
+
+### Pre-flight
+
+```
+helm template app <chart-0.17.1> -f values.yaml | kubectl apply --dry-run=client -o yaml -f - > old.yaml
+helm template app <chart-0.18.0> -f values.yaml | kubectl apply --dry-run=client -o yaml -f - > new.yaml
+diff old.yaml new.yaml
+```
+
+No output means no rollout. Any difference is under `command` or `args` and matches one
+of the rows above.
+
+### Rules that still apply
+
+The chart now preserves exactly what Helm hands it, but Helm parses the values file as
+YAML 1.1 first (see *Quote anything YAML could type*): an unquoted `yes`, `on`, `1.10` or
+`0755` is retyped before the chart runs, and integers above 2^53 (about 9e15) lose
+precision as float64, so quote those items. For a one-off command, add
+a `job.jobs.<name>` entry with a new name per run and no `ttlSecondsAfterFinished`,
+rather than editing an existing Job's `command`, which fails with `field is immutable`.
+
 ## Values
 
 | Key | Type | Default | Description |
@@ -242,8 +302,8 @@ After this upgrade, chart-only version bumps no longer restart pods, provided:
 | externalSecret.secretStore | object | `{"name":"vault-backend"}` | Global SecretStore for all ExternalSecrets |
 | externalSecret.secrets | string | `nil` | Data for the External Secret |
 | image | object | `{"args":null,"command":null,"port":8080,"pullSecrets":null,"registry":"docker.io","repository":"nginx","tag":"1.29.5@sha256:341bf0f3ce6c5277d6002cf6e1fb0319fa4252add24ab6a0e262e0056d313208","useChartVersionAsTagFallback":true}` | Docker image configuration |
-| image.args | string | `nil` | Arguments to pass to the command |
-| image.command | string | `nil` | Command to run in the Docker container |
+| image.args | list | `nil` | Container `args` for every workload container; overrides the per-workload `args` when set. Same string-rendering guarantees as `command`. |
+| image.command | list | `nil` | Container entrypoint (`command`) for every workload container (Deployment, StatefulSet, Job, CronJob). When set it overrides the per-workload `command` (`deployment.command`, `job.jobs.<name>.command`, ...). Every item is rendered as a JSON string, so colons, ` #`, leading `*`/`&`/`[`/`{`/`-`, quotes, trailing spaces, multi-line block scalars and words like `yes`/`true`/`8080` reach the container verbatim. Items must be strings: numbers and booleans are stringified; a `null`, map or list item, or a plain string instead of a list, fails the render with the values path. Still quote anything YAML itself would retype in your values file (an unquoted `yes` is already `true` before the chart sees it, and integers above 2^53 lose precision as float64). |
 | image.port | int | `8080` | Port the application will listen on (>1024) |
 | image.pullSecrets | string | `nil` | Registry pull secret name inherited by all pod templates (Deployment, StatefulSet, Job, CronJob). Resolution order (highest first): per-job `imagePullSecrets` -> workload `imagePullSecrets`   -> `image.pullSecrets`. The first level that is set (present and non-null) wins, even if empty. At every level `""` means the same thing: render no pull secret, ignoring lower levels.   `null` (the default) means unset: inherit from the next level down. NOTE: the top-level key here is `pullSecrets`, but every workload/per-job override key is   `imagePullSecrets` (not `pullSecrets`). Using `pullSecrets` on a workload is a silent no-op. Example: pullSecrets: my-registry-cred |
 | image.registry | string | `"docker.io"` | Docker registry |

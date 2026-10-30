@@ -621,5 +621,34 @@ The exact Go kind also varies by input path (-f gives float64 where --set gives
 int64), so leaking it would make the same mistake read differently per path.
 */}}
 {{- define "chart.valuesKind" -}}
-{{- kindOf . | replace "slice" "list" | replace "float64" "number" | replace "int64" "number" | replace "int" "number" -}}
+{{- kindOf . | replace "slice" "list" | replace "float64" "number" | replace "int64" "number" | replace "int" "number" | replace "invalid" "null" -}}
+{{- end -}}
+
+{{/*
+Render container command/args items, one `- "item"` line each, as JSON strings.
+A bare `- {{ . }}` let YAML retype the item on its way to the API server: `a: b`
+became a map, ` #` started a comment and truncated it, `yes`/`8080` became a
+bool/int the API server rejects, and a leading `*`/`&`/`[`/`{`/`- ` or a block
+scalar broke the render. toRawJson, not toYaml (swallows marshal errors into "")
+or toJson (HTML-escapes & < >). Numbers and bools are stringified (Helm parses a
+values-file number as float64, so integral values are printed through int64 to
+avoid "1e+07"); null, maps and lists fail closed so junk like "<nil>" never
+reaches a container, and a non-list value fails with the values path.
+Call with (dict "field" "<values path, for the error message>" "items" <list>).
+*/}}
+{{- define "chart.containerStringList" -}}
+{{- $field := .field }}
+{{- if not (kindIs "slice" .items) }}
+{{- fail (printf "%s: must be a list of strings (got %s)" $field (include "chart.valuesKind" .items)) }}
+{{- end }}
+{{- range .items }}
+{{- if or (kindIs "invalid" .) (kindIs "map" .) (kindIs "slice" .) }}
+{{- fail (printf "%s: every item must be a string (got %s) - quote the item in your values file; null, map and list items are not supported" $field (include "chart.valuesKind" .)) }}
+{{- end }}
+{{- $s := toString . }}
+{{- if and (kindIs "float64" .) (eq (float64 (int64 .)) .) }}
+{{- $s = toString (int64 .) }}
+{{- end }}
+- {{ toRawJson $s }}
+{{- end }}
 {{- end -}}

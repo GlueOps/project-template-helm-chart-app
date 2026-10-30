@@ -27,6 +27,7 @@ image:
   #    Only `registry`, `repository`, and `tag` are honored under a per-resource `image:` map.
   #    To override `command` / `args` / `lifecycle` / `protocol`, set them at the resource root
   #    (e.g. `deployment.command`, `deployment.args`) — those are not inherited from `image:`.
+  #    Both levels render `command` / `args` items with the same JSON-string quoting (see `image.command`).
   #    Unknown keys under a per-resource `image:` map are rejected with an actionable error.
   #
   # Multi-resource example:
@@ -57,12 +58,22 @@ image:
   #
   # NOTE - digest-pinned images: repository must not contain "@sha256:..." in map/object form.
   # Use the full string form instead: deployment.image: "registry/repo@sha256:abc123"
-  # -- Command to run in the Docker container
+  # -- (list) Container entrypoint (`command`) for every workload container (Deployment,
+  # StatefulSet, Job, CronJob). When set it overrides the per-workload `command`
+  # (`deployment.command`, `job.jobs.<name>.command`, ...). Every item is rendered as a
+  # JSON string, so colons, ` #`, leading `*`/`&`/`[`/`{`/`-`, quotes, trailing spaces,
+  # multi-line block scalars and words like `yes`/`true`/`8080` reach the container
+  # verbatim. Items must be strings: numbers and booleans are stringified; a `null`, map
+  # or list item, or a plain string instead of a list, fails the render with the values
+  # path. Still quote anything YAML itself would retype in your values file (an unquoted
+  # `yes` is already `true` before the chart sees it, and integers above 2^53 lose
+  # precision as float64).
   command:
-  # - /bin/bash
+  # - /bin/sh
   # - -ec
-  # - 'sleep infinity'
-  # -- Arguments to pass to the command
+  # - 'echo "started: $(date)"; sleep infinity'
+  # -- (list) Container `args` for every workload container; overrides the per-workload
+  # `args` when set. Same string-rendering guarantees as `command`.
   args:
 
   # -- Port the application will listen on (>1024)
