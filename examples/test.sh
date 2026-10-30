@@ -12,6 +12,7 @@ IGNORE_TESTS_KUBE_SCORE=(--ignore-test=container-image-pull-policy --ignore-test
 export KUBE_VER=1.35
 export KUBE_VER_FULL=`echo $KUBE_VER`.2
 canary_ran=0
+args_canary_ran=0
 for d in */ ; do
   if [[ $d == "testcases/" ]]; then
     echo "[INFO] Skipping $d ..."
@@ -49,6 +50,25 @@ for d in */ ; do
     canary_ran=1
   fi
 
+  if [[ $d == "args-quoting/" ]]; then
+    # command/args items must be emitted as JSON strings: unquoted, ` #` starts a YAML
+    # comment and silently truncates the arg, `yes` becomes the boolean true, and a block
+    # scalar fails the render. helm-unittest and kubectl dry-run parse the YAML first, so
+    # only these raw-render greps catch a regression back to bare `- {{ . }}`
+    # rendered once into a variable: `helm | grep -q` under pipefail can SIGPIPE helm
+    # when grep exits early on a render larger than the pipe buffer
+    rendered=$(helm template ../../ -f ../../values.yaml -f values.yaml)
+    echo "[INFO] args comment-truncation canary on directory: $(pwd)"
+    grep -qF -- '- "echo hi #note"' <<<"$rendered"
+    echo "[INFO] args bool-word canary on directory: $(pwd)"
+    grep -qF -- '- "yes"' <<<"$rendered"
+    echo "[INFO] args multi-line canary on directory: $(pwd)"
+    grep -qF -- '- "set -e\nfor a; do echo \"[$a]\"; done\n"' <<<"$rendered"
+    echo "[INFO] args html-escape canary on directory: $(pwd)"
+    grep -qF -- '- "a < b && c > d"' <<<"$rendered"
+    args_canary_ran=1
+  fi
+
   if [[ $d == "keda/" ]] && [[ $CI == "true" ]]; then
     helm install example-app ../../ -f ../../values.yaml -f deployment.yaml --wait
     kubectl wait deployment -n default example-app --for condition=Available=True --timeout=60s
@@ -67,6 +87,10 @@ done
 # removed, the key-quoting canary above silently stops guarding. Fail loud instead.
 if [[ $canary_ran -ne 1 ]]; then
   echo "[ERROR] dataMap key-quoting canary never ran (examples/configmap/ missing?)"
+  exit 1
+fi
+if [[ $args_canary_ran -ne 1 ]]; then
+  echo "[ERROR] command/args quoting canary never ran (examples/args-quoting/ missing?)"
   exit 1
 fi
 

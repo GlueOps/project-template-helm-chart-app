@@ -1,0 +1,42 @@
+# Guards the container command/args quoting fix (0.18.0): every item is rendered as a
+# JSON string, so values that YAML would retype reach the container verbatim.
+# examples/test.sh greps the RAW `helm template` output for several of these items,
+# because helm-unittest and kubectl dry-run parse the YAML first and cannot see a
+# ` #` truncation or a yes -> true coercion. Keep the two in sync.
+image:
+  # image-level command applies to every workload container and overrides per-workload `command`
+  command: ["/bin/sh", "-ec"]
+
+job:
+  enabled: true
+  jobs:
+    args-quoting:
+      image: docker.io/library/busybox:1.36.1
+      serviceAccount:
+        enabled: false
+      backoffLimit: 1
+      ttlSecondsAfterFinished: 300
+      resources:
+        requests:
+          cpu: 1m
+          memory: 16Mi
+        limits:
+          cpu: 10m
+          memory: 32Mi
+      # $0 is the script; every later item is a positional parameter the script echoes
+      # back, so the Job is runnable and each quoting edge case is its own argv entry.
+      args:
+        - |
+          set -e
+          for a; do echo "[$a]"; done
+        - args-quoting                          # $0
+        - "echo a: b"                           # colon-space: 0.17.x rendered a YAML map
+        - "echo hi #note"                       # ' #': 0.17.x truncated to "echo hi"
+        - "yes"                                 # bool word: 0.17.x rendered true
+        - "8080"                                # 0.17.x rendered an int
+        - ""                                    # 0.17.x rendered null
+        - "trailing spaces   "                  # 0.17.x trimmed them
+        - "*star &anchor [list] {map} - dash"   # indicators: 0.17.x failed or retyped
+        - 'keeps "double" and ''single'' quotes'
+        - "a < b && c > d"                      # must not be HTML-escaped (toRawJson, not toJson)
+        - "$(ENV_APP_NAME)"                     # Kubernetes $(VAR) expansion stays verbatim
