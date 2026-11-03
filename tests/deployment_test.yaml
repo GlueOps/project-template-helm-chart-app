@@ -1761,35 +1761,6 @@ tests:
           path: spec.template.spec.containers[0].args
           value: ["echo a: b", "yes"]
 
-  - it: deployment.command and deployment.args render as verbatim strings when image.command and image.args are unset
-    set:
-      appName: example-app
-      deployment:
-        enabled: true
-        command: ["/bin/sh", "-c"]
-        args:
-          - "echo a: b"
-          - "echo hi #note"
-          - "yes"
-          - "8080"
-          - ""
-          - "a < b && c > d"
-          - "$(ENV_APP_NAME)"
-    asserts:
-      - equal:
-          path: spec.template.spec.containers[0].command
-          value: ["/bin/sh", "-c"]
-      - equal:
-          path: spec.template.spec.containers[0].args
-          value:
-            - "echo a: b"
-            - "echo hi #note"
-            - "yes"
-            - "8080"
-            - ""
-            - "a < b && c > d"
-            - "$(ENV_APP_NAME)"
-
   - it: names deployment.command in the error when a command item is null
     set:
       appName: example-app

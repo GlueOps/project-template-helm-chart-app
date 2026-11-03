@@ -625,16 +625,10 @@ int64), so leaking it would make the same mistake read differently per path.
 {{- end -}}
 
 {{/*
-Render container command/args items, one `- "item"` line each, as JSON strings.
-A bare `- {{ . }}` let YAML retype the item on its way to the API server: `a: b`
-became a map, ` #` started a comment and truncated it, `yes`/`8080` became a
-bool/int the API server rejects, and a leading `*`/`&`/`[`/`{`/`- ` or a block
-scalar broke the render. toRawJson, not toYaml (swallows marshal errors into "")
-or toJson (HTML-escapes & < >). Numbers and bools are stringified (Helm parses a
-values-file number as float64, so integral values are printed through int64 to
-avoid "1e+07"); null, maps and lists fail closed so junk like "<nil>" never
-reaches a container, and a non-list value fails with the values path.
-Call with (dict "field" "<values path, for the error message>" "items" <list>).
+Render command/args items as JSON strings so YAML cannot retype them (gotcha 13).
+toRawJson: toYaml swallows marshal errors, toJson HTML-escapes. Integral floats go
+through int64 to avoid "1e+07". Null, map and list items and a non-list value fail
+with the values path. Call with (dict "field" "<values path>" "items" <list>).
 */}}
 {{- define "chart.containerStringList" -}}
 {{- $field := .field }}

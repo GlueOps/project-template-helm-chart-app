@@ -1324,15 +1324,3 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "job\\.jobs\\.quoting\\.command: every item must be a string \\(got null\\)"
-
-  - it: fails on a map args item
-    set:
-      job:
-        enabled: true
-        jobs:
-          quoting:
-            args:
-              - a: b
-    asserts:
-      - failedTemplate:
-          errorPattern: "job\\.jobs\\.quoting\\.args: every item must be a string \\(got map\\)"

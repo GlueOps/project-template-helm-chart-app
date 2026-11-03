@@ -136,34 +136,21 @@ spec:
   - name: {{ include "app.name" .Root }}
     imagePullPolicy: {{ title (.imagePullPolicy | default "IfNotPresent") }}
     image: {{ include "chart.imageReference" (dict "root" .Root "image" .image "defaultImage" .Root.Values.image) | trim }}
-    {{- /* command/args items go through chart.containerStringList, which emits each one as
-    a JSON string. A bare `- {{ . }}` let YAML retype the item on its way to the API server
-    (`a: b` -> map, ` #` -> comment, `yes`/`8080` -> bool/int, leading `*`/`&`/`[` or a
-    block scalar -> render error). See .ai/gotchas.md 13. */}}
     {{- $valuesPath := .resourceType }}
-    {{- if and .name (or (eq .resourceType "job") (eq .resourceType "cronJob")) }}
+    {{- if or (eq .resourceType "job") (eq .resourceType "cronJob") }}
     {{- $valuesPath = printf "%s.jobs.%s" .resourceType .name }}
     {{- end }}
-    {{- /* image.command / image.args win over the per-workload lists when set (truthy) */}}
-    {{- $command := .command }}
-    {{- $commandField := printf "%s.command" $valuesPath }}
-    {{- if .Root.Values.image.command }}
-    {{- $command = .Root.Values.image.command }}
-    {{- $commandField = "image.command" }}
+    {{- range $f := list "command" "args" }}
+    {{- $items := index $ $f }}
+    {{- $field := printf "%s.%s" $valuesPath $f }}
+    {{- with index $.Root.Values.image $f }}
+    {{- $items = . }}
+    {{- $field = printf "image.%s" $f }}
     {{- end }}
-    {{- if $command }}
-    command:
-    {{- include "chart.containerStringList" (dict "field" $commandField "items" $command) | trim | nindent 4 }}
+    {{- if $items }}
+    {{ $f }}:
+    {{- include "chart.containerStringList" (dict "field" $field "items" $items) | trim | nindent 4 }}
     {{- end }}
-    {{- $args := .args }}
-    {{- $argsField := printf "%s.args" $valuesPath }}
-    {{- if .Root.Values.image.args }}
-    {{- $args = .Root.Values.image.args }}
-    {{- $argsField = "image.args" }}
-    {{- end }}
-    {{- if $args }}
-    args:
-    {{- include "chart.containerStringList" (dict "field" $argsField "items" $args) | trim | nindent 4 }}
     {{- end }}
     {{- if .Root.Values.image.lifecycle }}
     lifecycle:

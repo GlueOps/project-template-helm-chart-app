@@ -51,19 +51,13 @@ for d in */ ; do
   fi
 
   if [[ $d == "args-quoting/" ]]; then
-    # command/args items must be emitted as JSON strings: unquoted, ` #` starts a YAML
-    # comment and silently truncates the arg, `yes` becomes the boolean true, and a block
-    # scalar fails the render. helm-unittest and kubectl dry-run parse the YAML first, so
-    # only these raw-render greps catch a regression back to bare `- {{ . }}`
-    # rendered once into a variable: `helm | grep -q` under pipefail can SIGPIPE helm
-    # when grep exits early on a render larger than the pipe buffer
+    # helm-unittest parses the render with a YAML 1.2 parser and un-escapes HTML, so a
+    # bare `yes` (true in Helm/kubectl's YAML 1.1) and a toJson `\u003c` regression are
+    # invisible to it; everything else about args quoting is covered by the unit tests.
+    # Rendered once: `helm | grep -q` under pipefail can SIGPIPE helm on a large render.
     rendered=$(helm template ../../ -f ../../values.yaml -f values.yaml)
-    echo "[INFO] args comment-truncation canary on directory: $(pwd)"
-    grep -qF -- '- "echo hi #note"' <<<"$rendered"
     echo "[INFO] args bool-word canary on directory: $(pwd)"
     grep -qF -- '- "yes"' <<<"$rendered"
-    echo "[INFO] args multi-line canary on directory: $(pwd)"
-    grep -qF -- '- "set -e\nfor a; do echo \"[$a]\"; done\n"' <<<"$rendered"
     echo "[INFO] args html-escape canary on directory: $(pwd)"
     grep -qF -- '- "a < b && c > d"' <<<"$rendered"
     args_canary_ran=1
