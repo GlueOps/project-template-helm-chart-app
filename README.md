@@ -186,6 +186,102 @@ After this upgrade, chart-only version bumps no longer restart pods, provided:
   `appVersion` → chart version (with `image.useChartVersionAsTagFallback: true`, the
   default), so set `image.tag` or a non-empty `appVersion`.
 
+## Upgrading from 0.17.x
+
+From 0.18.0, every container `command` and `args` item (`image.command`, `image.args`
+and the per-workload `deployment.command`, `job.jobs.<name>.args`, ...) is rendered as
+a JSON string instead of a bare YAML scalar. 0.17.x handed the raw text to YAML, so a
+valid values file could produce a broken or different pod spec: an item containing `: `
+became a map (or failed the render), ` #` started a comment and truncated the item,
+`yes`/`true`/`8080` became a boolean or number the API server rejects, a leading `*`,
+`&`, `[`, `{` or `- ` broke the render, and multi-line block scalars did not render.
+
+### What changes on upgrade
+
+The rendered text of every pod template that sets `command` or `args` changes (`- -c`
+becomes `- "-c"`), but items that were already plain, correctly quoted strings parse to
+the same value, and Kubernetes compares the parsed object. For those workloads nothing
+rolls: rendering every bundled example and tenant fixture with 0.17.1 and 0.18.0
+produced no parsed difference.
+
+The pod spec does change, and the workload rolls once (a started Job fails that one sync
+with `spec.template: field is immutable`; see "Existing Jobs" under *Upgrading from
+0.16.x*), only for items that 0.17.x altered or rejected:
+
+| Item in values | 0.17.x gave the container | 0.18.0 gives the container |
+|---|---|---|
+| `'"echo a: b"'` (a second pair of quotes inside the value, the usual workaround for the `: ` failure) | `echo a: b` | `"echo a: b"`, quotes included |
+| `echo hi #note` | `echo hi` | `echo hi #note` |
+| `"#not-a-comment"` | an empty string | `#not-a-comment` |
+| `"  padded  "` | `padded` | `  padded  ` |
+| `~` / `null` item | an empty string | render error naming the field |
+| a map item (`- a: b`) | the Go text `map[a:b]` | render error naming the field |
+| `args`/`command` written as a map (`args: {a: --x}`, so overlays merge keys) | the map's values, sorted by key | render error naming the field |
+| `echo a: b`, `"yes"`, `"8080"`, `*x`, `&x`, `[x]`, `{x}`, `- x`, a `\|` or `>` block | render error, or a value the API server rejects | the exact string |
+| a list item, or `args` set to a plain string | API-server rejection or render error | render error naming the field |
+
+Every row down to the two map rows could be running today; the last two never deployed.
+The first row is the one to look for: tenants who hit the `: ` failure were told to wrap the
+item in a second pair of quotes, and that command now receives the quotes and breaks. An
+empty-string item (`""`) was delivered as an empty string before and still is.
+
+### Pre-flight
+
+**Nothing moves on release.** Every captain pins this chart's version in its ApplicationSets, so
+publishing 0.18.0 changes nothing until an environment's `targetRevision` is bumped. Before that
+bump, GlueOps runs the in-cluster preflight; tenants can run the offline checks on their own repo.
+
+**In cluster (GlueOps operators)** — [argocd-app-chart-preflight](https://github.com/GlueOps/argocd-app-chart-preflight),
+deployed by the platform chart on every captain. Set `app_chart_preflight.target_revision` in the
+captain's `platform.yaml` (`0.18.0` when the ApplicationSet sources the chart from helm.gpkg.io or
+OCI, `v0.18.0` or a branch when it sources the chart's git repository); the CronJob renders every
+tenant Application at that revision through the cluster's own Argo CD — no tenant repo access — and
+reports per ApplicationSet: `ok` (bump), `diff` (pod templates change; the report names the app,
+container, old and new `command`/`args` item and the tenant's values files), `error` (the target
+fails to render: a `null`/map item), `unknown` (no verdict). Read it on the captain
+(`kubectl -n glueops-core-argocd-app-chart-preflight get cm app-chart-preflight-status -o jsonpath='{.data.status}'`,
+or `-o yaml` for the full report), in Loki, or on the *App chart preflight* Grafana dashboard. Bump an
+ApplicationSet only when its status is `ok`; a `diff`/`error` goes back to the tenant with the two
+offline checks below, and the next run re-checks.
+
+**Offline (tenants, on your own repo)** — two checks; no cluster needed. Both use `yq` (mikefarah, v4).
+
+1. **Audit the values files** with [`hack/audit-command-args.sh`](hack/audit-command-args.sh)
+   from this repo. It walks every `*.yaml`/`*.yml` under a directory, overlays included,
+   prints each `command`/`args` entry that 0.18.0 renders differently for a container that
+   may be running today, and exits 1 if it found any:
+
+   ```
+   ./audit-command-args.sh path/to/deployment-configurations
+   ```
+
+   It flags items wrapped in a second pair of quotes, containing ` #` or starting with `#`,
+   padded with spaces, `null` or map items, and `command`/`args` written as a map instead of
+   a list. Fix those values first.
+
+2. **Diff the pod templates** the two chart versions render, as parsed JSON. A plain `diff`
+   of the manifests always differs, because `helm.sh/chart` on every top-level resource
+   carries the chart version:
+
+   ```
+   q='select(.spec.template or .spec.jobTemplate) | [.kind, .metadata.name, (.spec.template // .spec.jobTemplate)]'
+   helm template app <chart-0.17.1> -f values.yaml | yq -o=json -I0 "$q" > old.json
+   helm template app <chart-0.18.0> -f values.yaml | yq -o=json -I0 "$q" > new.json
+   diff old.json new.json
+   ```
+
+   No output means no pod template changes and no rollout. A `null` to `""` change in
+   `args` is harmless (the API server stored `""` for both). Anything else is one of the
+   rows above or, if you are coming from before 0.17.0, that release's pod-template change.
+
+### Still true after 0.18.0
+
+Helm reads the values file as YAML 1.1 before the chart runs (see *Quote anything YAML
+could type*), so quote `yes`, `on`, `1.10`, `0755` and integers above 2^53. For a one-off
+command, add a `job.jobs.<name>` entry with a new name per run and no
+`ttlSecondsAfterFinished` rather than editing an existing Job's `command`, which fails with
+`field is immutable`.
+
 ## Values
 
 | Key | Type | Default | Description |
@@ -242,8 +338,8 @@ After this upgrade, chart-only version bumps no longer restart pods, provided:
 | externalSecret.secretStore | object | `{"name":"vault-backend"}` | Global SecretStore for all ExternalSecrets |
 | externalSecret.secrets | string | `nil` | Data for the External Secret |
 | image | object | `{"args":null,"command":null,"port":8080,"pullSecrets":null,"registry":"docker.io","repository":"nginx","tag":"1.29.5@sha256:341bf0f3ce6c5277d6002cf6e1fb0319fa4252add24ab6a0e262e0056d313208","useChartVersionAsTagFallback":true}` | Docker image configuration |
-| image.args | string | `nil` | Arguments to pass to the command |
-| image.command | string | `nil` | Command to run in the Docker container |
+| image.args | list | `nil` | Container `args` for every workload container; overrides the per-workload `args` when set. Same rules as `command`. |
+| image.command | list | `nil` | Container entrypoint (`command`) for every workload container; when set it overrides the per-workload `command` (`deployment.command`, `job.jobs.<name>.command`, ...). Items are rendered as JSON strings and reach the container verbatim (README, "Upgrading from 0.17.x"). Items must be strings: numbers and booleans are stringified; a `null`, map or list item, or a map instead of a list, fails the render with the values path. Helm still reads the values file as YAML 1.1 first, so quote `yes`/`on`/`1.10` and integers above 2^53. |
 | image.port | int | `8080` | Port the application will listen on (>1024) |
 | image.pullSecrets | string | `nil` | Registry pull secret name inherited by all pod templates (Deployment, StatefulSet, Job, CronJob). Resolution order (highest first): per-job `imagePullSecrets` -> workload `imagePullSecrets`   -> `image.pullSecrets`. The first level that is set (present and non-null) wins, even if empty. At every level `""` means the same thing: render no pull secret, ignoring lower levels.   `null` (the default) means unset: inherit from the next level down. NOTE: the top-level key here is `pullSecrets`, but every workload/per-job override key is   `imagePullSecrets` (not `pullSecrets`). Using `pullSecrets` on a workload is a silent no-op. Example: pullSecrets: my-registry-cred |
 | image.registry | string | `"docker.io"` | Docker registry |

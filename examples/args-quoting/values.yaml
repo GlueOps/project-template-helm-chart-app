@@ -1,0 +1,39 @@
+# CI-validated values for container command/args quoting (gotcha 13): every item
+# reaches the container verbatim. examples/test.sh greps the raw render for the
+# `yes` and `a < b` items, which unit tests cannot distinguish after parsing.
+image:
+  # image-level command applies to every workload container and overrides per-workload `command`
+  command: ["/bin/sh", "-ec"]
+
+job:
+  enabled: true
+  jobs:
+    args-quoting:
+      image: docker.io/library/busybox:1.36.1
+      serviceAccount:
+        enabled: false
+      backoffLimit: 1
+      ttlSecondsAfterFinished: 300
+      resources:
+        requests:
+          cpu: 1m
+          memory: 16Mi
+        limits:
+          cpu: 10m
+          memory: 32Mi
+      # $0 is the script; each later item is a positional parameter it echoes back.
+      args:
+        - |
+          set -e
+          for a; do echo "[$a]"; done
+        - args-quoting                          # $0
+        - "echo a: b"
+        - "echo hi #note"
+        - "yes"
+        - "8080"
+        - ""
+        - "trailing spaces   "
+        - "*star &anchor [list] {map} - dash"
+        - 'keeps "double" and ''single'' quotes'
+        - "a < b && c > d"
+        - "$(ENV_APP_NAME)"

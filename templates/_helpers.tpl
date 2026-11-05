@@ -621,5 +621,28 @@ The exact Go kind also varies by input path (-f gives float64 where --set gives
 int64), so leaking it would make the same mistake read differently per path.
 */}}
 {{- define "chart.valuesKind" -}}
-{{- kindOf . | replace "slice" "list" | replace "float64" "number" | replace "int64" "number" | replace "int" "number" -}}
+{{- kindOf . | replace "slice" "list" | replace "float64" "number" | replace "int64" "number" | replace "int" "number" | replace "invalid" "null" -}}
+{{- end -}}
+
+{{/*
+Render command/args items as JSON strings so YAML cannot retype them (gotcha 13).
+toRawJson: toYaml swallows marshal errors, toJson HTML-escapes. Integral floats go
+through int64 to avoid "1e+07". Null, map and list items and a non-list value fail
+with the values path. Call with (dict "field" "<values path>" "items" <list>).
+*/}}
+{{- define "chart.containerStringList" -}}
+{{- $field := .field }}
+{{- if not (kindIs "slice" .items) }}
+{{- fail (printf "%s: must be a list of strings (got %s)" $field (include "chart.valuesKind" .items)) }}
+{{- end }}
+{{- range .items }}
+{{- if or (kindIs "invalid" .) (kindIs "map" .) (kindIs "slice" .) }}
+{{- fail (printf "%s: every item must be a string (got %s) - quote the item in your values file; null, map and list items are not supported" $field (include "chart.valuesKind" .)) }}
+{{- end }}
+{{- $s := toString . }}
+{{- if and (kindIs "float64" .) (eq (float64 (int64 .)) .) }}
+{{- $s = toString (int64 .) }}
+{{- end }}
+- {{ toRawJson $s }}
+{{- end }}
 {{- end -}}
