@@ -236,7 +236,24 @@ empty-string item (`""`) was delivered as an empty string before and still is.
 
 ### Pre-flight
 
-Two offline checks; no cluster needed. Both use `yq` (mikefarah, v4).
+**Nothing moves on release.** Every captain pins this chart's version in its ApplicationSets, so
+publishing 0.18.0 changes nothing until an environment's `targetRevision` is bumped. Before that
+bump, GlueOps runs the in-cluster preflight; tenants can run the offline checks on their own repo.
+
+**In cluster (GlueOps operators)** — [argocd-app-chart-preflight](https://github.com/GlueOps/argocd-app-chart-preflight),
+deployed by the platform chart on every captain. Set `app_chart_preflight.target_revision` in the
+captain's `platform.yaml` (`0.18.0` when the ApplicationSet sources the chart from helm.gpkg.io or
+OCI, `v0.18.0` or a branch when it sources the chart's git repository); the CronJob renders every
+tenant Application at that revision through the cluster's own Argo CD — no tenant repo access — and
+reports per ApplicationSet: `ok` (bump), `diff` (pod templates change; the report names the app,
+container, old and new `command`/`args` item and the tenant's values files), `error` (the target
+fails to render: a `null`/map item), `unknown` (no verdict). Read it on the captain
+(`kubectl -n glueops-core-argocd-app-chart-preflight get cm app-chart-preflight-status -o jsonpath='{.data.status}'`,
+or `-o yaml` for the full report), in Loki, or on the *App chart preflight* Grafana dashboard. Bump an
+ApplicationSet only when its status is `ok`; a `diff`/`error` goes back to the tenant with the two
+offline checks below, and the next run re-checks.
+
+**Offline (tenants, on your own repo)** — two checks; no cluster needed. Both use `yq` (mikefarah, v4).
 
 1. **Audit the values files** with [`hack/audit-command-args.sh`](hack/audit-command-args.sh)
    from this repo. It walks every `*.yaml`/`*.yml` under a directory, overlays included,
