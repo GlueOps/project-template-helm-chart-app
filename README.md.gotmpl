@@ -238,9 +238,9 @@ empty-string item (`""`) was delivered as an empty string before and still is.
 
 **Nothing moves on release.** Every captain pins this chart's version in its ApplicationSets, so
 publishing 0.18.0 changes nothing until an environment's `targetRevision` is bumped. Before that
-bump, GlueOps runs the in-cluster preflight; tenants can run the offline checks on their own repo.
+bump, GlueOps runs the in-cluster preflight.
 
-**In cluster (GlueOps operators)** — [argocd-app-chart-preflight](https://github.com/GlueOps/argocd-app-chart-preflight),
+The check is [argocd-app-chart-preflight](https://github.com/GlueOps/argocd-app-chart-preflight),
 deployed by the platform chart on every captain. Set `app_chart_preflight.target_revision` in the
 captain's `platform.yaml` (`0.18.0` when the ApplicationSet sources the chart from helm.gpkg.io or
 OCI, `v0.18.0` or a branch when it sources the chart's git repository); the CronJob renders every
@@ -250,38 +250,8 @@ container, old and new `command`/`args` item and the tenant's values files), `er
 fails to render: a `null`/map item), `unknown` (no verdict). Read it on the captain
 (`kubectl -n glueops-core-argocd-app-chart-preflight get cm app-chart-preflight-status -o jsonpath='{.data.status}'`,
 or `-o yaml` for the full report), in Loki, or on the *App chart preflight* Grafana dashboard. Bump an
-ApplicationSet only when its status is `ok`; a `diff`/`error` goes back to the tenant with the two
-offline checks below, and the next run re-checks.
-
-**Offline (tenants, on your own repo)** — two checks; no cluster needed. Both use `yq` (mikefarah, v4).
-
-1. **Audit the values files** with [`hack/audit-command-args.sh`](hack/audit-command-args.sh)
-   from this repo. It walks every `*.yaml`/`*.yml` under a directory, overlays included,
-   prints each `command`/`args` entry that 0.18.0 renders differently for a container that
-   may be running today, and exits 1 if it found any:
-
-   ```
-   ./audit-command-args.sh path/to/deployment-configurations
-   ```
-
-   It flags items wrapped in a second pair of quotes, containing ` #` or starting with `#`,
-   padded with spaces, `null` or map items, and `command`/`args` written as a map instead of
-   a list. Fix those values first.
-
-2. **Diff the pod templates** the two chart versions render, as parsed JSON. A plain `diff`
-   of the manifests always differs, because `helm.sh/chart` on every top-level resource
-   carries the chart version:
-
-   ```
-   q='select(.spec.template or .spec.jobTemplate) | [.kind, .metadata.name, (.spec.template // .spec.jobTemplate)]'
-   helm template app <chart-0.17.1> -f values.yaml | yq -o=json -I0 "$q" > old.json
-   helm template app <chart-0.18.0> -f values.yaml | yq -o=json -I0 "$q" > new.json
-   diff old.json new.json
-   ```
-
-   No output means no pod template changes and no rollout. A `null` to `""` change in
-   `args` is harmless (the API server stored `""` for both). Anything else is one of the
-   rows above or, if you are coming from before 0.17.0, that release's pod-template change.
+ApplicationSet only when its status is `ok`; a `diff`/`error` goes back to the tenant with the
+report's items and the table above, and the next run re-checks.
 
 ### Still true after 0.18.0
 
