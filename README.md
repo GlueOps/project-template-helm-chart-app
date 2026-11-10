@@ -228,21 +228,26 @@ empty-string item (`""`) was delivered as an empty string before and still is.
 ### Pre-flight
 
 **Nothing moves on release.** Every captain pins this chart's version in its ApplicationSets, so
-publishing 0.18.0 changes nothing until an environment's `targetRevision` is bumped. Before that
-bump, GlueOps runs the in-cluster preflight.
+publishing 0.18.0 changes nothing until an environment's `targetRevision` is bumped. Right before
+that bump, the operator runs
+[argocd-app-chart-preflight](https://github.com/GlueOps/argocd-app-chart-preflight) from the
+captain codespace, with that captain's kube context:
 
-The check is [argocd-app-chart-preflight](https://github.com/GlueOps/argocd-app-chart-preflight),
-deployed by the platform chart on every captain. Set `app_chart_preflight.target_revision` in the
-captain's `platform.yaml` (`0.18.0` when the ApplicationSet sources the chart from helm.gpkg.io or
-OCI, `v0.18.0` or a branch when it sources the chart's git repository); the CronJob renders every
-tenant Application at that revision through the cluster's own Argo CD — no tenant repo access — and
-reports per ApplicationSet: `ok` (bump), `diff` (pod templates change; the report names the app,
-container, old and new `command`/`args` item and the tenant's values files), `error` (the target
-fails to render: a `null`/map item), `unknown` (no verdict). Read it on the captain
-(`kubectl -n glueops-core-argocd-app-chart-preflight get cm app-chart-preflight-status -o jsonpath='{.data.status}'`,
-or `-o yaml` for the full report), in Loki, or on the *App chart preflight* Grafana dashboard. Bump an
-ApplicationSet only when its status is `ok`; a `diff`/`error` goes back to the tenant with the
-report's items and the table above, and the next run re-checks.
+```
+app-chart-preflight --target 0.18.0                              # every ApplicationSet that uses the chart
+app-chart-preflight --target v0.18.0 --appset nonprod-application-set
+```
+
+The target is `0.18.0` when the ApplicationSet sources the chart from helm.gpkg.io or OCI, and
+`v0.18.0` or a branch when it sources the chart's git repository. The command renders every tenant
+Application at that revision through the cluster's own Argo CD, so no tenant repository is read. It
+prints, per ApplicationSet, `ok` (safe to bump), `diff` (pod templates change: the app, container,
+old and new `command`/`args` item, the tenant's values files and the pod-template diff), `error` (the
+target fails to render, for example a `null` or map item) or `unknown` (no verdict). It exits `0`
+only when every checked set is `ok`.
+
+Bump an ApplicationSet only when its status is `ok`. A `diff` or `error` goes back to the tenant
+with the reported items and the table above, and a second run confirms the fix.
 
 ### Still true after 0.18.0
 
