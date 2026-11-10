@@ -238,9 +238,9 @@ empty-string item (`""`) was delivered as an empty string before and still is.
 
 **Nothing moves on release.** Every captain pins this chart's version in its ApplicationSets, so
 publishing 0.18.0 changes nothing until an environment's `targetRevision` is bumped. Right before
-that bump, the operator runs
-[argocd-app-chart-preflight](https://github.com/GlueOps/argocd-app-chart-preflight) from the
-captain codespace, with that captain's kube context:
+that bump, the operator runs `app-chart-preflight` (or `captain_utils` → `app_chart_preflight`) in
+the captain codespace, with that captain's kube context. It is a script shipped with the
+[GlueOps codespace](https://github.com/GlueOps/codespaces):
 
 ```
 app-chart-preflight --target 0.18.0                              # every ApplicationSet that uses the chart
