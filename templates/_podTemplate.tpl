@@ -136,26 +136,20 @@ spec:
   - name: {{ include "app.name" .Root }}
     imagePullPolicy: {{ title (.imagePullPolicy | default "IfNotPresent") }}
     image: {{ include "chart.imageReference" (dict "root" .Root "image" .image "defaultImage" .Root.Values.image) | trim }}
-    {{- if .Root.Values.image.command }}
-    command:
-    {{- range .Root.Values.image.command }}
-    - {{.}}
+    {{- $valuesPath := .resourceType }}
+    {{- if or (eq .resourceType "job") (eq .resourceType "cronJob") }}
+    {{- $valuesPath = printf "%s.jobs.%s" .resourceType .name }}
     {{- end }}
-    {{- else if .command }}
-    command:
-    {{- range .command }}
-    - {{.}}
+    {{- range $f := list "command" "args" }}
+    {{- $items := index $ $f }}
+    {{- $field := printf "%s.%s" $valuesPath $f }}
+    {{- with index $.Root.Values.image $f }}
+    {{- $items = . }}
+    {{- $field = printf "image.%s" $f }}
     {{- end }}
-    {{- end }}
-    {{- if .Root.Values.image.args }}
-    args:
-    {{- range .Root.Values.image.args }}
-    - {{.}}
-    {{- end }}
-    {{- else if .args }}
-    args:
-    {{- range .args }}
-    - {{.}}
+    {{- if $items }}
+    {{ $f }}:
+    {{- include "chart.containerStringList" (dict "field" $field "items" $items) | trim | nindent 4 }}
     {{- end }}
     {{- end }}
     {{- if .Root.Values.image.lifecycle }}
