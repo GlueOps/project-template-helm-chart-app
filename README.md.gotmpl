@@ -195,4 +195,75 @@ After this upgrade, chart-only version bumps no longer restart pods, provided:
   `appVersion` → chart version (with `image.useChartVersionAsTagFallback: true`, the
   default), so set `image.tag` or a non-empty `appVersion`.
 
+## Upgrading from 0.17.x
+
+From 0.18.0, every container `command` and `args` item (`image.command`, `image.args`
+and the per-workload `deployment.command`, `job.jobs.<name>.args`, ...) is rendered as
+a JSON string instead of a bare YAML scalar. 0.17.x handed the raw text to YAML, so a
+valid values file could produce a broken or different pod spec: an item containing `: `
+became a map (or failed the render), ` #` started a comment and truncated the item,
+`yes`/`true`/`8080` became a boolean or number the API server rejects, a leading `*`,
+`&`, `[`, `{` or `- ` broke the render, and multi-line block scalars did not render.
+
+### What changes on upgrade
+
+The rendered text of every pod template that sets `command` or `args` changes (`- -c`
+becomes `- "-c"`), but items that were already plain, correctly quoted strings parse to
+the same value, and Kubernetes compares the parsed object. For those workloads nothing
+rolls: rendering every bundled example and tenant fixture with 0.17.1 and 0.18.0
+produced no parsed difference.
+
+The pod spec does change, and the workload rolls once (a started Job fails that one sync
+with `spec.template: field is immutable`; see "Existing Jobs" under *Upgrading from
+0.16.x*), only for items that 0.17.x altered or rejected:
+
+| Item in values | 0.17.x gave the container | 0.18.0 gives the container |
+|---|---|---|
+| `'"echo a: b"'` (a second pair of quotes inside the value, the usual workaround for the `: ` failure) | `echo a: b` | `"echo a: b"`, quotes included |
+| `echo hi #note` | `echo hi` | `echo hi #note` |
+| `"#not-a-comment"` | an empty string | `#not-a-comment` |
+| `"  padded  "` | `padded` | `  padded  ` |
+| `~` / `null` item | an empty string | render error naming the field |
+| a map item (`- a: b`) | the Go text `map[a:b]` | render error naming the field |
+| `args`/`command` written as a map (`args: {a: --x}`, so overlays merge keys) | the map's values, sorted by key | render error naming the field |
+| `echo a: b`, `"yes"`, `"8080"`, `*x`, `&x`, `[x]`, `{x}`, `- x`, a `\|` or `>` block | render error, or a value the API server rejects | the exact string |
+| a list item, or `args` set to a plain string | API-server rejection or render error | render error naming the field |
+
+Every row down to the two map rows could be running today; the last two never deployed.
+The first row is the one to look for: tenants who hit the `: ` failure were told to wrap the
+item in a second pair of quotes, and that command now receives the quotes and breaks. An
+empty-string item (`""`) was delivered as an empty string before and still is.
+
+### Pre-flight
+
+**Nothing moves on release.** Every captain pins this chart's version in its ApplicationSets, so
+publishing 0.18.0 changes nothing until an environment's `targetRevision` is bumped. Right before
+that bump, the operator runs `app-chart-preflight` (or `captain_utils` → `app_chart_preflight`) in
+the captain codespace, with that captain's kube context. It is a script shipped with the
+[GlueOps codespace](https://github.com/GlueOps/codespaces):
+
+```
+app-chart-preflight --target 0.18.0                              # every ApplicationSet that uses the chart
+app-chart-preflight --target v0.18.0 --appset nonprod-application-set
+```
+
+The target is `0.18.0` when the ApplicationSet sources the chart from helm.gpkg.io or OCI, and
+`v0.18.0` or a branch when it sources the chart's git repository. The command renders every tenant
+Application at that revision through the cluster's own Argo CD, so no tenant repository is read. It
+prints, per ApplicationSet, `ok` (safe to bump), `diff` (pod templates change: the app, container,
+old and new `command`/`args` item, the tenant's values files and the pod-template diff), `error` (the
+target fails to render, for example a `null` or map item) or `unknown` (no verdict). It exits `0`
+only when every checked set is `ok`.
+
+Bump an ApplicationSet only when its status is `ok`. A `diff` or `error` goes back to the tenant
+with the reported items and the table above, and a second run confirms the fix.
+
+### Still true after 0.18.0
+
+Helm reads the values file as YAML 1.1 before the chart runs (see *Quote anything YAML
+could type*), so quote `yes`, `on`, `1.10`, `0755` and integers above 2^53. For a one-off
+command, add a `job.jobs.<name>` entry with a new name per run and no
+`ttlSecondsAfterFinished` rather than editing an existing Job's `command`, which fails with
+`field is immutable`.
+
 {{ template "chart.valuesSection" . }}

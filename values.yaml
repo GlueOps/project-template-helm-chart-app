@@ -27,6 +27,7 @@ image:
   #    Only `registry`, `repository`, and `tag` are honored under a per-resource `image:` map.
   #    To override `command` / `args` / `lifecycle` / `protocol`, set them at the resource root
   #    (e.g. `deployment.command`, `deployment.args`) — those are not inherited from `image:`.
+  #    Both levels render `command` / `args` items with the same JSON-string quoting (see `image.command`).
   #    Unknown keys under a per-resource `image:` map are rejected with an actionable error.
   #
   # Multi-resource example:
@@ -57,12 +58,19 @@ image:
   #
   # NOTE - digest-pinned images: repository must not contain "@sha256:..." in map/object form.
   # Use the full string form instead: deployment.image: "registry/repo@sha256:abc123"
-  # -- Command to run in the Docker container
+  # -- (list) Container entrypoint (`command`) for every workload container; when set it
+  # overrides the per-workload `command` (`deployment.command`, `job.jobs.<name>.command`, ...).
+  # Items are rendered as JSON strings and reach the container verbatim (README, "Upgrading
+  # from 0.17.x"). Items must be strings: numbers and booleans are stringified; a `null`,
+  # map or list item, or a map instead of a list, fails the render with the values path.
+  # Helm still reads the values file as YAML 1.1 first, so quote `yes`/`on`/`1.10` and
+  # integers above 2^53.
   command:
-  # - /bin/bash
+  # - /bin/sh
   # - -ec
-  # - 'sleep infinity'
-  # -- Arguments to pass to the command
+  # - 'echo "started: $(date)"; sleep infinity'
+  # -- (list) Container `args` for every workload container; overrides the per-workload
+  # `args` when set. Same rules as `command`.
   args:
 
   # -- Port the application will listen on (>1024)
