@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.18.0](https://github.com/GlueOps/project-template-helm-chart-app/compare/v0.17.1...v0.18.0) (2026-11-16)
+
+
+### ⚠ BREAKING CHANGES
+
+* **pod-template:** render command/args items as JSON strings ([#147](https://github.com/GlueOps/project-template-helm-chart-app/issues/147))
+
+### Bug Fixes
+
+* **pod-template:** render command/args items as JSON strings ([#147](https://github.com/GlueOps/project-template-helm-chart-app/issues/147)) ([081599d](https://github.com/GlueOps/project-template-helm-chart-app/commit/081599dc892b884c10ef47448079c558591d17b9))
+
 ## [0.17.1](https://github.com/GlueOps/project-template-helm-chart-app/compare/v0.17.0...v0.17.1) (2026-10-14)
 
 
