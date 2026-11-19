@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.0](https://github.com/GlueOps/project-template-helm-chart-app/compare/v0.18.0...v0.19.0) (2026-11-19)
+
+
+### Features
+
+* **deps:** update docker.io/nginx docker tag to v1.31.9 ([#121](https://github.com/GlueOps/project-template-helm-chart-app/issues/121)) ([5480b7a](https://github.com/GlueOps/project-template-helm-chart-app/commit/5480b7a1144a505c75843b97141a8b3d6e97949c))
+
 ## [0.18.0](https://github.com/GlueOps/project-template-helm-chart-app/compare/v0.17.1...v0.18.0) (2026-11-16)
 
 
