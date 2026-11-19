@@ -18,7 +18,7 @@ image:
   # -- Docker image repository
   repository: nginx
   # -- Docker image tag
-  tag: 1.29.5@sha256:341bf0f3ce6c5277d6002cf6e1fb0319fa4252add24ab6a0e262e0056d313208
+  tag: 1.30.7@sha256:7fad6c0dff97965adbddf28027d934b111fc0221a554315dc274712f3fba24d3
   # -- Image inheritance notes:
   # Set shared defaults here (registry/repository/tag), then override per workload.
   # Per-workload image can be either:
